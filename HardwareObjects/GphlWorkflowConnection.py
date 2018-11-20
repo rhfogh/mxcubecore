@@ -90,7 +90,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         # Properties for GPhL invocation
         self.java_properties = {}
 
-        
+
     def _init(self):
         pass
 
@@ -316,6 +316,9 @@ class GphlWorkflowConnection(HardwareObject, object):
         val = self.software_paths.get('gphl_wf_processing_installation')
         if val:
             envs['GPHL_PROC_INSTALLATION'] = val
+
+        # Strategy type to be passed to stratcal wrapper
+        envs['STRATCAL_STRATEGY_TYPE'] = params['strategy_type']
 
         # These env variables are needed in some cases for wrapper scripts
         # Specifically for the stratcal wrapper.
