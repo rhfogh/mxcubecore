@@ -281,6 +281,11 @@ class GphlWorkflowConnection(HardwareObject, object):
             path_template.process_directory,
             self.getProperty('gphl_subdir')
         )
+        # Hardcoded - location for log output
+        command_list.extend(ConvertUtils.java_property('co.gohl.wf.wdir',
+                                                       workflow_options['wdir'],
+                                                       quote_value=in_shell))
+
         for keyword, value in workflow_options.items():
             command_list.extend(ConvertUtils.command_option(keyword, value,
                                                             quote_value=in_shell))

@@ -259,6 +259,9 @@ class CollectEmulator(CollectMockup):
         # in spite of the simcal_crystal_list name this returns an OrderdDict
         crystal_data = f90nml.read(crystal_file)['simcal_crystal_list']
 
+        if isinstance(crystal_data, list):
+            crystal_data = crystal_data[0]
+
         input_data = self._get_simcal_input(data_collect_parameters,
                                             crystal_data)
 
