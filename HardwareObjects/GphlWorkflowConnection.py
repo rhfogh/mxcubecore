@@ -114,7 +114,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                 val2 = HardwareRepository().findInRepository(val)
                 if val2 is None:
                     raise ValueError("File path %s not recognised" % val)
-            paths[tag] = props[tag] = val2
+            paths[tag] = val2
         dd = next(self.getObjects('software_properties')).getProperties()
         for tag, val in dd.items():
             val2 = val.format(**locations)
@@ -250,12 +250,32 @@ class GphlWorkflowConnection(HardwareObject, object):
             command_list.extend(ConvertUtils.java_property(keyword, value,
                                                            quote_value=in_shell))
 
-        params['invocation_options']['cp'] = self.software_paths[
-            'gphl_java_classpath'
-        ]
-        for keyword, value in params.get('invocation_options',{}).items():
-            command_list.extend(ConvertUtils.command_option(keyword, value,
-                                                            quote_value=in_shell))
+
+        # We must get hold of the options here, as we need wdir for a property
+        workflow_options = dict(params.get('options',{}))
+        calibration_name = workflow_options.get('calibration')
+        if calibration_name:
+            # Expand calibration base name - to simplify identification.
+            workflow_options['calibration'] = (
+                    '%s_%s' % (calibration_name,  workflow_model_obj.get_name())
+            )
+        path_template = workflow_model_obj.get_path_template()
+        if 'prefix' in workflow_options:
+            workflow_options['prefix'] = path_template.base_prefix
+        workflow_options['wdir'] = os.path.join(
+            path_template.process_directory,
+            self.getProperty('gphl_subdir')
+        )
+        # Hardcoded - location for log output
+        command_list.extend(ConvertUtils.java_property('co.gphl.wf.wdir',
+                                                       workflow_options['wdir'],
+                                                       quote_value=in_shell))
+
+        ll = ConvertUtils.command_option('cp',
+                                         self.software_paths['gphl_java_classpath'],
+                                         quote_value=in_shell
+                                         )
+        command_list.extend(ll)
 
         command_list.append(params['application'])
 
@@ -266,25 +286,6 @@ class GphlWorkflowConnection(HardwareObject, object):
             command_list.extend(ConvertUtils.java_property(keyword, value,
                                                            quote_value=in_shell))
 
-        workflow_options = dict(params.get('options',{}))
-        calibration_name = workflow_options.get('calibration')
-        if calibration_name:
-            # Expand calibration base name - to simplify identification.
-            workflow_options['calibration'] = (
-                '%s_%s' % (calibration_name,  workflow_model_obj.get_name())
-            )
-        path_template = workflow_model_obj.get_path_template()
-        if 'prefix' in workflow_options:
-            workflow_options['prefix'] = path_template.base_prefix
-
-        workflow_options['wdir'] = os.path.join(
-            path_template.process_directory,
-            self.getProperty('gphl_subdir')
-        )
-        # Hardcoded - location for log output
-        command_list.extend(ConvertUtils.java_property('co.gohl.wf.wdir',
-                                                       workflow_options['wdir'],
-                                                       quote_value=in_shell))
 
         for keyword, value in workflow_options.items():
             command_list.extend(ConvertUtils.command_option(keyword, value,
@@ -322,9 +323,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         if val:
             envs['GPHL_PROC_INSTALLATION'] = val
 
-        # Strategy type to be passed to stratcal wrapper
-        envs['STRATCAL_STRATEGY_TYPE'] = params['strategy_type']
-
         # These env variables are needed in some cases for wrapper scripts
         # Specifically for the stratcal wrapper.
         envs['GPHL_INSTALLATION'] = self.software_paths['GPHL_INSTALLATION']
@@ -335,9 +333,8 @@ class GphlWorkflowConnection(HardwareObject, object):
             # Remove ms part before using
             ss = datetime.datetime.now().isoformat()
             ff = log_template % ss.split('.')[0]
-            ff = os.path.join(path_template.process_directory,
-                              self.getProperty('gphl_subdir'), ff)
-            logging.getLogger('HWR').info('Redirecting GPhL outoput to  %s' % ff)
+            ff = os.path.join(wdir, ff)
+            logging.getLogger('HWR').info('Redirecting GPhL output to  %s' % ff)
             fp1 = open(ff, 'w')
             fp2 = subprocess.STDOUT
         else:

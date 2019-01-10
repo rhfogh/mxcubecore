@@ -154,45 +154,45 @@ class GphlWorkflow(HardwareObject, object):
 
         # TODO this could be cached for speed
 
-
-        instcfgout_dir = self.getProperty('instcfgout_dir')
-
         result = OrderedDict()
         if self.hasObject('workflow_properties'):
             properties = self['workflow_properties'].getProperties()
         else:
             properties = {}
-
-        if self.hasObject('workflow_options'):
-            options = self['workflow_options'].getProperties()
-            if 'beamline' in options:
-                pass
-            elif self._workflow_connection.hasObject('ssh_options'):
-                # We are running workflow through ssh - set beamline url
-                options['beamline'] = 'py4j:%s:' % socket.gethostname()
-            else:
-                options['beamline'] = 'py4j::'
-        else:
-            options = {}
-        if self.hasObject('invocation_options'):
-            invocation_options = self['invocation_options'].getProperties()
-        else:
-            invocation_options = {}
         if self.hasObject('invocation_properties'):
             invocation_properties = self['invocation_properties'].getProperties()
         else:
             invocation_properties = {}
 
+        if self.hasObject('all_workflow_options'):
+            all_workflow_options = self['all_workflow_options'].getProperties()
+            if 'beamline' in all_workflow_options:
+                pass
+            elif self._workflow_connection.hasObject('ssh_options'):
+                # We are running workflow through ssh - set beamline url
+                all_workflow_options['beamline'] = 'py4j:%s:' % socket.gethostname()
+            else:
+                all_workflow_options['beamline'] = 'py4j::'
+        else:
+            all_workflow_options = {}
+
+        acq_workflow_options = all_workflow_options.copy()
+        acq_workflow_options.update(self['acq_workflow_options'].getProperties())
         # Add options for target directories:
         # There should be a better way, but apparently there isn't
         session_hwobj = HardwareRepository().getHardwareObject('session')
         process_root = session_hwobj.get_base_process_directory()
-        options['appdir'] = process_root
+        acq_workflow_options['appdir'] = process_root
+
+        mx_workflow_options = acq_workflow_options.copy()
+        mx_workflow_options.update(self['mx_workflow_options'].getProperties())
+
 
         for wf_node in self['workflows']:
             name = wf_node.name()
+            strategy_type = wf_node.getProperty('strategy_type')
             wf_dict = {'name':name,
-                       'strategy_type':wf_node.getProperty('strategy_type'),
+                       'strategy_type':strategy_type,
                        'application':wf_node.getProperty('application'),
                        'documentation':wf_node.getProperty('documentation',
                                                            default_value=''),
@@ -200,36 +200,46 @@ class GphlWorkflow(HardwareObject, object):
                                                              default_value=''),
             }
             result[name] = wf_dict
-            wf_dict['options'] = dd = options.copy()
-            if wf_node.hasObject('options'):
-                dd.update(wf_node['options'].getProperties())
-                relative_file_path = dd.get('file')
-                if relative_file_path is not None:
-                    # Special case - this option must be modified before use
-                    dd['file'] = os.path.join(
-                        self.file_paths['gphl_beamline_config'],
-                        relative_file_path
-                    )
-                instcfgout = dd.get('instcfgout')
-                if instcfgout is not None and instcfgout_dir is not None:
-                    # Special case - this option must be modified before use
-                    dd['instcfgout'] = os.path.join(instcfgout_dir, instcfgout)
+
+            if strategy_type.startswith('transcal'):
+                wf_dict['options'] = dd = all_workflow_options.copy()
+                if wf_node.hasObject('options'):
+                    dd.update(wf_node['options'].getProperties())
+                    relative_file_path = dd.get('file')
+                    if relative_file_path is not None:
+                        # Special case - this option must be modified before use
+                        dd['file'] = os.path.join(
+                            self.file_paths['gphl_beamline_config'],
+                            relative_file_path
+                        )
+
+            elif strategy_type.startswith('diffractcal'):
+                wf_dict['options'] = dd = acq_workflow_options.copy()
+                if wf_node.hasObject('options'):
+                    dd.update(wf_node['options'].getProperties())
+
+            else:
+                wf_dict['options'] = dd = mx_workflow_options.copy()
+                if wf_node.hasObject('options'):
+                    dd.update(wf_node['options'].getProperties())
+                if wf_node.hasObject('beam_energies'):
+                    wf_dict['beam_energies'] = dd = OrderedDict()
+                    for wavelength in wf_node['beam_energies']:
+                        dd[wavelength.getProperty('role')] = (
+                            wavelength.getProperty('value')
+                        )
             wf_dict['properties'] = dd = properties.copy()
             if wf_node.hasObject('properties'):
                 dd.update(wf_node['properties'].getProperties())
+            # Program-specific properties
+            devmode = dd.get('co.gphl.wf.devMode')
+            if devmode and devmode[0] not in 'fFnN':
+                # We are in developer mode. Add parameters
+                dd['co.gphl.wf.stratcal.opt.--strategy_type'] = strategy_type
+
             wf_dict['invocation_properties'] = dd = invocation_properties.copy()
             if wf_node.hasObject('invocation_properties'):
                 dd.update(wf_node['invocation_properties'].getProperties())
-            wf_dict['invocation_options'] = dd = invocation_options.copy()
-            if wf_node.hasObject('invocation_options'):
-                dd.update(wf_node['invocation_options'].getProperties())
-
-            if wf_node.hasObject('beam_energies'):
-                wf_dict['beam_energies'] = dd = OrderedDict()
-                for wavelength in wf_node['beam_energies']:
-                    dd[wavelength.getProperty('role')] = (
-                        wavelength.getProperty('value')
-                    )
         #
         return result
 
