@@ -1019,8 +1019,9 @@ class GphlWorkflowConnection(HardwareObject, object):
                          float(sampleCentred.exposure),
                          float(sampleCentred.transmission),
                          list(sampleCentred.interleaveOrder),
-                         list(sampleCentred.wavelengths),
-                         sampleCentred.detectorSetting
+                         list(self._PhasingWavelength_to_java(x)
+                              for x in sampleCentred.wavelengths),
+                         self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting)
                          )
         else:
             result = cls(float(sampleCentred.imageWidth),

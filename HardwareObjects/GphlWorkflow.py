@@ -465,18 +465,16 @@ class GphlWorkflow(HardwareObject, object):
 
             # NB Transmission is in % in UI, but in 0-1 in workflow
             {'variableName':'transmission',
-             'uiLabel':'Transmission',
+             'uiLabel':'Transmission (%)',
              'type':'text',
              'defaultValue':str(acq_parameters.transmission),
-             'unit':'%',
              'lowerBound':0.0,
              'upperBound':100.0,
              },
             {'variableName':'exposure',
-             'uiLabel':'Exposure Time',
+             'uiLabel':'Exposure Time (s)',
              'type':'text',
              'defaultValue':str(acq_parameters.exp_time),
-             'unit':'s',
              # NBNB TODO fill in from config
              'lowerBound':0.003,
              'upperBound':6000,
@@ -488,7 +486,9 @@ class GphlWorkflow(HardwareObject, object):
                 {'variableName':tag,
                  'uiLabel':'%s beam energy (keV)' % tag,
                  'type':'text',
-                 'defaultValue':str(val)
+                 'defaultValue':str(val),
+                 'lowerBound':4.0,
+                 'upperBound':20.
                  }
             )
 
@@ -506,7 +506,6 @@ class GphlWorkflow(HardwareObject, object):
                               'uiLabel':'Images per wedge',
                               'type':'text',
                               'defaultValue':'10',
-                              'unit':'',
                               'lowerBound':0,
                               'upperBound':1000,}
                           )
