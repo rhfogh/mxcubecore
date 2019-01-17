@@ -368,7 +368,8 @@ class GphlWorkflow(HardwareObject, object):
             self.file_paths['gphl_beamline_config']
         )
 
-    def query_collection_strategy(self, geometric_strategy):
+    def query_collection_strategy(self, geometric_strategy, collect_hwobj,
+                                  default_energy):
         """Display collection strategy for user approval,
         and query parameters needed"""
 
@@ -393,19 +394,11 @@ class GphlWorkflow(HardwareObject, object):
         # The strategy is (for now) repeated identical for all wavelengths
         # When this changes, more info will become available
 
-        # NBNB
-
         axis_names = self.rotation_axis_roles
 
         orientations = OrderedDict()
         strategy_length = 0
-        detectorSetting = None
-        beamSetting = None
         for sweep in geometric_strategy.sweeps:
-            if detectorSetting is None:
-                detectorSetting = sweep.detectorSetting
-            if beamSetting is None:
-                beamSetting = sweep.beamSetting
             strategy_length += sweep.width
             rotation_id = sweep.goniostatSweepSetting.id
             sweeps = orientations.get(rotation_id, [])
@@ -417,20 +410,24 @@ class GphlWorkflow(HardwareObject, object):
             # Data collection TODO: Use workflow info to distinguish
             total_width = 0
             beam_energies = data_model.get_beam_energies()
+            # NB We no longer use the actual energies, only the tags
+            # TODO clean up the configs to match
+            energies = [default_energy, default_energy + 0.01, default_energy - 0.01]
+            for ii, tag in enumerate(beam_energies):
+                beam_energies[tag] = energies[ii]
+
             for tag, energy in beam_energies.items():
                 # NB beam_energies is an ordered dictionary
-                lines.append("- %-18s %6.1f degrees at %s keV"
-                             % (tag, strategy_length, energy))
+                lines.append("- %-18s %6.1f degrees"
+                             % (tag, strategy_length))
                 total_width += strategy_length
             lines.append("%-18s:  %6.1f degrees" % ("Total rotation",
                                                     total_width))
         else:
-            # Charcterisation TODO: Use workflow info to distinguish
-            lines.append("    - Beam Energy    : %7.1f keV"
-                         % (ConvertUtils.h_over_e / beamSetting.wavelength))
+            # Charcterisation TODO: Use workflow info to distinguish h_o
+            beam_energies = OrderedDict((('Characterisation', default_energy),))
             lines.append("    - Total rotation : %7.1f degrees"
                          % strategy_length)
-
 
         for rotation_id, sweeps in sorted(orientations.items()):
             goniostatRotation = sweeps[0].goniostatSweepSetting
@@ -486,40 +483,23 @@ class GphlWorkflow(HardwareObject, object):
              },
         ]
 
+        for tag, val in beam_energies.items():
+            field_list.append(
+                {'variableName':tag,
+                 'uiLabel':'%s beam energy (keV)' % tag,
+                 'type':'text',
+                 'defaultValue':str(val)
+                 }
+            )
 
-        # First set beam_energy and give it time to settle,
-        # so detector distance will trigger correct resolution later
-        collect_hwobj = self._queue_entry.beamline_setup.getObjectByRole(
-            'collect'
+        resolution = collect_hwobj.get_resolution()
+        field_list.append(
+            {'variableName':'resolution',
+             'uiLabel':'Detector resolution (A)',
+             'type':'text',
+             'defaultValue':str(resolution)
+             }
         )
-        collect_hwobj.set_wavelength(beamSetting.wavelength)
-
-        detectorDistance = detectorSetting.axisSettings.get('Distance')
-        if detectorDistance:
-            # NBNB If this is ever set to editable, distance and resolution
-            # must be varied in sync
-            collect_hwobj.move_detector(detectorDistance)
-            resolution = collect_hwobj.get_resolution()
-            field_list.append(
-                {'variableName':'detector_distance',
-                 'uiLabel':'Detector distance',
-                 'type':'text',
-                 'defaultValue':str(detectorDistance),
-                 'readOnly':True,
-                 }
-            )
-            field_list.append(
-                {'variableName':'detector_resolution',
-                 'uiLabel':'Equivalent detector resolution (A)',
-                 'type':'text',
-                 'defaultValue':str(resolution),
-                 'readOnly':True,
-                 }
-            )
-        else:
-            logging.getLogger('HWR').warning(
-                "Detector distance not set by workflow runner"
-            )
 
         if isInterleaved:
             field_list.append({'variableName':'wedgeWidth',
@@ -558,25 +538,50 @@ class GphlWorkflow(HardwareObject, object):
         value = params.get(tag)
         if value:
             result[tag] = int(value)
-        # TODO NBNB must be modified if we make distance/resolution editable
-        tag = 'detector_distance'
+        tag = 'resolution'
         value = params.get(tag)
         if value:
-            collect_hwobj.move_detector(float(value))
-            resolution = collect_hwobj.get_resolution()
-            result['resolution'] = resolution
+            value = float(value)
+            result['resolution'] = value
+
         if isInterleaved:
             result['interleaveOrder'] = data_model.get_interleave_order()
+
+        for tag in beam_energies:
+            beam_energies[tag] = float(params.get(tag, 0))
+        result['beam_energies'] = beam_energies
 
         return result
 
     def setup_data_collection(self, payload, correlation_id):
         geometric_strategy = payload
+
+        collect_hwobj = self._queue_entry.beamline_setup.getObjectByRole(
+            'collect'
+        )
+        detectorSetting = geometric_strategy.defaultDetectorSetting
+        beamSetting = geometric_strategy.defaultBeamSetting
+        # First set beam_energy and give it time to settle,
+        # so detector distance will trigger correct resolution later
+        default_energy = ConvertUtils.h_over_e/beamSetting.wavelength
+        # TODO NBNB put in wait-till ready to make sure value settles
+        collect_hwobj.set_energy(default_energy)
+
+
+        detectorDistance = detectorSetting.axisSettings.get('Distance')
+        # NBNB If this is ever set to editable, distance and resolution
+        # must be varied in sync
+        collect_hwobj.move_detector(detectorDistance)
+        # TODO NBNB put in wait-till-ready to make sure value settles
+        collect_hwobj.detector_hwobj.wait_ready()
+        resolution = collect_hwobj.get_resolution()
+
         # NB this call also asks for OK/abort of strategy, hence put first
-        parameters = self.query_collection_strategy(geometric_strategy)
+        parameters = self.query_collection_strategy(geometric_strategy, collect_hwobj,
+                                                    default_energy)
         # Put resolution value in workflow model object
         gphl_workflow_model = self._queue_entry.get_data_model()
-        gphl_workflow_model.set_detector_resolution(parameters.pop('resolution'))
+        gphl_workflow_model.set_detector_resolution(resolution)
 
         user_modifiable = geometric_strategy.isUserModifiable
         if user_modifiable:
@@ -669,9 +674,31 @@ class GphlWorkflow(HardwareObject, object):
                 )
             )
 
+        # Get wavelengths
+        h_over_e = ConvertUtils.h_over_e
+        beam_energies = parameters.pop('beam_energies')
+        wavelengths = list(
+            GphlMessages.PhasingWavelength(wavelength=val/h_over_e, role=tag)
+            for tag, val in beam_energies.items()
+        )
+
+        # get BcsDetectorSetting
+        new_resolution = parameters.pop('resolution')
+        if new_resolution == resolution:
+            id_ = detectorSetting.id
+        else:
+            collect_hwobj.set_resolution(new_resolution)
+            collect_hwobj.detector_hwobj.wait_ready()
+            # NBNB Wait till value has settled
+            id_ = None
+        orgxy = collect_hwobj.get_beam_centre()
+        detectorSetting = GphlMessages.BcsDetectorSetting(
+            new_resolution, id=id_, orgxy=orgxy,
+            Distance=collect_hwobj.get_detector_distance())
+
         sampleCentred = self.GphlMessages.SampleCentred(
-            goniostatTranslations=goniostatTranslations,
-            **parameters
+            goniostatTranslations=goniostatTranslations, wavelengths=wavelengths,
+            detectorSetting=detectorSetting, **parameters
         )
         return sampleCentred
 
@@ -964,7 +991,6 @@ class GphlWorkflow(HardwareObject, object):
 
         dd = self.parse_indexing_solution(solution_format,
                                           choose_lattice.solutions)
-
         field_list = [
             {'variableName':'_cplx',
              'uiLabel':'Select indexing solution:',
@@ -1223,19 +1249,6 @@ class GphlWorkflow(HardwareObject, object):
         workflow_model = self._queue_entry.get_data_model()
         sample_model = workflow_model.get_sample_node()
 
-        wavelengths = []
-        beam_energies = workflow_model.get_beam_energies()
-        if beam_energies:
-            for role, value in beam_energies.items():
-                wavelength = ConvertUtils.h_over_e / value
-                wavelengths.append(
-                    self.GphlMessages.PhasingWavelength(wavelength=wavelength,
-                                                        role=role)
-                )
-        else:
-            wavelengths.append(
-                self.GphlMessages.PhasingWavelength(wavelength=DUMMY_WAVELENGTH)
-            )
 
         cell_params = workflow_model.get_cell_parameters()
         if cell_params:
@@ -1259,8 +1272,7 @@ class GphlWorkflow(HardwareObject, object):
             spaceGroup=space_group,
             cell=unitCell,
             expectedResolution=workflow_model.get_expected_resolution(),
-            isAnisotropic=None,
-            phasingWavelengths=wavelengths
+            isAnisotropic=None
         )
         ll = ['PriorInformation']
         for tag in ('expectedResolution', 'isAnisotropic', 'lattice',
@@ -1268,8 +1280,6 @@ class GphlWorkflow(HardwareObject, object):
             val = getattr(userProvidedInfo, tag)
             if val:
                 ll.append('%s=%s' % (tag, val))
-        if beam_energies:
-            ll.extend('%s=%s' % (x.role, x.wavelength) for x in wavelengths)
         if cell_params:
             ll.append('cell_parameters=%s' % (cell_params,))
         logging.getLogger('HWR').debug(', '.join(ll))

@@ -630,11 +630,23 @@ class GphlWorkflowConnection(HardwareObject, object):
         sweeps = frozenset(self._Sweep_to_python(x)
                            for x in py4jGeometricStrategy.getSweeps()
                            )
+        beamSetting = py4jGeometricStrategy.getDefaultBeamSetting()
+        if beamSetting:
+            beamSetting = self._BeamSetting_to_python(beamSetting)
+        else:
+            beamSetting = None
+        detectorSetting = py4jGeometricStrategy.getDefaultDetectorSetting()
+        if detectorSetting:
+            detectorSetting = self._DetectorSetting_to_python(detectorSetting)
+        else:
+            detectorSetting = None
         return GphlMessages.GeometricStrategy(
             isInterleaved=py4jGeometricStrategy.isInterleaved(),
             isUserModifiable=py4jGeometricStrategy.isUserModifiable(),
             allowedWidths=py4jGeometricStrategy.getAllowedWidths(),
             defaultWidthIdx=py4jGeometricStrategy.getDefaultWidthIdx(),
+            defaultBeamSetting=beamSetting,
+            defaultDetectorSetting=detectorSetting,
             sweeps=sweeps,
             id=uuid.UUID(uuidString)
         )
@@ -648,10 +660,10 @@ class GphlWorkflowConnection(HardwareObject, object):
         return GphlMessages.SubprocessStopped()
 
     def _ChooseLattice_to_python(self, py4jChooseLattice):
-        format = py4jChooseLattice.getFormat().toString()
+        format_ = py4jChooseLattice.getFormat().toString()
         solutions = py4jChooseLattice.getSolutions()
         lattices = py4jChooseLattice.getLattices()
-        return GphlMessages.ChooseLattice(format=format, solutions=solutions,
+        return GphlMessages.ChooseLattice(format=format_, solutions=solutions,
                                           lattices=lattices)
 
     def _CollectionProposal_to_python(self, py4jCollectionProposal):
@@ -720,7 +732,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         else:
             result = GphlMessages.GoniostatRotation(id=uuid.UUID(uuidString),
                                                     **axisSettings)
-
         py4jGoniostatTranslation = py4jGoniostatRotation.getTranslation()
         if py4jGoniostatTranslation:
             translationAxisSettings = py4jGoniostatTranslation.getAxisSettings()
@@ -748,7 +759,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         axisSettings = py4jDetectorSetting.getAxisSettings()
         #
         return GphlMessages.DetectorSetting(id=uuid.UUID(uuidString),
-                                        **axisSettings)
+                                            **axisSettings)
 
     def _BeamSetting_to_python(self, py4jBeamSetting):
         if py4jBeamSetting is None:
@@ -1007,13 +1018,17 @@ class GphlWorkflowConnection(HardwareObject, object):
                          sampleCentred.wedgeWidth,
                          float(sampleCentred.exposure),
                          float(sampleCentred.transmission),
-                         list(sampleCentred.interleaveOrder)
-                         # self._gateway.jvm.String(sampleCentred.interleaveOrder).toCharArray()
+                         list(sampleCentred.interleaveOrder),
+                         list(sampleCentred.wavelengths),
+                         sampleCentred.detectorSetting
                          )
         else:
             result = cls(float(sampleCentred.imageWidth),
                          float(sampleCentred.exposure),
-                         float(sampleCentred.transmission)
+                         float(sampleCentred.transmission),
+                         list(self._PhasingWavelength_to_java(x)
+                              for x in sampleCentred.wavelengths),
+                         self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting)
                          )
 
         beamstopSetting = sampleCentred.beamstopSetting
@@ -1091,10 +1106,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         xx = userProvidedInfo.isAnisotropic
         if xx is not None:
             builder = builder.anisotropic(xx)
-        for phasingWavelength in userProvidedInfo.phasingWavelengths:
-            builder.addPhasingWavelength(
-                self._PhasingWavelength_to_java(phasingWavelength)
-            )
         #
         return builder.build()
 
@@ -1137,6 +1148,26 @@ class GphlWorkflowConnection(HardwareObject, object):
         return self._gateway.jvm.astra.messagebus.messages.information.PhasingWavelengthImpl(
             javaUuid, float(phasingWavelength.wavelength),
             phasingWavelength.role
+        )
+
+    def _BcsDetectorSetting_to_java(self, bcsDetectorSetting):
+
+        if bcsDetectorSetting is None:
+            return None
+
+        orgxy = bcsDetectorSetting.orgxy
+        # Need (temporarily?) because there is a primitive array, not a list,
+        # on the other side
+        orgxy_array = self._gateway.new_array(self._gateway.jvm.double, 2)
+        orgxy_array[0] = orgxy[0]
+        orgxy_array[1] = orgxy[1]
+        axisSettings = dict(((x, float(y))
+                             for x,y in bcsDetectorSetting.axisSettings.items()))
+        javaUuid = self._gateway.jvm.java.util.UUID.fromString(
+            str(bcsDetectorSetting.id)
+        )
+        return self._gateway.jvm.astra.messagebus.messages.instrumentation.BcsDetectorSettingImpl(
+            float(bcsDetectorSetting.resolution), orgxy_array, axisSettings, javaUuid
         )
 
     def _GoniostatTranslation_to_java(self, goniostatTranslation):
