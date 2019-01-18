@@ -481,8 +481,9 @@ class GphlWorkflow(HardwareObject, object):
              },
         ]
 
+        ll = []
         for tag, val in beam_energies.items():
-            field_list.append(
+            ll.append(
                 {'variableName':tag,
                  'uiLabel':'%s beam energy (keV)' % tag,
                  'type':'text',
@@ -491,13 +492,19 @@ class GphlWorkflow(HardwareObject, object):
                  'upperBound':20.
                  }
             )
+        if  data_model.lattice_selected:
+            # TODO NBNB temporary hack pending fixing of wvelength and det_dist
+            ll[0]['readOnly']  = True
+        field_list.extend(ll)
 
         resolution = collect_hwobj.get_resolution()
         field_list.append(
             {'variableName':'resolution',
              'uiLabel':'Detector resolution (A)',
              'type':'text',
-             'defaultValue':str(resolution)
+             'defaultValue':str(resolution),
+             # TODO remove this restriction when detector distances can be changed:
+             'readOnly':True
              }
         )
 
@@ -558,19 +565,21 @@ class GphlWorkflow(HardwareObject, object):
         collect_hwobj = self._queue_entry.beamline_setup.getObjectByRole(
             'collect'
         )
-        detectorSetting = geometric_strategy.defaultDetectorSetting
         beamSetting = geometric_strategy.defaultBeamSetting
-        # First set beam_energy and give it time to settle,
-        # so detector distance will trigger correct resolution later
-        default_energy = ConvertUtils.h_over_e/beamSetting.wavelength
-        # TODO NBNB put in wait-till ready to make sure value settles
-        collect_hwobj.set_energy(default_energy)
+        if beamSetting:
+            # First set beam_energy and give it time to settle,
+            # so detector distance will trigger correct resolution later
+            default_energy = ConvertUtils.h_over_e/beamSetting.wavelength
+            # TODO NBNB put in wait-till ready to make sure value settles
+            collect_hwobj.set_energy(default_energy)
+        else:
+            default_energy = collect_hwobj.get_energy()
 
-
-        detectorDistance = detectorSetting.axisSettings.get('Distance')
-        # NBNB If this is ever set to editable, distance and resolution
-        # must be varied in sync
-        collect_hwobj.move_detector(detectorDistance)
+        detectorSetting = geometric_strategy.defaultDetectorSetting
+        if detectorSetting:
+            # NBNB If this is ever set to editable, distance and resolution
+            # must be varied in sync
+            collect_hwobj.move_detector(detectorSetting.axisSettings.get('Distance'))
         # TODO NBNB put in wait-till-ready to make sure value settles
         collect_hwobj.detector_hwobj.wait_ready()
         resolution = collect_hwobj.get_resolution()
@@ -677,7 +686,7 @@ class GphlWorkflow(HardwareObject, object):
         h_over_e = ConvertUtils.h_over_e
         beam_energies = parameters.pop('beam_energies')
         wavelengths = list(
-            GphlMessages.PhasingWavelength(wavelength=val/h_over_e, role=tag)
+            GphlMessages.PhasingWavelength(wavelength=h_over_e/val, role=tag)
             for tag, val in beam_energies.items()
         )
 
