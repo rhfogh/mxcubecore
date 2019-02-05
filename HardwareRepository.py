@@ -258,7 +258,6 @@ class __HardwareRepositoryClient:
         #     if tt not in  self.hwobj_info_list:
         #         self.hwobj_info_list.append(tt)
 
-
         return hwobj_instance
 
     def discardHardwareObject(self, hoName):
@@ -421,6 +420,21 @@ class __HardwareRepositoryClient:
                     ho = self.hardwareObjects[objectName]
                 else:
                     ho = self.loadHardwareObject(objectName)
+
+                if not ho and objectName ==  '/queue-model':
+                    # HACK to get hold of central singleton objects
+                    # also if moved to singleton_objects/
+                    #
+                    # NBNB This is BAD!
+                    # But there HAS to be a way to get the those objects
+                    # that does not depend on local directory structure
+                    # Please fix that before you remove the hack. rhfogh
+                    altName = '/singleton_objects' + objectName
+                    if altName in self.hardwareObjects:
+                        ho = self.hardwareObjects[altName]
+                    else:
+                        ho = self.loadHardwareObject(altName)
+
                 return ho
         except TypeError as err:
             logging.getLogger("HWR").exception("could not get Hardware Object %s", objectName)

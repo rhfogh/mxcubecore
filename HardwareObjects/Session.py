@@ -7,15 +7,9 @@ access and manipulate this information.
 import os
 import time
 import logging
-import xml.etree.ElementTree as ET
 
-from HardwareRepository.HardwareRepository import HardwareRepository
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 import queue_model_objects_v1 as queue_model_objects
-
-# Configuration file used to override base_directory paths.
-# Will be ignored if not founc
-parameter_override_file = 'session_parameter_override.xml'
 
 class Session(HardwareObject):
 
@@ -37,25 +31,22 @@ class Session(HardwareObject):
         self.user_group = ''
         self.template = None
 
-        self.default_precision = '05'
+        self.default_precision = "'05'"
         self.suffix = None
-
         self.base_directory = None
         self.base_process_directory = None
         self.base_archive_directory = None
 
         self.raw_data_folder_name = 'RAW_DATA'
-        self.processed_data_folder_name = 'PROCESS_DATA'
+        self.processed_data_folder_name = 'PROCESSED_DATA'
         self.archive_folder_name = 'ARCHIVE'
 
     # Framework-2 method, inherited from HardwareObject and called
     # by the framework after the object has been initialized.
     def init(self):
-
         self.synchrotron_name = self.getProperty('synchrotron_name')
         self.beamline_name = self.getProperty('beamline_name')
         self.endstation_name = self.getProperty('endstation_name').lower()
-
         self.suffix = self["file_info"].getProperty('file_suffix')
         self.template = self["file_info"].getProperty('file_template')
 

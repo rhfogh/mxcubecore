@@ -68,6 +68,10 @@ class GphlWorkflow(HardwareObject, object):
         # HO that handles connection to GPhL workflow runner
         self._workflow_connection = None
 
+        # NB Must be set externally *after* the HO is created but *before* it is used
+        # Cannot be set during init because of circular HO loading problems
+        self.beamline_setup = None
+
         # Needed to allow methods to put new actions on the queue
         # And as a place to get hold of other objects
         self._queue_entry = None
@@ -115,9 +119,15 @@ class GphlWorkflow(HardwareObject, object):
             'WorkflowFailed':self.workflow_failed,
         }
 
-        workflow_connection = HardwareRepository().getHardwareObject('/gphl-setup')
-        self._workflow_connection = workflow_connection
+    def setup_workflow_object(self, beamline_setup):
+        """Necessary as this set-up cannot be done at init,
+        when the hwobj are still incomplete. Must be called externally"""
 
+        # NBNB This must be done here to avoid infinite loop when getting beamline-setup
+        # beamline_setup = HardwareRepository().getHardwareObject('beamline-setup')
+        self.beamline_setup = beamline_setup
+        workflow_connection = beamline_setup.getObjectByRole('gphl_connection')
+        self._workflow_connection = workflow_connection
         # Set standard configurable file paths
         file_paths = self.file_paths
         ss = workflow_connection.software_paths['gphl_beamline_config']
@@ -136,8 +146,7 @@ class GphlWorkflow(HardwareObject, object):
         self._queue_entry = queue_entry
 
         if self.get_state() == States.OFF:
-            # If not already active (i.e. first time),turn ON
-            # self._workflow_connection._initialize_connection(self)
+            # If not already active (i.e. first time) open connection and turn ON
             self._workflow_connection._open_connection()
             self.set_state(States.ON)
 
@@ -179,8 +188,7 @@ class GphlWorkflow(HardwareObject, object):
         acq_workflow_options = all_workflow_options.copy()
         acq_workflow_options.update(self['acq_workflow_options'].getProperties())
         # Add options for target directories:
-        # There should be a better way, but apparently there isn't
-        session_hwobj = HardwareRepository().getHardwareObject('session')
+        session_hwobj = self.beamline_setup.getObjectByRole('session')
         process_root = session_hwobj.get_base_process_directory()
         acq_workflow_options['appdir'] = process_root
 
@@ -321,7 +329,7 @@ class GphlWorkflow(HardwareObject, object):
 
     def _add_to_queue(self, parent_model_obj, child_model_obj):
         # There should be a better way, but apparently there isn't
-        qmo = HardwareRepository().getHardwareObject('/queue-model')
+        qmo = HardwareRepository().getHardwareObject('queue-model')
         qmo.add_child(parent_model_obj, child_model_obj)
 
 
@@ -1307,7 +1315,8 @@ class GphlWorkflow(HardwareObject, object):
         else:
             sampleId = uuid.uuid1()
 
-        session_hwobj = HardwareRepository().getHardwareObject('session')
+        # beamline_setup = HardwareRepository().getHardwareObject('beamline-setup')
+        session_hwobj = self.beamline_setup.getObjectByRole('session')
         image_root = session_hwobj.get_base_image_directory()
 
         if not os.path.isdir(image_root):

@@ -34,6 +34,7 @@ class CollectEmulator(CollectMockup):
     def init(self):
 
         CollectMockup.init(self)
+        # NB session hwobj is set in superclass init
         session_hwobj = self.getObjectByRole("session")
         if session_hwobj and self.hasObject('override_data_directories'):
             dirs = self['override_data_directories'].getProperties()
