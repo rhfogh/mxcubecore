@@ -501,7 +501,7 @@ class GphlWorkflow(HardwareObject, object):
                  }
             )
         if  data_model.lattice_selected:
-            # TODO NBNB temporary hack pending fixing of wvelength and det_dist
+            # TODO NBNB temporary hack pending fixing of wavelength and det_dist
             ll[0]['readOnly']  = True
         field_list.extend(ll)
 
@@ -511,12 +511,10 @@ class GphlWorkflow(HardwareObject, object):
              'uiLabel':'Detector resolution (A)',
              'type':'text',
              'defaultValue':str(resolution),
-             # TODO remove this restriction when detector distances can be changed:
-             'readOnly':True
              }
         )
 
-        if isInterleaved:
+        if isInterleaved and data_model.get_interleave_order() not in ("gs", ""):
             field_list.append({'variableName':'wedgeWidth',
                               'uiLabel':'Images per wedge',
                               'type':'text',
@@ -533,6 +531,8 @@ class GphlWorkflow(HardwareObject, object):
             )
 
         params = self._return_parameters.get()
+        if isInterleaved and data_model.get_interleave_order() in ("gs", ""):
+            params["wedgeWidth"] = 10
         self._return_parameters = None
         result = {}
         tag = 'imageWidth'
@@ -697,6 +697,10 @@ class GphlWorkflow(HardwareObject, object):
             GphlMessages.PhasingWavelength(wavelength=h_over_e/val, role=tag)
             for tag, val in beam_energies.items()
         )
+        # Set to wavelength of first energy
+        # Necessary to that resolution setting below gives right detector distance
+        collect_hwobj.set_wavelength(wavelengths[0].wavelength)
+        # TODO ensure that move is finished before resolution is set
 
         # get BcsDetectorSetting
         new_resolution = parameters.pop('resolution')
@@ -890,7 +894,8 @@ class GphlWorkflow(HardwareObject, object):
             # acq_parameters.overlap = overlap
             acq_parameters.exp_time = scan.exposure.time
             acq_parameters.num_passes = 1
-            acq_parameters.resolution = gphl_workflow_model.get_detector_resolution()
+            acq_parameters.detdistance = sweep.detectorSetting.axisSettings.get('Distance')
+            acq_parameters.resolution = 0.0  # Use detector distance
             acq_parameters.energy = (ConvertUtils.h_over_e
                                      / sweep.beamSetting.wavelength)
             acq_parameters.transmission = scan.exposure.transmission * 100

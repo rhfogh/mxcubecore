@@ -1166,13 +1166,14 @@ class MAXLABMultiCollect(AbstractMultiCollect, HardwareObject):
           logging.getLogger("user_level_log").info("Setting energy to %f", data_collect_parameters["energy"])
           self.set_energy(data_collect_parameters["energy"])
 
-        if 'resolution' in data_collect_parameters:
-          resolution = data_collect_parameters["resolution"]["upper"]
+        dd = data_collect_parameters.get("resolution")
+        if dd and dd.get('upper'):
+          resolution = dd["upper"]
           logging.getLogger("user_level_log").info("Setting resolution to %f", resolution)
           self.set_resolution(resolution)
-        elif 'detdistance' in oscillation_parameters:
+        elif 'detdistance' in data_collect_parameters:
           logging.getLogger("user_level_log").info("Moving detector to %f", data_collect_parameters["detdistance"])
-          self.move_detector(oscillation_parameters["detdistance"])
+          self.move_detector(data_collect_parameters["detdistance"])
 
         # 0: software binned, 1: unbinned, 2:hw binned
         self.set_detector_mode(data_collect_parameters["detector_mode"])

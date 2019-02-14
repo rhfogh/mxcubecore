@@ -246,6 +246,13 @@ class GphlWorkflowConnection(HardwareObject, object):
             command_list = []
         command_list.append(self.software_paths['java_binary'])
 
+        # # HACK - debug options REMOVE!
+        # import socket
+        # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # sock.connect(("8.8.8.8", 80))
+        # ss = "-agentlib:jdwp=transport=dt_socket,address=%s:8050,server=y,suspend=y"
+        # command_list.append(ss % sock.getsockname()[0])
+
         for keyword, value in params.get('invocation_properties',{}).items():
             command_list.extend(ConvertUtils.java_property(keyword, value,
                                                            quote_value=in_shell))
@@ -539,7 +546,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                               'WorkflowCompleted',
                               'WorkflowFailed'):
             if self.workflow_queue is not None:
-            # Could happen if we have ended the workflow
+                # Could happen if we have ended the workflow
                 self.workflow_queue.put_nowait((message_type, payload,
                                                 correlation_id, None))
                 self.workflow_queue.put_nowait(StopIteration)

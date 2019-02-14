@@ -1427,6 +1427,8 @@ class AcquisitionParameters(object):
         self.energy = int()
         self.centred_position = CentredPosition()
         self.resolution = float()
+        # detector_distance ('detdistance') used if resolution is 0 or None
+        self.detdistance = float()
         self.transmission = float()
         self.inverse_beam = False
         self.shutterless = False
@@ -1466,6 +1468,7 @@ class AcquisitionParameters(object):
                 "energy": self.energy,
                 #"centred_position": self.centred_position,
                 "resolution": self.resolution,
+                "detdistance": self.detdistance,
                 "transmission": self.transmission,
                 "inverse_beam": self.inverse_beam,
                 "shutterless": self.shutterless,
@@ -1766,7 +1769,7 @@ class XrayImaging(TaskNode):
 # Collect hardware object utility function.
 #
 def to_collect_dict(data_collection, session, sample, centred_pos=None):
-    """ return [{'comment': '',
+    """ NBNB out of date: return [{'comment': '',
           'helical': 0,
           'motors': {},
           'take_video': False,
@@ -1807,6 +1810,7 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
     acq_params = acquisition.acquisition_parameters
     proc_params = data_collection.processing_parameters
 
+    resolution = acq_params.resolution
     return [{'comment': '',
              #'helical': 0,
              #'motors': {},
@@ -1839,7 +1843,9 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'residues':  proc_params.num_residues,
              'dark': acq_params.take_dark_current,
              #'scan4d': 0,
-             'resolution': {'upper': acq_params.resolution},
+             # Next two are reset below:
+             'resolution': {'upper': resolution or 0.0},
+             'detdistance': acq_params.detdistance,
              'transmission': acq_params.transmission,
              'energy': acq_params.energy,
              #'input_files': 1,

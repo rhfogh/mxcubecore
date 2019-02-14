@@ -130,22 +130,25 @@ class CollectEmulator(CollectMockup):
             setup_data['kappa_axis'] = ll[3:6]
             setup_data['phi_axis'] = ll[6:]
 
+        # get resolution limit and detector distance
+        detector_distance = data_collect_parameters.get('detdistance', 0.0)
+        if not detector_distance:
+            resolution = data_collect_parameters['resolution']['upper']
+            self.set_resolution(resolution)
+            detector_distance = self.get_detector_distance()
         # Add sweeps
         sweeps = []
         for osc in data_collect_parameters['oscillation_sequence']:
             motors = data_collect_parameters['motors']
-            # get resolution limit and detector distance
-            resolution = data_collect_parameters['resolution']['upper']
-            self.set_resolution(resolution)
             sweep = OrderedDict()
 
             sweep['lambda'] = (ConvertUtils.h_over_e
                                / data_collect_parameters['energy'])
-            sweep['res_limit'] = resolution
+            sweep['res_limit'] = setup_data['res_limit_def']
             sweep['exposure'] = osc['exposure_time']
             ll =  self.gphl_workflow_hwobj.translation_axis_roles
             sweep['trans_xyz'] = list(motors.get(x) or 0.0 for x in ll)
-            sweep['det_coord'] = self.get_detector_distance()
+            sweep['det_coord'] = detector_distance
             # NBNB hardwired for omega scan TODO
             sweep['axis_no'] = 3
             sweep['omega_deg'] = osc['start']

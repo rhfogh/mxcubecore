@@ -154,8 +154,9 @@ class BIOMAXCollect(AbstractCollect):
                      self.current_dc_parameters["detroi"])
             self.set_detector_roi(self.current_dc_parameters["detroi"])
 
-        if "resolution" in self.current_dc_parameters:
-            resolution = self.current_dc_parameters["resolution"]["upper"]
+        dd = self.current_dc_parameters.get("resolution")
+        if dd and dd.get('upper'):
+            resolution = dd["upper"]
             log.info("Collection: Setting resolution to %.3f", resolution)
             self.set_resolution(resolution)
 
