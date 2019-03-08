@@ -234,7 +234,7 @@ class ALBAMiniDiff(GenericDiffractometer):
             set_diffractometer_motor_names(
                 "phi", "phiy", "phiz", "sampx", "sampy", "kappa", "kappa_phi")
 
-        # TODO: review, should have updated values after channel creation.
+        # TODO: Explicit update would not be necessary, but it is.
         # Added to make sure pixels_per_mm is initialised
         self.update_pixels_per_mm()
 
