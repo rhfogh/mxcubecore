@@ -19,10 +19,10 @@
 
 """
 [Name]
-ALBAZoomMotor
+ALBAIORCtrl
 
 [Description]
-Hardware Object is used to manipulate the zoom of the OAV camera.
+Hardware Object is used to manipulate the IOR backlight controller
 
 [Emitted signals]
 - stateChanged
@@ -41,7 +41,7 @@ __version__ = "2.3."
 __category__ = "General"
 
 
-class ALBAZoomMotor(BaseHardwareObjects.Device):
+class ALBAIORCtrl(BaseHardwareObjects.Device):
 
     INIT, FAULT, READY, MOVING, ONLIMIT = range(5)
 
@@ -55,13 +55,16 @@ class ALBAZoomMotor(BaseHardwareObjects.Device):
         self.current_state = None
 
     def init(self):
-        logging.getLogger("HWR").debug("Initializing zoom motor IOR")
+        logging.getLogger("HWR").debug("Initializing backlight IOR Controller")
         self.chan_position = self.getChannelObject("position")
         self.chan_state = self.getChannelObject("state")
         self.chan_labels = self.getChannelObject("labels")
-
+        
         self.chan_position.connectSignal("update", self.positionChanged)
         self.chan_state.connectSignal("update", self.stateChanged)
+        
+        self.current_position = self.getPosition()
+        self.current_state = self.getState()
 
     def getPredefinedPositionsList(self):
         labels = self.chan_labels.getValue()
@@ -70,22 +73,22 @@ class ALBAZoomMotor(BaseHardwareObjects.Device):
         for label in labels:
             pos = str(label.replace(":", " "))
             retlist.append(pos)
-        logging.getLogger("HWR").debug("Zoom positions list: %s" % repr(retlist))
+        logging.getLogger("HWR").debug("backlight-IOR positions list: %s" % repr(retlist))
         new_retlist = []
         for n, e in enumerate(retlist):
             name = e.split()
             new_retlist.append("%s %s" % (n + 1, name[0]))
-        logging.getLogger("HWR").debug("Zoom positions list: %s" % repr(new_retlist))
+        logging.getLogger("HWR").debug("backlight-IOR positions list: %s" % repr(new_retlist))
         return new_retlist
 
     def moveToPosition(self, posno):
         no = posno.split()[0]
-        logging.getLogger("HWR").debug("type %s" % type(no))
+        #logging.getLogger("HWR").debug("type %s" % type(no))
         logging.getLogger("HWR").debug("Moving to position %s" % no)
         state = self.chan_position.setValue(int(no))
 
     def motorIsMoving(self):
-        if str(self.getState()) == "MOVING":
+        if self.getState() in [DevState.MOVING, DevState.RUNNING]:
             return True
         else:
             return False
@@ -97,13 +100,13 @@ class ALBAZoomMotor(BaseHardwareObjects.Device):
         state = self.chan_state.getValue()
         curr_pos = self.getPosition()
         if state == DevState.ON:
-            return ALBAZoomMotor.READY
+            return ALBAIORCtrl.READY
         elif state == DevState.MOVING or state == DevState.RUNNING:
-            return ALBAZoomMotor.MOVING
+            return ALBAIORCtrl.MOVING
         elif curr_pos in self.getLimits():
-            return ALBAZoomMotor.ONLIMIT
+            return ALBAIORCtrl.ONLIMIT
         else:
-            return ALBAZoomMotor.FAULT
+            return ALBAIORCtrl.FAULT
 
     def getPosition(self):
         try:
@@ -115,31 +118,31 @@ class ALBAZoomMotor(BaseHardwareObjects.Device):
         try:
             n = int(self.chan_position.getValue())
             value = "%s z%s" % (n, n)
-            logging.getLogger("HWR").debug("getCurrentPositionName: %s" % repr(value))
             return value
         except Exception as e:
-            logging.getLogger("HWR").debug("cannot get name zoom value\n%s" % str(e))
+            logging.getLogger("HWR").debug("Cannot get backligth-IOR position \n%s" % str(e))
             return None
 
     def stateChanged(self, state):
-        logging.getLogger("HWR").debug("stateChanged emitted: %s" % state)
         the_state = self.getState()
-        if the_state != self.current_state:
+        if int(the_state) != int(self.current_state):
+            logging.getLogger("HWR").debug("current state = %s\nnew state = %s" % (self.current_state, the_state))
+            logging.getLogger("HWR").debug("stateChanged emitted: %s" % the_state)
             self.current_state = the_state
             self.emit('stateChanged', (the_state, ))
 
-    def positionChanged(self, currentposition):
-        previous_position = self.current_position
-        self.current_position = self.getCurrentPositionName()
-        if self.current_position != previous_position:
-            logging.getLogger("HWR").debug(
-                "predefinedPositionChanged emitted: %s" %
-                self.current_position)
-            self.emit('predefinedPositionChanged', (self.current_position, 0))
 
+    def positionChanged(self, position):
+        the_position = self.getCurrentPositionName()
+        if the_position.split()[0] != self.current_position:
+            logging.getLogger("HWR").debug("current position = %s\nnew position = %s" % (self.current_position, the_position))
+            logging.getLogger("HWR").debug("predefinedPositionChanged emitted: %s" % the_position)
+            self.current_position = the_position
+            self.emit('predefinedPositionChanged', (the_position, 0))
+            
     def isReady(self):
         state = self.getState()
-        return state == ALBAZoomMotor.READY
+        return state == ALBAIORCtrl.READY
 
 
 def test_hwo(zoom):
