@@ -137,7 +137,7 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
 
     def positionChanged(self, position):
         the_position = self.getCurrentPositionName()
-        if the_position.split()[0] != self.current_position:
+        if the_position != self.current_position:
             self.logger.debug("current position = %s, new position = %s" % (self.current_position, the_position))
             self.logger.debug("predefinedPositionChanged emitted: %s" % the_position)
             self.current_position = the_position
