@@ -39,6 +39,8 @@ __category__ = "General"
 
 class ALBAEnergy(Device):
 
+    energy_change_threshold = 0.0002
+
     def __init__(self, *args):
         Device.__init__(self, *args)
 
@@ -94,7 +96,10 @@ class ALBAEnergy(Device):
         logging.getLogger("HWR").debug(
             "moving energy to %s. now is %s" %
             (value, current_egy))
-        self.energy_hwobj.move(value)
+        if abs(value-current_egy) > self.energy_change_threshold:
+            self.energy_hwobj.move(value)
+        else:     
+            self.logger.debug("Change below threshold. not moved")
 
     def wait_move_energy_done(self):
         self.energy_hwobj.wait_end_of_move()
