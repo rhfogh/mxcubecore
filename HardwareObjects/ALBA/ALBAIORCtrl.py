@@ -117,7 +117,7 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
     def getCurrentPositionName(self):
         try:
             n = int(self.chan_position.getValue())
-            value = "%s z%s" % (n, n)
+            value = "%s i%s" % (n, n)
             return value
         except Exception as e:
             logging.getLogger("HWR").debug("Cannot get backligth-IOR position \n%s" % str(e))
