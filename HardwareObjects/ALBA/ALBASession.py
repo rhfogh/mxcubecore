@@ -80,9 +80,15 @@ class ALBASession(Session):
             _dir = directory
 
         parts = _dir.split(os.path.sep)
-        user_dir = parts[5]
-        session_date = parts[6]
+        try:
+            user_dir = parts[5]
+            session_date = parts[6]
+        except:
+            user_dir = parts[0]
+            session_date = parts[1]
         # remove RAW_DATA from da
+
+
         try:
             more = parts[8:]
         except Exception as e:
@@ -94,7 +100,7 @@ class ALBASession(Session):
             user_dir,
             session_date,
             *more)
-        logging.getLogger("HWR").debug("Returning archive directory: %s" % archive_dir)
+        self.logger.debug("ALBASession. returning archive directory: %s" % archive_dir)
         return archive_dir
 
     def set_ldap_homedir(self, homedir):
@@ -105,6 +111,9 @@ class ALBASession(Session):
 
 
 def test_hwo(hwo):
-    print(hwo.get_base_data_directory())
-    print(hwo.get_process_directory())
-    print(hwo.get_archive_directory())
+    print('Base data directory: %s' % hwo.get_base_data_directory())
+    print('Base Image directory: %s' % hwo.get_base_image_directory())
+    print('Image directory: %s' % hwo.get_image_directory())
+    print('Base Process directory: %s' % hwo.get_base_process_directory())
+    print('Process directory: %s' % hwo.get_process_directory())
+    print('Archive directory: %s' % hwo.get_archive_directory())
