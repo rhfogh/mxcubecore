@@ -30,15 +30,23 @@ from __future__ import print_function
 
 import logging
 
-import ISPyBClient2
+from ISPyBClient2 import ISPyBClient2
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
 __category__ = "General"
 
 
-class ALBAISPyBClient(ISPyBClient2.ISPyBClient2):
-
+class ALBAISPyBClient(ISPyBClient2):
+    
+    def __init__(self, *args):
+        ISPyBClient2.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBAISPyBClient")
+    
+    def init(self):
+        ISPyBClient2.init(self)
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
+    
     def ldap_login(self, login_name, psd, ldap_connection):
         # overwrites standard ldap login  is ISPyBClient2.py
         #  to query for homeDirectory
@@ -54,8 +62,7 @@ class ALBAISPyBClient(ISPyBClient2.ISPyBClient2):
             vals = ldap_connection.get_field_values()
             if 'homeDirectory' in vals:
                 home_dir = vals['homeDirectory'][0]
-                logging.getLogger("HWR").debug(
-                    "  homeDirectory for user %s is %s" %
+                self.logger.debug("The homeDirectory for user %s is %s" %
                     (login_name, home_dir))
                 self.session_hwobj.set_ldap_homedir(home_dir)
         else:
@@ -69,7 +76,7 @@ class ALBAISPyBClient(ISPyBClient2.ISPyBClient2):
         Given a proposal code, returns the correct code to use in the GUI,
         or what to send to LDAP, user office database, or the ISPyB database.
         """
-        logging.getLogger("HWR").debug("translating %s %s" % (code, what))
+        self.logger.debug("Translating %s %s" % (code, what))
         if what == 'ldap':
             if code == 'mx':
                 return 'u'
@@ -88,7 +95,7 @@ class ALBAISPyBClient(ISPyBClient2.ISPyBClient2):
                 prop = 'xtalSnapshotFullPath%d' % (i + 1)
                 path = mx_collect_dict[prop]
                 ispyb_path = self.session_hwobj.path_to_ispyb(path)
-                logging.debug("ALBA ISPyBClient - %s is %s " % (prop, ispyb_path))
+                logging.debug("%s = %s " % (prop, ispyb_path))
                 mx_collect_dict[prop] = ispyb_path
             except BaseException as e:
                 logging.debug("Error when preparing collection for LIMS\n%s" % str(e))

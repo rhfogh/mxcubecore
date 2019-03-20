@@ -43,7 +43,7 @@ class ALBABeamInfo(Equipment):
 
     def __init__(self, *args):
         Equipment.__init__(self, *args)
-
+        self.logger = logging.getLogger("HWR.ALBABeamInfo")
         self.aperture_hwobj = None
         self.slits_hwobj = None
         self.beam_definer_hwobj = None
@@ -61,6 +61,7 @@ class ALBABeamInfo(Equipment):
         self.default_beam_divergence = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.beam_size_slits = [9999, 9999]
         self.beam_size_aperture = [9999, 9999]
         self.beam_size_definer = [9999, 9999]
@@ -88,8 +89,8 @@ class ALBABeamInfo(Equipment):
             default_beam_divergence_horizontal = int(
                 self.getProperty("beam_divergence_horizontal"))
         except Exception as e:
-            logging.getLogger('HWR').debug("Cannot initialize default"
-                                           " beam divergence values\n%s" % str(e))
+            self.logger.debug("Cannot initialize default beam divergence values\n%s" %
+                              str(e))
 
         self.default_beam_divergence = [
             default_beam_divergence_horizontal,
@@ -149,7 +150,7 @@ class ALBABeamInfo(Equipment):
         return self.beam_info_dict
 
     def emit_beam_info_change(self):
-        logging.getLogger("HWR").debug(" emitting beam info")
+        self.logger.debug(" emitting beam info")
         if self.beam_info_dict["size_x"] != 9999 and \
                 self.beam_info_dict["size_y"] != 9999:
             self.emit("beamSizeChanged", ((self.beam_info_dict["size_x"],

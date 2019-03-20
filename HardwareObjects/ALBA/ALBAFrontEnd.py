@@ -32,6 +32,8 @@ The interface is otherwise exactly the same as the ALBAEpsActuator
 
 from __future__ import print_function
 
+import logging
+
 from ALBAEpsActuator import ALBAEpsActuator
 
 __credits__ = ["ALBA Synchrotron"]
@@ -42,11 +44,12 @@ __category__ = "General"
 class ALBAFrontEnd(ALBAEpsActuator):
     def __init__(self, name):
         ALBAEpsActuator.__init__(self, name)
-
+        self.logger = logging.getLogger("HWR.ALBAFrontEnd")
         self.chan_open = None
         self.chan_close = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         ALBAEpsActuator.init(self)
 
         self.chan_open = self.getChannelObject('open_command')

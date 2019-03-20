@@ -56,7 +56,7 @@ class ALBACollect(AbstractCollect):
 
     def __init__(self, name):
         AbstractCollect.__init__(self, name)
-
+        self.logger = logging.getLogger("HWR.ALBACollect")
         self.supervisor_hwobj = None
         self.fastshut_hwobj = None
         self.slowshut_hwobj = None
@@ -93,7 +93,7 @@ class ALBACollect(AbstractCollect):
         self.saved_omega_velocity = None
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.ready_event = gevent.event.Event()
 
         self.supervisor_hwobj = self.getObjectByRole("supervisor")
@@ -158,14 +158,12 @@ class ALBACollect(AbstractCollect):
         """Main collection hook
         """
 
-        logging.getLogger("HWR").info("Running ALBA data collection hook")
-
-        logging.getLogger("HWR").info("  -- wait for devices to finish moving --")
-        logging.getLogger("HWR").info("       + wait for resolution...")
+        self.logger.info("Running ALBA data collection hook")
+        self.logger.info("Waiting for resolution ready...")
         self.resolution_hwobj.wait_end_of_move()
-        logging.getLogger("HWR").info("       + wait for detector distance...")
+        self.logger.info("Waiting for detector distance ready...")
         self.detector_hwobj.wait_move_distance_done()
-        logging.getLogger("HWR").info("       + wait for energy...")
+        self.logger.info("Waiting for energy ready...")
         self.energy_hwobj.wait_move_energy_done()
 
         # prepare input files for autoprocessing
@@ -183,40 +181,40 @@ class ALBACollect(AbstractCollect):
         ### EDNA_REF, OSC, MESH, HELICAL
 
         exp_type = self.current_dc_parameters['experiment_type']
-        logging.getLogger("HWR").debug("Running a collect (exp_type=%s)" % exp_type)
+        self.logger.debug("Collection method selected is %s)" % exp_type)
 
         if exp_type == "Characterization":
-            logging.getLogger("HWR").debug("Running a collect (CHARACTERIZATION)")
+            self.logger.debug("Running a collect (CHARACTERIZATION)")
         elif exp_type == "Helical":
-            logging.getLogger("HWR").debug("Running a helical collection")
-            logging.getLogger("HWR").debug(
+            self.logger.debug("Running a helical collection")
+            self.logger.debug(
                 "\thelical positions are: %s" % str(
                     self.helical_positions))
             hpos = self.helical_positions
-            logging.getLogger("HWR").debug(
+            self.logger.debug(
                 "\tphiy from %3.4f to %3.4f" %
                 (hpos[0], hpos[4]))
-            logging.getLogger("HWR").debug(
+            self.logger.debug(
                 "\tphiz from %3.4f to %3.4f" %
                 (hpos[1], hpos[5]))
-            logging.getLogger("HWR").debug(
+            self.logger.debug(
                 "\tsampx from %3.4f to %3.4f" %
                 (hpos[2], hpos[6]))
-            logging.getLogger("HWR").debug(
+            self.logger.debug(
                 "\tsampy from %3.4f to %3.4f" %
                 (hpos[3], hpos[7]))
         elif exp_type == "Mesh":
-            logging.getLogger("HWR").debug("Running a raster collection ()")
-            logging.getLogger("HWR").debug(
+            self.logger.debug("Running a raster collection ()")
+            self.logger.debug(
                 "\tnumber of lines are: %s" %
                 self.mesh_num_lines)
-            logging.getLogger("HWR").debug(
+            self.logger.debug(
                 "\ttotal nb of frames: %s" %
                 self.mesh_total_nb_frames)
-            logging.getLogger("HWR").debug("\tmesh range : %s" % self.mesh_range)
-            logging.getLogger("HWR").debug("\tmesh center : %s" % self.mesh_center)
+            self.logger.debug("\tmesh range : %s" % self.mesh_range)
+            self.logger.debug("\tmesh center : %s" % self.mesh_center)
         else:
-            logging.getLogger("HWR").debug("Running a collect (STANDARD)")
+            self.logger.debug("Running a collect (STANDARD)")
 
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
 
@@ -238,7 +236,6 @@ class ALBACollect(AbstractCollect):
 
         omega_pos = osc_seq['start']
 
-        logging.getLogger("HWR").info("Starting detector")
         self.emit("collectStarted", (self.owner, 1))
 
         first_image_no = osc_seq['start_image_number']
@@ -263,9 +260,7 @@ class ALBACollect(AbstractCollect):
         #
         # Run
         #
-        logging.getLogger("HWR").info(
-            "collecting images, by moving omega to %s" %
-            final_pos)
+        self.logger.info("Collecting images, by moving omega to %s" % final_pos)
         self.omega_hwobj.move(final_pos)
         self.wait_collection_done(nb_images, first_image_no)
         self.data_collection_end()
@@ -276,8 +271,8 @@ class ALBACollect(AbstractCollect):
         self.unconfigure_ni()
 
     def data_collection_failed(self):
-        logging.getLogger("HWR").info(
-            "Data collection failed. recovering sequence should go here")
+        self.logger.info("Data collection failed")
+        # recovering sequence should go here
 
     def prepare_acquisition(self):
 
@@ -308,23 +303,18 @@ class ALBACollect(AbstractCollect):
             return False
 
         gevent.sleep(1)
-        logging.getLogger("HWR").info(
+        self.logger.info(
             " Waiting for diffractometer to be ready. Now %s" % str(
                 self.diffractometer_hwobj.current_state))
         self.diffractometer_hwobj.wait_device_ready(timeout=10)
-        logging.getLogger("HWR").info("             diffractometer is now ready.")
+        self.logger.info("             diffractometer is now ready.")
 
         # go to collect phase
         if not self.is_collect_phase():
-            logging.getLogger("HWR").info(
-                " Not in collect phase. Asking supervisor to go")
-            logging.getLogger("HWR").info(
-                "  diffractometer is now ready. Now %s" % str(
-                    self.diffractometer_hwobj.current_state))
+            self.logger.info("Not in collect phase. Asking supervisor to go")
             success = self.go_to_collect()
             if not success:
-                logging.getLogger("user_level_log").error(
-                    "Cannot set COLLECT phase for diffractometer")
+                self.logger.error("Cannot set COLLECT phase for diffractometer")
                 return False
 
         detok = self.detector_hwobj.prepare_acquisition(self.current_dc_parameters)
@@ -345,14 +335,14 @@ class ALBACollect(AbstractCollect):
         total_time = nb_images * exp_time
         omega_speed = float(total_dist / total_time)
 
-        logging.getLogger("HWR").info("  prepare detector  was not ok.")
+        self.logger.info("  prepare detector  was not ok.")
         self.write_image_headers(start_angle)
 
-        logging.getLogger("HWR").info("nb_images: %s / img_range: %s / exp_time: %s /"
+        self.logger.info("nb_images: %s / img_range: %s / exp_time: %s /"
                                       " total_distance: %s / speed: %s" %
                                       (nb_images, img_range, exp_time, total_dist,
                                        omega_speed))
-        logging.getLogger("HWR").info(
+        self.logger.info(
             "  setting omega velocity to 60 to go to initial position")
         self.omega_hwobj.set_velocity(60)
 
@@ -363,20 +353,20 @@ class ALBACollect(AbstractCollect):
         init_pos = start_angle - safe_delta
         final_pos = start_angle + total_dist + safe_delta
 
-        logging.getLogger("HWR").info("Moving omega to initial position %s" % init_pos)
+        self.logger.info("Moving omega to initial position %s" % init_pos)
         self.omega_hwobj.move(init_pos)
 
         self.detector_hwobj.prepare_collection(nb_images, first_image_no)
 
         self.omega_hwobj.wait_end_of_move(timeout=10)
 
-        logging.getLogger("HWR").info(
+        self.logger.info(
             "Moving omega finished at %s" %
             self.omega_hwobj.getPosition())
 
         # program omega speed depending on exposure time
 
-        logging.getLogger("HWR").info("Setting omega velocity to %s" % omega_speed)
+        self.logger.info("Setting omega velocity to %s" % omega_speed)
         self.omega_hwobj.set_velocity(omega_speed)
         if omega_speed != 0:
             self.configure_ni(start_angle, total_dist)
@@ -480,13 +470,13 @@ class ALBACollect(AbstractCollect):
 
         start_wait = time.time()
 
-        logging.getLogger("HWR").debug("   waiting for image on disk: %s" % full_path)
+        self.logger.debug("   waiting for image on disk: %s" % full_path)
 
         while not os.path.exists(full_path):
             # TODO: review next line for NFTS related issues.
             dirlist = os.listdir(basedir)  # forces directory flush ?
             if (time.time() - start_wait) > timeout:
-                logging.getLogger("HWR").debug("   giving up waiting for image")
+                self.logger.debug("   giving up waiting for image")
                 return False
             time.sleep(0.2)
 
@@ -502,7 +492,7 @@ class ALBACollect(AbstractCollect):
         thumb_fullpath = os.path.join(archive_dir, thumb_filename)
         jpeg_fullpath = os.path.join(archive_dir, jpeg_filename)
 
-        logging.getLogger("HWR").debug(
+        self.logger.debug(
             "   creating thumbnails for  %s in: %s and %s" %
             (full_path, jpeg_fullpath, thumb_fullpath))
         cmd = "adxv_thumb 0.4 %s %s" % (full_path, jpeg_fullpath)
@@ -510,7 +500,7 @@ class ALBACollect(AbstractCollect):
         cmd = "adxv_thumb 0.1 %s %s" % (full_path, thumb_fullpath)
         os.system(cmd)
 
-        logging.getLogger("HWR").debug("   writing thumbnails info in LIMS")
+        self.logger.debug("   writing thumbnails info in LIMS")
         self.store_image_in_lims(frame_number)
 
         return True
@@ -543,7 +533,7 @@ class ALBACollect(AbstractCollect):
         #
         # data collection end (or abort)
         #
-        logging.getLogger("HWR").info(" finishing data collection ")
+        self.logger.info(" finishing data collection ")
         self.emit("progressStop")
 
     def check_directory(self, basedir):
@@ -571,9 +561,8 @@ class ALBACollect(AbstractCollect):
         self.data_collection_end()
 
     def go_to_collect(self, timeout=180):
-        logging.getLogger("HWR").debug("sending supervisor to collect phase")
+        self.logger.debug("Sending supervisor to collect phase")
         self.supervisor_hwobj.go_collect()
-        logging.getLogger("HWR").debug("supervisor sent to collect phase")
 
         gevent.sleep(0.5)
 
@@ -584,14 +573,11 @@ class ALBACollect(AbstractCollect):
             if super_state != DevState.MOVING and cphase == "COLLECT":
                 break
             if time.time() - t0 > timeout:
-                logging.getLogger("HWR").debug(
-                    "timeout sending supervisor to collect phase")
+                self.logger.debug("Timeout sending supervisor to collect phase")
                 break
             gevent.sleep(0.5)
 
-        logging.getLogger("HWR").debug(
-            "supervisor finished go collect phase task. phase is now: %s" %
-            cphase)
+        self.logger.debug("New supervisor phase is %s" % cphase)
 
         return self.is_collect_phase()
 
@@ -599,9 +585,8 @@ class ALBACollect(AbstractCollect):
         return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
 
     def go_to_sampleview(self, timeout=180):
-        logging.getLogger("HWR").debug("sending supervisor to sample view phase")
+        self.logger.debug("Sending supervisor to sample view phase")
         self.supervisor_hwobj.go_sample_view()
-        logging.getLogger("HWR").debug("supervisor sent to sample view phase")
 
         gevent.sleep(0.5)
 
@@ -612,14 +597,11 @@ class ALBACollect(AbstractCollect):
             if super_state != DevState.MOVING and cphase == "SAMPLE":
                 break
             if time.time() - t0 > timeout:
-                logging.getLogger("HWR").debug(
-                    "timeout sending supervisor to sample view phase")
+                self.logger.debug("Timeout sending supervisor to sample view phase")
                 break
             gevent.sleep(0.5)
 
-        logging.getLogger("HWR").debug(
-            "supervisor finished go sample view phase task. phase is now: %s" %
-            cphase)
+        self.logger.debug("New supervisor phase is %s" % cphase)
 
         return self.is_sampleview_phase()
 
@@ -627,7 +609,7 @@ class ALBACollect(AbstractCollect):
         return self.supervisor_hwobj.get_current_phase().upper() == "SAMPLE"
 
     def configure_ni(self, startang, total_dist):
-        logging.getLogger("HWR").debug(
+        self.logger.debug(
             "Configuring NI660 with pars 0, %s, %s, 0, 1" %
             (startang, total_dist))
         self.cmd_ni_conf(0.0, startang, total_dist, 0, 1)
@@ -701,7 +683,7 @@ class ALBACollect(AbstractCollect):
             self.go_to_sampleview()
 
         self.graphics_manager_hwobj.save_scene_snapshot(filename)
-        logging.getLogger("HWR").debug(" - snapshot saved to %s" % filename)
+        self.logger.debug("Crystal snapshot saved (%s)" % filename)
 
     def set_energy(self, value):
         """
@@ -753,20 +735,20 @@ class ALBACollect(AbstractCollect):
             self.current_dc_parameters['fileinfo']['directory'],
             self.current_dc_parameters['fileinfo']['process_directory'])
 
-        """create processing directories and img links"""
+        # create processing directories and img links
         xds_directory, auto_directory, ednaproc_directory = self.prepare_input_files()
 
         try:
             self.create_directories(xds_directory, auto_directory, ednaproc_directory)
             os.system("chmod -R 777 %s %s %s" %
                       (xds_directory, auto_directory, ednaproc_directory))
-            """todo, create link of imgs for auto_processing
-            try:
-                os.symlink(files_directory, os.path.join(process_directory, "img"))
-            except os.error, e:
-                if e.errno != errno.EEXIST:
-                    raise
-            """
+            # TODO, create link of imgs for auto_processing
+            # try:
+            #     os.symlink(files_directory, os.path.join(process_directory, "img"))
+            # except os.error, e:
+            #     if e.errno != errno.EEXIST:
+            #         raise
+
         except Exception as e:
             logging.exception("Could not create processing file directory\n%s" % str(e))
             return
@@ -784,7 +766,6 @@ class ALBACollect(AbstractCollect):
         Descript. :
         """
         i = 1
-        log = logging.getLogger("user_level_log")
 
         while True:
             xds_input_file_dirname = "xds_%s_%s_%d" % (
@@ -808,7 +789,7 @@ class ALBACollect(AbstractCollect):
             self.current_dc_parameters['fileinfo']['process_directory'],
             mosflm_input_file_dirname)
 
-        log.info("  - xds: %s / mosflm: %s" % (xds_directory, mosflm_directory))
+        self.logger.debug("XDS: %s / MOSFLM: %s" % (xds_directory, mosflm_directory))
 
         while True:
             ednaproc_dirname = "ednaproc_%s_%s_%d" % (
@@ -872,7 +853,7 @@ class ALBACollect(AbstractCollect):
                 else:
                     return (und_gaps)
         except BaseException as e:
-            logging.getLogger('HWR').debug("Get undulator gaps error\n%s" % str(e))
+            self.logger.debug("Get undulator gaps error\n%s" % str(e))
             pass
         return {}
 

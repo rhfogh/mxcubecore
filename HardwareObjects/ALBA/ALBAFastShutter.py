@@ -55,7 +55,7 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
 
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
-
+        self.logger = logging.getLogger("HWR.ALBAFastShutter")
         self.cmd_ni_start = None
         self.cmd_ni_stop = None
 
@@ -70,7 +70,7 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
         self.state_strings = None
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         try:
             self.cmd_ni_start = self.getCommandObject("nistart")
             self.cmd_ni_stop = self.getCommandObject("nistop")
@@ -83,7 +83,7 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
             self.chan_motor_pos.connectSignal('update', self.motorPositionChanged)
             self.chan_motor_state.connectSignal('update', self.motorStateChanged)
         except KeyError:
-            logging.getLogger().warning('%s: cannot report FrontEnd State', self.name())
+            self.logger.warning('%s: cannot report FrontEnd State', self.name())
 
         try:
             state_string = self.getProperty("states")
@@ -93,7 +93,7 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
                 states = state_string.split(",")
                 self.state_strings = states[1].strip(), states[0].strip()
         except Exception as e:
-            logging.getLogger("HWR").warning("%s" % str(e))
+            self.logger.warning("%s" % str(e))
             self.state_strings = self.default_state_strings
 
     def getState(self):
@@ -170,8 +170,8 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
 
     # TODO: Review, it is called twice after a collection (already in motion problem)
     def close(self):
-        logging.getLogger('HWR').debug("Closing the fast shutter")
-        logging.getLogger('HWR').debug("value = %s, state = %s" %
+        self.logger.debug("Closing the fast shutter")
+        self.logger.debug("value = %s, state = %s" %
                                        (self.chan_motor_pos.getValue(),
                                         self.actuator_state))
         if abs(self.chan_motor_pos.getValue()) > 0.01:
@@ -179,8 +179,8 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
         self.set_ttl('High')
 
     def open(self):
-        logging.getLogger('HWR').debug("Opening the fast shutter")
-        logging.getLogger('HWR').debug("value = %s, state = %s" %
+        self.logger.debug("Opening the fast shutter")
+        self.logger.debug("value = %s, state = %s" %
                                        (self.chan_motor_pos.getValue(),
                                         self.actuator_state))
 

@@ -57,6 +57,7 @@ class ALBAMiniDiff(GenericDiffractometer):
 
     def __init__(self, *args):
         GenericDiffractometer.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBAMiniDiff")
         self.calibration_hwobj = None
         self.centring_hwobj = None
         self.super_hwobj = None
@@ -74,14 +75,14 @@ class ALBAMiniDiff(GenericDiffractometer):
         self.omegaz_reference = None
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.calibration_hwobj = self.getObjectByRole("calibration")
 
         self.centring_hwobj = self.getObjectByRole('centring')
         self.super_hwobj = self.getObjectByRole('beamline-supervisor')
 
         if self.centring_hwobj is None:
-            logging.getLogger("HWR").debug('ALBAMinidiff: Centring math is not defined')
+            self.logger.debug('ALBAMinidiff: Centring math is not defined')
 
         if self.super_hwobj is not None:
             self.connect(
@@ -113,7 +114,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.phi_motor_state_changed)
             self.connect(self.phi_motor_hwobj, "positionChanged", self.phi_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Phi motor is not defined')
+            self.logger.error('Phi motor is not defined')
 
         if self.phiz_motor_hwobj is not None:
             self.connect(
@@ -125,7 +126,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'positionChanged',
                 self.phiz_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Phiz motor is not defined')
+            self.logger.error('Phiz motor is not defined')
 
         if self.phiy_motor_hwobj is not None:
             self.connect(
@@ -137,7 +138,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'positionChanged',
                 self.phiy_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Phiy motor is not defined')
+            self.logger.error('Phiy motor is not defined')
 
         if self.zoom_motor_hwobj is not None:
             self.connect(
@@ -153,7 +154,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'stateChanged',
                 self.zoom_motor_state_changed)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Zoom motor is not defined')
+            self.logger.error('Zoom motor is not defined')
 
         if self.sample_x_motor_hwobj is not None:
             self.connect(
@@ -165,7 +166,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'positionChanged',
                 self.sampleX_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Sampx motor is not defined')
+            self.logger.error('Sampx motor is not defined')
 
         if self.sample_y_motor_hwobj is not None:
             self.connect(
@@ -177,7 +178,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'positionChanged',
                 self.sampleY_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Sampx motor is not defined')
+            self.logger.error('Sampx motor is not defined')
 
         if self.focus_motor_hwobj is not None:
             self.connect(
@@ -195,7 +196,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 "positionChanged",
                 self.kappa_motor_moved)
         else:
-            logging.getLogger("HWR").error('ALBAMiniDiff: Kappa motor is not defined')
+            self.logger.error('Kappa motor is not defined')
 
         if self.kappa_phi_motor_hwobj is not None:
             self.connect(
@@ -207,8 +208,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 "positionChanged",
                 self.kappa_phi_motor_moved)
         else:
-            logging.getLogger("HWR").error(
-                'ALBAMiniDiff: Kappa-Phi motor is not defined')
+            self.logger.error('Kappa-Phi motor is not defined')
 
         GenericDiffractometer.init(self)
 
@@ -220,13 +220,13 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.omegaz_reference = eval(self.getProperty("omegaReference"))
 
                 try:
-                    logging.getLogger("HWR").debug(
+                    self.logger.debug(
                         "Setting omegaz reference position to {0}".format(
                             self.omegaz_reference['position']))
                     self.centring_phiz.reference_position = \
                         self.omegaz_reference['position']
                 except BaseException:
-                    logging.getLogger("HWR").warning(
+                    self.logger.warning(
                         "Invalid value for omegaz reference!")
                     raise
 
@@ -248,8 +248,7 @@ class ALBAMiniDiff(GenericDiffractometer):
             state = DiffractometerState.tostring(DiffractometerState.Ready)
 
         if state != self.current_state:
-            logging.getLogger("HWR").debug(
-                "ALBAMinidiff: State changed %s (was: %s)" %
+            self.logger.debug("State changed %s (was: %s)" %
                 (str(state), self.current_state))
             self.current_state = state
             self.emit("minidiffStateChanged", (self.current_state))
@@ -316,14 +315,14 @@ class ALBAMiniDiff(GenericDiffractometer):
     # TODO:Implement dynamically
     def use_sample_changer(self):
         """
-        Overrides GenericDiffracometer method.
+        Overrides GenericDiffractometer method.
         """
         return True
 
     # TODO:Implement dynamically
     def in_plate_mode(self):
         """
-        Overrides GenericDiffracometer method.
+        Overrides GenericDiffractometer method.
         """
         return False
 
@@ -331,26 +330,24 @@ class ALBAMiniDiff(GenericDiffractometer):
     # Not true, we use it!
     def start_manual_centring(self, *args, **kwargs):
         """
-        Start manual centring. Overrides GenericDiffracometer method.
+        Start manual centring. Overrides GenericDiffractometer method.
         Prepares diffractometer for manual centring.
         """
         if self.prepare_centring():
             GenericDiffractometer.start_manual_centring(self, *args, **kwargs)
         else:
-            logging.getLogger("HWR").info(
-                " Failed to prepare diffractometer for centring")
+            self.logger.info("Failed to prepare diffractometer for centring")
             self.invalidate_centring()
 
     def start_auto_centring(self, *args, **kwargs):
         """
-        Start manual centring. Overrides GenericDiffracometer method.
+        Start manual centring. Overrides GenericDiffractometer method.
         Prepares diffractometer for manual centring.
         """
         if self.prepare_centring():
             GenericDiffractometer.start_auto_centring(self, *args, **kwargs)
         else:
-            logging.getLogger("HWR").info(
-                " Failed to prepare diffractometer for centring")
+            self.logger.info("Failed to prepare diffractometer for centring")
             self.invalidate_centring()
 
     def prepare_centring(self):
@@ -358,11 +355,10 @@ class ALBAMiniDiff(GenericDiffractometer):
         Prepare beamline for to sample_view phase.
         """
         if not self.is_sample_view_phase():
-            logging.getLogger("HWR").info(
-                " Not in sample view phase. Asking supervisor to go")
+            self.logger.info("Not in sample view phase. Asking supervisor to go")
             success = self.go_sample_view()
             if not success:
-                logging.getLogger("HWR").info("Cannot set SAMPLE VIEW phase")
+                self.logger.info("Cannot set SAMPLE VIEW phase")
                 return False
 
         return True
@@ -373,6 +369,8 @@ class ALBAMiniDiff(GenericDiffractometer):
 
         @return: boolean
         """
+        self.logger.info("is_sample_view_phase?")
+        
         return self.super_hwobj.get_current_phase().upper() == "SAMPLE"
 
     def go_sample_view(self):
@@ -383,13 +381,10 @@ class ALBAMiniDiff(GenericDiffractometer):
 
         while True:
             super_state = self.super_hwobj.get_state()
-            logging.getLogger("HWR").debug(
-                'ALBAMinidiff: waiting for go_sample_view done (supervisor state is %s)'
-                % super_state)
+            self.logger.debug('Waiting for go_sample_view done (supervisor state is %s)'
+                              % super_state)
             if super_state != DevState.MOVING:
-                logging.getLogger("HWR").debug(
-                    'ALBAMinidiff: go_sample_view done (%s)' %
-                    super_state)
+                self.logger.debug('Go_sample_view done (%s)' % super_state)
                 return True
             gevent.sleep(0.2)
 
@@ -569,7 +564,7 @@ class ALBAMiniDiff(GenericDiffractometer):
         elif phase == "Centring":
             self.super_hwobj.go_sample_view()
         else:
-            logging.getLogger("HWR").warning(
+            self.logger.warning(
                 "Diffractometer set_phase asked for un-handled phase: %s" %
                 phase)
 

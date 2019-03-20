@@ -85,21 +85,21 @@ class ALBAEpsActuator(BaseHardwareObjects.Device):
 
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
-
+        self.logger = logging.getLogger("HWR.ALBAEpsActuator")
         self.chan_actuator = None
 
         self.actuator_state = None
         self.state_strings = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.actuator_state = STATE_UNKNOWN
 
         try:
             self.chan_actuator = self.getChannelObject('actuator')
             self.chan_actuator.connectSignal('update', self.stateChanged)
         except KeyError:
-            logging.getLogger().warning('%s: cannot report EPS Actuator State',
-                                        self.name())
+            self.logger.warning('Cannot report EPS Actuator State for %s' % self.name())
 
         try:
             state_string = self.getProperty("states")
@@ -109,7 +109,7 @@ class ALBAEpsActuator(BaseHardwareObjects.Device):
                 states = state_string.split(",")
                 self.state_strings = states[1].strip(), states[0].strip()
         except Exception as e:
-            logging.getLogger("HWR").warning("%s" % str(e))
+            self.logger.warning("%s" % str(e))
             self.state_strings = self.default_state_strings
 
     def getState(self):

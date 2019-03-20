@@ -28,7 +28,7 @@ HwObj used to operate the CATS sample changer via Tango in maintenance mode
 """
 
 from __future__ import print_function
-
+import logging
 from sample_changer.CatsMaint import CatsMaint
 
 __credits__ = ["ALBA Synchrotron"]
@@ -40,11 +40,13 @@ class ALBACatsMaint(CatsMaint):
 
     def __init__(self, *args):
         CatsMaint.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBACatsMaint")
         self.chan_shifts = None
         self.chan_at_home = None
         self.cmd_super_abort = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         CatsMaint.init(self)
 
         # channel to ask diffractometer for mounting position

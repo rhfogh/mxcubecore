@@ -43,7 +43,7 @@ class ALBAEnergy(Device):
 
     def __init__(self, *args):
         Device.__init__(self, *args)
-
+        self.logger = logging.getLogger("HWR.ALBAEnergy")
         self.energy_hwobj = None
         self.wavelength_hwobj = None
 
@@ -51,13 +51,13 @@ class ALBAEnergy(Device):
         self.wavelength_position = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.energy_hwobj = self.getObjectByRole("energy")
         self.wavelength_hwobj = self.getObjectByRole("wavelength")
 
         self.energy_hwobj.connect("positionChanged", self.energy_position_changed)
-        self.wavelength_hwobj.connect(
-            "positionChanged",
-            self.wavelength_position_changed)
+        self.wavelength_hwobj.connect("positionChanged",
+                                      self.wavelength_position_changed)
 
     def isReady(self):
         return True
@@ -93,9 +93,8 @@ class ALBAEnergy(Device):
     def move_energy(self, value):
         current_egy = self.get_energy()
 
-        logging.getLogger("HWR").debug(
-            "moving energy to %s. now is %s" %
-            (value, current_egy))
+        self.logger.debug("Moving energy to %s. now is %s" % (value, current_egy))
+
         if abs(value-current_egy) > self.energy_change_threshold:
             self.energy_hwobj.move(value)
         else:     

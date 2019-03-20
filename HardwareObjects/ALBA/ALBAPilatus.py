@@ -52,7 +52,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
     def __init__(self, name):
         AbstractDetector.__init__(self)
         HardwareObject.__init__(self, name)
-
+        self.logger = logging.getLogger("HWR.ALBAPilatus")
         self.cmd_prepare_acq = None
         self.cmd_start_acq = None
         self.cmd_abort_acq = None
@@ -91,7 +91,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.headers = {}
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.cmd_prepare_acq = self.getCommandObject('prepare_acq')
         self.cmd_start_acq = self.getCommandObject('start_acq')
         self.cmd_abort_acq = self.getCommandObject('abort_acq')
@@ -224,7 +224,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         kev_diff = abs(det_energy - current_energy)
 
         if kev_diff > 1.2:
-            logging.getLogger("HWR").debug("Setting detector energy_threshold: %s" %
+            self.logger.debug("Setting detector energy_threshold: %s" %
                                            current_energy)
 
     def get_latency_time(self):
@@ -259,16 +259,16 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         fileformat = "CBF"
         trig_mode = "EXTERNAL_TRIGGER"
 
-        logging.getLogger("HWR").debug(" Preparing detector for data collection")
+        self.logger.debug(" Preparing detector for data collection")
 
-        logging.getLogger("HWR").debug("    /saving directory: %s" % basedir)
-        logging.getLogger("HWR").debug("    /prefix          : %s" % prefix)
-        logging.getLogger("HWR").debug("    /saving_format   : %s" % fileformat)
-        logging.getLogger("HWR").debug("    /trigger_mode    : %s" % trig_mode)
-        logging.getLogger("HWR").debug("    /acq_nb_frames   : %s" % nb_frames)
-        logging.getLogger("HWR").debug("    /acq_expo_time   : %s" %
+        self.logger.debug("    /saving directory: %s" % basedir)
+        self.logger.debug("    /prefix          : %s" % prefix)
+        self.logger.debug("    /saving_format   : %s" % fileformat)
+        self.logger.debug("    /trigger_mode    : %s" % trig_mode)
+        self.logger.debug("    /acq_nb_frames   : %s" % nb_frames)
+        self.logger.debug("    /acq_expo_time   : %s" %
                                        str(exp_time - latency_time))
-        logging.getLogger("HWR").debug("    /latency_time    : %s" % latency_time)
+        self.logger.debug("    /latency_time    : %s" % latency_time)
 
         self.chan_saving_mode.setValue('AUTO_FRAME')
         self.chan_saving_directory.setValue(basedir)
@@ -281,8 +281,8 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         return True
 
     def prepare_collection(self, nb_frames, first_img_no):
-        logging.getLogger("HWR").debug("Preparing collection")
-        logging.getLogger("HWR").debug("# images = %s, first image number: %s" %
+        self.logger.debug("Preparing collection")
+        self.logger.debug("# images = %s, first image number: %s" %
                                        (nb_frames, first_img_no))
         self.chan_acq_nb_frames.setValue(nb_frames)
         self.chan_saving_next_number.setValue(first_img_no)

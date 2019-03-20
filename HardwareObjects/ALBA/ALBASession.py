@@ -33,7 +33,7 @@ from __future__ import print_function
 import os
 import time
 import logging
-import Session
+from Session import Session
 import queue_model_objects_v1 as queue_model_objects
 
 __credits__ = ["ALBA"]
@@ -41,7 +41,15 @@ __version__ = "2.3."
 __category__ = "General"
 
 
-class ALBASession(Session.Session):
+class ALBASession(Session):
+
+    def __init__(self, *args):
+        Session.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBASession")
+
+    def init(self):
+        Session.init(self)
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
 
     def get_base_data_directory(self):
         """
@@ -86,9 +94,7 @@ class ALBASession(Session.Session):
             user_dir,
             session_date,
             *more)
-        logging.getLogger("HWR").debug(
-            "ALBASession. returning archive directory: %s" %
-            archive_dir)
+        logging.getLogger("HWR").debug("Returning archive directory: %s" % archive_dir)
         return archive_dir
 
     def set_ldap_homedir(self, homedir):

@@ -40,7 +40,7 @@ __category__ = "General"
 class ALBAFlux(Device):
 
     def __init__(self, *args):
-        logging.getLogger("HWR").debug("ALBAFlux : __init__")
+        self.logger = logging.getLogger("HWR.ALBAFlux")
         Device.__init__(self, *args)
         self.current_chn = None
         self.transmission_chn = None
@@ -48,6 +48,7 @@ class ALBAFlux(Device):
         self.last_flux_norm_chn = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.current_chn = self.getChannelObject("current")
         self.transmission_chn = self.getChannelObject("transmission")
         self.last_flux_chn = self.getChannelObject("last_flux")
@@ -59,11 +60,11 @@ class ALBAFlux(Device):
             if last_flux > 1e7:
                 return self.get_last_current() * self.get_transmission()
         except Exception as e:
-            logging.getLogger("HWR").debug("Cannot read flux\n%s" % str(e))
+            self.logger.debug("Cannot read flux\n%s" % str(e))
 
-        logging.getLogger("HWR").debug("Flux value abnormally low, "
-                                       "returning default value")
         default_flux = 6e11 * self.get_transmission()
+        self.logger.debug("Flux value abnormally low, returning default value (%s)" %
+                          default_flux)
         return default_flux
 
     def get_transmission(self):

@@ -43,7 +43,7 @@ class ALBAFrontLight(Device):
 
     def __init__(self, *args):
         Device.__init__(self, *args)
-
+        self.logger = logging.getLogger("HWR.ALBAFrontLight")
         self.chan_level = None
         self.chan_state = None
 
@@ -60,7 +60,7 @@ class ALBAFrontLight(Device):
         self.off_threshold = None
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.chan_level = self.getChannelObject("light_level")
         self.chan_state = self.getChannelObject("state")
         threshold = self.getProperty("off_threshold", self.default_off_threshold)
@@ -70,9 +70,8 @@ class ALBAFrontLight(Device):
                 self.off_threshold = float(threshold)
             except Exception as e:
                 self.off_threshold = self.default_threshold
-                logging.getLogger('HWR').debug("Error reading frontlight threshold\n%s"
-                                               % str(e))
-                logging.getLogger("HWR").info("OFF Threshold for front light is not"
+                self.logger.debug("Error reading frontlight threshold\n%s" % str(e))
+                self.logger.info("OFF Threshold for front light is not"
                                               "valid. Using %s" % self.off_threshold)
 
         limits = self.getProperty("limits")
@@ -88,14 +87,14 @@ class ALBAFrontLight(Device):
         return True
 
     def level_changed(self, value):
-        logging.getLogger("HWR").debug("*** Level changed, value = %s" % value)
+        self.logger.debug("Level changed, value = %s" % value)
         self.current_level = value
         self.update_current_state()
 
         self.emit('levelChanged', self.current_level)
 
     def register_state_changed(self, value):
-        logging.getLogger("HWR").debug("*** Register state changed, value = %s" % value)
+        # self.logger.debug("Register state changed, value = %s" % value)
         if value == DevState.ON:
             self.register_state = "on"
         elif value == DevState.OFF:
@@ -105,9 +104,6 @@ class ALBAFrontLight(Device):
         self.update_current_state()
 
     def update_current_state(self):
-        logging.getLogger("HWR").debug(
-            "*** Current register state, value = %s" %
-            self.register_state)
         if self.register_state == "on":
             if self.off_threshold is not None and \
                self.current_level < 0.9 * self.off_threshold:
@@ -133,8 +129,6 @@ class ALBAFrontLight(Device):
 
     def getState(self):
         self.register_state = str(self.chan_state.getValue()).lower()
-        logging.getLogger("HWR").debug(
-            "*** register state( in getState), value = %s" % self.register_state)
         self.update_current_state()
         return self.state
 
@@ -146,25 +140,22 @@ class ALBAFrontLight(Device):
         return self.current_level
 
     def setLevel(self, level):
-        logging.getLogger("HWR").debug(
-            "Setting level in %s to %s" %
-            (self.username, level))
+        self.logger.debug("Setting level in %s to %s" % (self.username, level))
         self.chan_level.setValue(float(level))
 
     def setOn(self):
-        logging.getLogger("HWR").debug("Setting front light on")
+        self.logger.debug("Setting front light on")
         if self.memorized_level is not None:
             if self.memorized_level < self.off_threshold:
                 value = self.off_threshold
             else:
                 value = self.memorized_level
-            logging.getLogger("HWR").debug("   setting value to")
             self.chan_level.setValue(value)
         else:
             self.chan_level.setValue(self.off_threshold)
 
     def setOff(self):
-        logging.getLogger("HWR").debug("Setting front light off")
+        self.logger.debug("Setting front light off")
         self.chan_level.setValue(0.0)
 
 

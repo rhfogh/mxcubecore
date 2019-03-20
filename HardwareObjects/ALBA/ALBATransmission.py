@@ -31,6 +31,8 @@ Specific HwObj to setup the beamline transmission
 
 from __future__ import print_function
 
+import logging
+
 from HardwareRepository.BaseHardwareObjects import Device
 
 __credits__ = ["ALBA"]
@@ -42,11 +44,13 @@ class ALBATransmission(Device):
 
     def __init__(self, *args):
         Device.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBATransmission")
         self.chan_transmission = None
         self.chan_state = None
         self.transmission = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.chan_transmission = self.getChannelObject("transmission")
         self.chan_state = self.getChannelObject("state")
 

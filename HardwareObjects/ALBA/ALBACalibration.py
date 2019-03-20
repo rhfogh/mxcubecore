@@ -41,21 +41,22 @@ class ALBACalibration(BaseHardwareObjects.Device):
 
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
+        self.logger = logging.getLogger("HWR.ALBACalibration")
         self.chan_calib_x = None
         self.chan_calib_y = None
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.chan_calib_x = self.getChannelObject("calibx")
         self.chan_calib_y = self.getChannelObject("caliby")
 
         if self.chan_calib_x is not None and self.chan_calib_y is not None:
-            logging.getLogger().info("Connected to pixel size calibration channels")
+            self.logger.info("Connected to pixel size calibration channels")
 
     def get_calibration(self):
         calib_x = self.chan_calib_x.getValue()
         calib_y = self.chan_calib_y.getValue()
-        logging.getLogger().debug("Calibration: x = %s, y = %s" % (calib_x, calib_y))
+        self.logger.debug("Calibration: x = %s, y = %s" % (calib_x, calib_y))
         return [calib_x, calib_y]
 
 

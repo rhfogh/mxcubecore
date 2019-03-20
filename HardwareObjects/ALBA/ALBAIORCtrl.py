@@ -47,6 +47,7 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
 
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
+        self.logger = logging.getLogger("HWR.ALBAIORCtrl")
         self.chan_position = None
         self.chan_state = None
         self.chan_labels = None
@@ -55,7 +56,7 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
         self.current_state = None
 
     def init(self):
-        logging.getLogger("HWR").debug("Initializing backlight IOR Controller")
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.chan_position = self.getChannelObject("position")
         self.chan_state = self.getChannelObject("state")
         self.chan_labels = self.getChannelObject("labels")
@@ -67,25 +68,28 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
         self.current_state = self.getState()
 
     def getPredefinedPositionsList(self):
+        """
+
+        :return: list of strings (['1 i1', '2 i2', ..., 'n in']
+        """
         labels = self.chan_labels.getValue()
         labels = labels.split()
         retlist = []
         for label in labels:
             pos = str(label.replace(":", " "))
             retlist.append(pos)
-        logging.getLogger("HWR").debug("backlight-IOR positions list: %s" % repr(retlist))
+        self.logger.debug("Raw backlight-IOR positions list: %s" % repr(retlist))
         new_retlist = []
         for n, e in enumerate(retlist):
             name = e.split()
             new_retlist.append("%s %s" % (n + 1, name[0]))
-        logging.getLogger("HWR").debug("backlight-IOR positions list: %s" % repr(new_retlist))
+        self.logger.debug("backlight-IOR positions list: %s" % repr(new_retlist))
         return new_retlist
 
     def moveToPosition(self, posno):
         no = posno.split()[0]
-        #logging.getLogger("HWR").debug("type %s" % type(no))
-        logging.getLogger("HWR").debug("Moving to position %s" % no)
-        state = self.chan_position.setValue(int(no))
+        self.logger.debug("Moving to position %s" % no)
+        self.chan_position.setValue(int(no))
 
     def motorIsMoving(self):
         if self.getState() in [DevState.MOVING, DevState.RUNNING]:
@@ -120,23 +124,22 @@ class ALBAIORCtrl(BaseHardwareObjects.Device):
             value = "%s i%s" % (n, n)
             return value
         except Exception as e:
-            logging.getLogger("HWR").debug("Cannot get backligth-IOR position \n%s" % str(e))
+            self.logger.debug("Cannot get backligth-IOR position \n%s" % str(e))
             return None
 
     def stateChanged(self, state):
         the_state = self.getState()
         if int(the_state) != int(self.current_state):
-            logging.getLogger("HWR").debug("current state = %s\nnew state = %s" % (self.current_state, the_state))
-            logging.getLogger("HWR").debug("stateChanged emitted: %s" % the_state)
+            self.logger.debug("current state = %s, new state = %s" % (self.current_state, the_state))
+            self.logger.debug("stateChanged emitted: %s" % the_state)
             self.current_state = the_state
             self.emit('stateChanged', (the_state, ))
-
 
     def positionChanged(self, position):
         the_position = self.getCurrentPositionName()
         if the_position.split()[0] != self.current_position:
-            logging.getLogger("HWR").debug("current position = %s\nnew position = %s" % (self.current_position, the_position))
-            logging.getLogger("HWR").debug("predefinedPositionChanged emitted: %s" % the_position)
+            self.logger.debug("current position = %s, new position = %s" % (self.current_position, the_position))
+            self.logger.debug("predefinedPositionChanged emitted: %s" % the_position)
             self.current_position = the_position
             self.emit('predefinedPositionChanged', (the_position, 0))
             

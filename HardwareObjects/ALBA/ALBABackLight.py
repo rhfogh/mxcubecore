@@ -46,7 +46,7 @@ class ALBABackLight(Device):
 
     def __init__(self, *args):
         Device.__init__(self, *args)
-
+        self.logger = logging.getLogger("HWR.ALBABackLight")
         self.backlightin_channel = None
         self.level_channel = None
 
@@ -63,7 +63,7 @@ class ALBABackLight(Device):
         self.default_minimum_level = 7.0
 
     def init(self):
-
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.backlightin_channel = self.getChannelObject("backlightin")
         self.level_channel = self.getChannelObject("light_level")
 
@@ -143,7 +143,7 @@ class ALBABackLight(Device):
             self.set_backlight_in()
             wait_ok = self.wait_backlight_in()
             if not wait_ok:
-                logging.getLogger("HWR").debug("could not set backlight in")
+                self.logger.debug("Could not set backlight in")
                 return
 
         level = None
@@ -153,7 +153,7 @@ class ALBABackLight(Device):
         if not level or level < self.minimum_level:
             level = self.minimum_level
 
-        logging.getLogger("HWR").debug("setting light level to : %s" % level)
+        self.logger.debug("Setting light level to : %s" % level)
         self.setLevel(level)
 
     def set_backlight_in(self):
@@ -165,22 +165,22 @@ class ALBABackLight(Device):
         while elapsed < timeout:
             isin = self.backlightin_channel.getValue()
             if isin == state:
-                logging.getLogger("HWR").debug(
-                    "waiting for backlight took %s. In is: %s" %
+                self.logger.debug(
+                    "Waiting for backlight took %s. In is: %s" %
                     (elapsed, isin))
                 return True
             gevent.sleep(0.1)
             elapsed = time.time() - t0
 
-        logging.getLogger("HWR").debug("Timeout waiting for backlight In")
+        self.logger.debug("Timeout waiting for backlight In")
         return False
 
     def _task_finished(self, g):
-        logging.getLogger("HWR").debug("Backlight task finished")
+        self.logger.debug("Backlight task finished")
         self._task = None
 
     def _task_failed(self, g):
-        logging.getLogger("HWR").debug("Backlight task failed")
+        self.logger.debug("Backlight task failed")
         self._task = None
 
     def setOff(self):

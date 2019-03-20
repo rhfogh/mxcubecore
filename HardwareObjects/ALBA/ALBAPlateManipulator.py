@@ -29,4 +29,3 @@ class ALBAPlateManipulator(Equipment):
 
     def __init__(self, name):
         Equipment.__init__(self, name)
-        logging.getLogger('HWR').debug('Init ALBAPlateManipulator')

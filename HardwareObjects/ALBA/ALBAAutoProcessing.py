@@ -48,6 +48,7 @@ __category__ = "General"
 class ALBAAutoProcessing(HardwareObject):
     def __init__(self, name):
         HardwareObject.__init__(self, name)
+        self.logger = logging.getLogger("HWR.ALBAAutoProcessing")
         self.template_dir = None
         self.detsamdis_hwobj = None
         self.chan_beamx = None
@@ -55,8 +56,9 @@ class ALBAAutoProcessing(HardwareObject):
         self.input_file = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.template_dir = self.getProperty("template_dir")
-        logging.getLogger("HWR").debug("Autoprocessing template_dir = %s" %
+        self.logger.debug("Autoprocessing template_dir = %s" %
                                        self.template_dir)
         self.detsamdis_hwobj = self.getObjectByRole("detector_distance")
         self.chan_beamx = self.getChannelObject('beamx')
@@ -207,18 +209,18 @@ class ALBAAutoProcessing(HardwareObject):
         self.input_file = ednaproc_input_file
 
     def trigger_auto_processing(self, dc_pars):
-        logging.getLogger("HWR").debug("Triggering auto processing.")
+        self.logger.debug("Triggering auto processing.")
 
         dc_id = dc_pars['collection_id']
         output_dir = dc_pars['ednaproc_dir']
 
-        logging.getLogger("HWR").debug("    - collection_id = %s " % dc_id)
-        logging.getLogger("HWR").debug("    - output_dir    = %s " % output_dir)
+        self.logger.debug("Collection_id = %s " % dc_id)
+        self.logger.debug("Output dir = %s " % output_dir)
 
         job = ALBAEdnaProcJob()
 
         input_file = self.input_file  # TODO
-        logging.getLogger("HWR").debug("    - input file    = %s " % input_file)
+        self.logger.debug("Input file = %s " % input_file)
 
         job.run(dc_id, input_file, output_dir)
 

@@ -49,7 +49,7 @@ class ALBACats(Cats90):
 
     def __init__(self, *args):
         Cats90.__init__(self, *args)
-
+        self.logger = logging.getLogger("HWR.ALBACats")
         self.detdist_saved = None
 
         self.shifts_channel = None
@@ -69,6 +69,7 @@ class ALBACats(Cats90):
         self.auto_prepare_diff = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         Cats90.init(self)
         # TODO: Migrate to taurus channels instead of tango channels
         self.shifts_channel = self.getChannelObject("shifts")
@@ -115,8 +116,7 @@ class ALBACats(Cats90):
         @return: boolean
         """
         if self.read_super_phase().upper() == "TRANSFER":
-            logging.getLogger("user_level_log").error(
-                "Supervisor is already in transfer phase")
+            self.logger.error("Supervisor is already in transfer phase")
             return True
 
         self.go_transfer_cmd()
@@ -132,8 +132,7 @@ class ALBACats(Cats90):
         @return: boolean
         """
         if self.read_super_phase().upper() == "SAMPLE":
-            logging.getLogger("user_level_log").error(
-                "Supervisor is already in sample view phase")
+            self.logger.error("Supervisor is already in sample view phase")
             return True
 
         t0 = time.time()
@@ -143,8 +142,7 @@ class ALBACats(Cats90):
                 break
 
             if (time.time() - t0) > TIMEOUT:
-                logging.getLogger("user_level_log").error(
-                    "Supervisor timeout waiting for ON state. Returning")
+                self.logger.error("Supervisor timeout waiting for ON state. Returning")
                 return False
 
             time.sleep(0.1)
@@ -157,54 +155,51 @@ class ALBACats(Cats90):
         while True:
             state = str(self.super_state_channel.getValue())
             if state == "ON":
-                logging.getLogger("user_level_log").error(
-                    "Supervisor is in ON state. Returning")
+                self.logger.error("Supervisor is in ON state. Returning")
                 break
 
     def _wait_phase_done(self, final_phase):
         """
         Method to wait a phase change. When supervisor reaches the final phase, the
-        diffracometer returns True.
+        diffractometer returns True.
 
         @final_phase: target phase
         @return: boolean
         """
+        time.sleep(0.5)
         while True:
             state = str(self.super_state_channel.getValue())
             phase = self.read_super_phase().upper()
             if state == "ON":
-                logging.getLogger("user_level_log").error(
+                self.logger.error(
                     "Supervisor state {0}, phase {1} Returning".format(state, phase))
                 break
             elif str(state) != "MOVING":
-                logging.getLogger("user_level_log").error(
-                    "Supervisor is in a funny state %s" % str(state))
+                self.logger.error("Supervisor is in a funny state %s" % str(state))
                 return False
 
-            logging.getLogger("HWR").debug("Supervisor waiting to finish phase change")
+            self.logger.debug("Supervisor waiting to finish phase change")
             time.sleep(0.2)
 
         time.sleep(0.1)
 
         if self.read_super_phase().upper() != final_phase:
-            logging.getLogger("user_level_log").error(
-                "Supervisor is not yet in %s phase. Aborting load" % final_phase)
+            self.logger.error("Supervisor is not yet in %s phase. Aborting load" %
+                              final_phase)
             return False
         else:
-            logging.getLogger("user_level_log").info(
+            self.logger.info(
                 "Supervisor is in %s phase. Beamline ready to start sample loading..." %
                 final_phase)
             return True
 
     def save_detdist_position(self):
         self.detdist_saved = self.detdist_position_channel.getValue()
-        logging.getLogger("user_level_log").error(
-            "Saving current det.distance (%s)" %
-            self.detdist_saved)
+        self.logger.error("Saving current det.distance (%s)" % self.detdist_saved)
 
     def restore_detdist_position(self):
         if abs(self.detdist_saved - self.detdist_position_channel.getValue()) >= 0.1:
-            logging.getLogger("user_level_log").error(
+            self.logger.error(
                 "Restoring det.distance to %s" % self.detdist_saved)
             self.detdist_position_channel.setValue(self.detdist_saved)
             time.sleep(0.4)
@@ -229,7 +224,7 @@ class ALBACats(Cats90):
         @return:
         """
 
-        logging.getLogger("HWR").debug(
+        self.logger.debug(
             "Loading sample %s / type(%s)" %
             (sample, type(sample)))
 
@@ -250,9 +245,7 @@ class ALBACats(Cats90):
         if self.hasLoadedSample():
             if (wash is False) and self.getLoadedSample() == sample:
                 raise Exception(
-                    "The sample " +
-                    sample.getAddress() +
-                    " is already loaded")
+                    "The sample %s is already loaded" % sample.getAddress())
             else:
                 # Unload first / do a chained load
                 pass
@@ -328,7 +321,7 @@ class ALBACats(Cats90):
         ret = self.diff_send_transfer()
 
         if ret is False:
-            logging.getLogger("user_level_log").error(
+            self.logger.error(
                 "Supervisor cmd transfer phase returned an error.")
             self._updateState()
             raise Exception(
@@ -350,9 +343,8 @@ class ALBACats(Cats90):
         # get sample selection
         selected = self.getSelectedSample()
 
-        logging.getLogger("HWR").debug(
-            "  ==========CATS=== selected sample is %s (prev %s)" %
-            (str(selected), str(sample)))
+        self.logger.debug("Selected sample is %s (prev %s)" %
+                          (str(selected), str(sample)))
 
         if not use_ht:
             if sample is not None:
@@ -375,8 +367,8 @@ class ALBACats(Cats90):
                             " is already loaded")
 
         if not self.hasLoadedSample() and self.cats_sample_on_diffr() == 1:
-            logging.getLogger("HWR").warning(
-                "  ==========CATS=== sample on diffr, loading aborted")
+            self.logger.warning(
+                "Sample on diffractometer, loading aborted!")
             self._updateState()
             raise Exception("The sample " +
                             str(self.getLoadedSample().getAddress()) +
@@ -400,15 +392,11 @@ class ALBACats(Cats90):
 
             if loaded_ht == -1:  # has loaded but it is not HT
                 # first unmount (non HT)
-                logging.getLogger("HWR").warning(
-                    "  ==========CATS=== mix load/unload dewar vs HT"
-                    " (NOT IMPLEMENTED YET)")
+                self.logger.error("Mixing load/unload dewar vs HT, NOT IMPLEMENTED YET")
                 return
 
             argin = ["2", str(sample), "0", "0", xshift, yshift, zshift]
-            logging.getLogger("HWR").warning(
-                "  ==========CATS=== about to load HT. %s" %
-                str(argin))
+            self.logger.warning("Loading HT sample, %s" % str(argin))
             if loaded_ht == 1:  # has ht loaded
                 cmd_ok = self._executeServerTask(self._cmdChainedLoadHT,
                                                  argin, waitsafe=True)
@@ -421,9 +409,8 @@ class ALBACats(Cats90):
         else:
             if loaded_ht == 1:  # has an HT sample mounted
                 # first unmount HT
-                logging.getLogger("HWR").warning(
-                    "  ==========CATS=== mix load/unload dewar vs HT"
-                    " (NOT IMPLEMENTED YET)")
+                self.logger.warning(
+                    "Mixing load/unload dewar vs HT, NOT IMPLEMENTED YET")
                 return
 
             basketno = selected.getBasketNo()
@@ -434,9 +421,8 @@ class ALBACats(Cats90):
             stype = self.get_cassette_type(basketno)
 
             if tool != current_tool:
-                logging.getLogger("HWR").warning(
-                    "  ==========CATS=== changing tool from %s to %s" %
-                    (current_tool, tool))
+                self.logger.warning("Changing tool from %s to %s" %
+                                    (current_tool, tool))
                 changing_tool = True
             else:
                 changing_tool = False
@@ -465,9 +451,7 @@ class ALBACats(Cats90):
                                self._cmdChainedLoadBarcode is not None
             else:
                 if self.read_datamatrix:
-                    logging.getLogger("HWR").warning(
-                        "  ==========CATS=== reading barcode only possible with spine"
-                        "pucks")
+                    self.logger.error("Reading barcode only possible with spine pucks")
                 read_barcode = False
 
             if loaded_ht == -1:  # has a loaded but it is not an HT
@@ -478,44 +462,40 @@ class ALBACats(Cats90):
                         "sample first")
 
                 if read_barcode:
-                    logging.getLogger("HWR").warning(
-                        "  ==========CATS=== chained load sample (barcode), sending"
-                        "to cats:  %s" % argin)
+                    self.logger.warning(
+                        "Chained load sample (barcode), sending to cats: %s" % argin)
                     cmd_ok = self._executeServerTask(
                         self._cmdChainedLoadBarcode, argin, waitsafe=True)
                 else:
-                    logging.getLogger("HWR").warning(
-                        "  ==========CATS=== chained load sample, sending to cats: %s"
+                    self.logger.warning("Chained load sample, sending to cats: %s"
                         % argin)
                     cmd_ok = self._executeServerTask(
                         self._cmdChainedLoad, argin, waitsafe=True)
             elif loaded_ht == 0:
                 if read_barcode:
-                    logging.getLogger("HWR").warning(
-                        "  ==========CATS=== load sample (barcode), sending to cats: %s"
+                    self.logger.warning("Load sample (barcode), sending to cats: %s"
                         % argin)
                     cmd_ok = self._executeServerTask(
                         self._cmdLoadBarcode, argin, waitsafe=True)
                 else:
-                    logging.getLogger("HWR").warning(
-                        "  ==========CATS=== load sample, sending to cats:  %s" % argin)
+                    self.logger.warning("Load sample, sending to cats:  %s" % argin)
                     cmd_ok = self._executeServerTask(
                         self._cmdLoad, argin, waitsafe=True)
 
         if not cmd_ok:
-            logging.getLogger("HWR").info("  LOAD Command failed on device server")
+            self.logger.info("Load Command failed on device server")
         elif self.auto_prepare_diff and not changing_tool:
-            logging.getLogger("HWR").info(
+            self.logger.info(
                 "AUTO_PREPARE_DIFF (On) sample changer is in safe state... "
                 "preparing diff now")
             #ret = self.diff_send_sampleview()
             self._wait_super_ready()
             self.go_sampleview_cmd()
-            logging.getLogger("HWR").info("Restoring detector distance")
+            self.logger.info("Restoring detector distance")
             self.restore_detdist_position()
             self._wait_phase_done('SAMPLE')
         else:
-            logging.getLogger("HWR").info(
+            self.logger.info(
                 "AUTO_PREPARE_DIFF (Off) sample loading done / or changing tool (%s)" %
                 changing_tool)
 
@@ -538,7 +518,7 @@ class ALBACats(Cats90):
         ret = self.diff_send_transfer()
 
         if ret is False:
-            logging.getLogger("user_level_log").error(
+            self.logger.error(
                 "Supervisor cmd transfer phase returned an error.")
             return
 
@@ -558,8 +538,7 @@ class ALBACats(Cats90):
         loaded_num = self._chnNumLoadedSample.getValue()
 
         if loaded_lid == -1:
-            logging.getLogger("HWR").warning(
-                "  ==========CATS=== unload sample, no sample mounted detected")
+            self.logger.warning("Unload sample, no sample mounted detected")
             return
 
         loaded_basket, loaded_sample = self.lidsample_to_basketsample(
@@ -569,9 +548,8 @@ class ALBACats(Cats90):
 
         argin = [str(tool), "0", xshift, yshift, zshift]
 
-        logging.getLogger("HWR").warning(
-            "  ==========CATS=== unload sample, sending to cats:  %s" %
-            argin)
+        self.logger.warning("Unload sample, sending to cats:  %s" %
+                            argin)
         if loaded_ht == 1:
             cmd_ret = self._executeServerTask(self._cmdUnloadHT, argin)
         else:
@@ -626,7 +604,7 @@ class ALBACats(Cats90):
             else:
                 return False
         except Exception as e:
-            logging.getLogger('HWR').debug("Cannot identify sample in hot tool")
+            self.logger.debug("Cannot identify sample in hot tool")
             return False
 
     def tool_for_basket(self, basketno):

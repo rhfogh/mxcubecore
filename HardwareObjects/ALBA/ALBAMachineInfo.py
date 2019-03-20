@@ -43,9 +43,7 @@ class ALBAMachineInfo(Equipment):
 
     def __init__(self, name):
         Equipment.__init__(self, name)
-        self.logger = logging.getLogger('HWR MachineInfo')
-        self.logger.info('__init__()')
-
+        self.logger = logging.getLogger('HWR.MachineInfo')
         self.values_dict = dict()
         self.values_dict['mach_current'] = None
         self.values_dict['mach_status'] = ""
@@ -56,6 +54,7 @@ class ALBAMachineInfo(Equipment):
         self.chan_topup_remaining = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         try:
             self.chan_mach_current = self.getChannelObject('MachCurrent')
             if self.chan_mach_current is not None:
@@ -78,17 +77,17 @@ class ALBAMachineInfo(Equipment):
                 abs(self.values_dict['mach_current'] - value) > 0.10:
             self.values_dict['mach_current'] = value
             self.update_values()
-            self.logger.debug('New machine current value=%smA' % value)
+            # self.logger.debug('New machine current value=%smA' % value)
 
     def mach_status_changed(self, status):
         self.values_dict['mach_status'] = str(status).split('.')[-1]
         self.update_values()
-        self.logger.debug('New machine status=%s' % status)
+        # self.logger.debug('New machine status=%s' % status)
 
     def topup_remaining_changed(self, value):
         self.values_dict['topup_remaining'] = value
         self.update_values()
-        self.logger.debug('New top-up remaining time=%ss' % value)
+        # self.logger.debug('New top-up remaining time=%ss' % value)
 
     def update_values(self):
         values_to_send = list()
@@ -97,7 +96,7 @@ class ALBAMachineInfo(Equipment):
         values_to_send.append(self.values_dict['topup_remaining'])
 
         self.emit('valuesChanged', values_to_send)
-        self.logger.debug("SIGNAL valuesChanged emitted")
+        # self.logger.debug("SIGNAL valuesChanged emitted")
 
     def get_mach_current(self):
         value = None

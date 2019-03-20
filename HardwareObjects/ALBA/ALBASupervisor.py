@@ -31,6 +31,8 @@ Specific HwObj to interface the Beamline Supervisor TangoDS
 
 from __future__ import print_function
 
+import logging
+
 from HardwareRepository.BaseHardwareObjects import Device
 
 __credits__ = ["ALBA"]
@@ -42,6 +44,7 @@ class ALBASupervisor(Device):
 
     def __init__(self, *args):
         Device.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBASupervisor")
         self.cmd_go_collect = None
         self.cmd_go_sample_view = None
         self.cmd_go_transfer = None
@@ -55,6 +58,7 @@ class ALBASupervisor(Device):
         self.detector_cover_opened = None
 
     def init(self):
+        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.cmd_go_collect = self.getCommandObject("go_collect")
         self.cmd_go_sample_view = self.getCommandObject("go_sample_view")
         self.cmd_go_transfer = self.getCommandObject("go_transfer")
