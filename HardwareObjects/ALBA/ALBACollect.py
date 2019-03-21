@@ -402,11 +402,11 @@ class ALBACollect(AbstractCollect):
         angle_info = [start_angle, img_range, angle_spacing]
 
         self.image_headers['nb_images'] = nb_images
-        self.image_headers['Exposure_time'] = "%.4f" % limaexpt
-        self.image_headers['Exposure_period'] = "%.4f" % exp_time
-        self.image_headers['Start_angle'] = "%f deg." % start_angle
-        self.image_headers['Angle_increment'] = "%f deg." % img_range
-        self.image_headers['Wavelength'] = self.energy_hwobj.get_wavelength()
+        self.image_headers['Exposure_time'] = "%.4f s" % limaexpt
+        self.image_headers['Exposure_period'] = "%.4f s" % exp_time
+        self.image_headers['Omega'] = "%.4f deg." % start_angle
+        self.image_headers['Omega_increment'] = "%.6f deg." % img_range
+        self.image_headers['Wavelength'] = "%.6f A" % self.energy_hwobj.get_wavelength()
 
         self.image_headers["Detector_distance"] = "%.5f m" % (
             self.detector_hwobj.get_distance() / 1000.0)
@@ -425,7 +425,7 @@ class ALBACollect(AbstractCollect):
         self.image_headers["Kappa"] = "%.4f deg." % self.chan_kappa_pos.getValue()
         self.image_headers["Phi"] = "%.4f deg." % self.chan_phi_pos.getValue()
 
-        self.image_headers["Chi"] = "0 deg."
+        # self.image_headers["Chi"] = "0 deg."
         self.image_headers["Oscillation_axis"] = "omega (X, CW)"
         self.image_headers["N_oscillations"] = '1'
         self.image_headers["Detector_2theta"] = "0.0000 deg"
