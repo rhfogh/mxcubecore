@@ -166,7 +166,7 @@ class ALBACats(Cats90):
         @final_phase: target phase
         @return: boolean
         """
-        time.sleep(0.5)
+        time.sleep(1.5)
         while True:
             state = str(self.super_state_channel.getValue())
             phase = self.read_super_phase().upper()
