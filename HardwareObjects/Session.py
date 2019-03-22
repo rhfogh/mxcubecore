@@ -11,11 +11,9 @@ import logging
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 import queue_model_objects_v1 as queue_model_objects
 
-default_raw_data_folder = "RAW_DATA"
-default_processed_data_folder = 'PROCESSED_DATA'
-default_archive_folder = 'ARCHIVE'
-
 class Session(HardwareObject):
+
+    default_raw_data_folder = "RAW_DATA"
 
     def __init__(self, name):
         HardwareObject.__init__(self, name)
@@ -40,10 +38,9 @@ class Session(HardwareObject):
         self.base_process_directory = None
         self.base_archive_directory = None
 
-        self.raw_data_folder_name = default_raw_data_folder
-        self.processed_data_folder_name = default_processed_data_folder
-        self.archive_folder_name = default_archive_folder
-
+        self.raw_data_folder_name = 'RAW_DATA'
+        self.processed_data_folder_name = 'PROCESS_DATA'
+        self.archive_folder_name = 'ARCHIVE'
 
     # Framework-2 method, inherited from HardwareObject and called
     # by the framework after the object has been initialized.
@@ -65,17 +62,17 @@ class Session(HardwareObject):
         base_archive_directory = self['file_info'].\
             getProperty('archive_base_directory')
 
-        folder_name = self["file_info"].getProperty('raw_data_folder_name')
-        if folder_name and folder_name.strip():
-            self.raw_data_folder_name = folder_name
+        raw_folder = self["file_info"].\
+            getProperty('raw_data_folder_name')
 
-        folder_name = self["file_info"].getProperty('processed_data_folder_name')
-        if folder_name and folder_name.strip():
-            self.processed_data_folder_name = folder_name
+        if raw_folder is None or (not raw_folder.strip()):
+            raw_folder = Session.default_raw_data_folder 
 
-        folder_name = self["file_info"].getProperty('archive_folder')
-        if folder_name and folder_name.strip():
-            self.archive_folder_name = folder_name
+        process_folder = self["file_info"].\
+            getProperty('processed_data_folder_name')
+
+        archive_folder = self['file_info'].\
+            getProperty('archive_folder')
 
         try:
            inhouse_proposals = self["inhouse_users"]["proposal"]
@@ -92,9 +89,9 @@ class Session(HardwareObject):
         self.set_base_data_directories( base_directory, 
                                         base_process_directory, 
                                         base_archive_directory, 
-                                        raw_folder=self.raw_data_folder_name,
-                                        process_folder=self.processed_data_folder_name,
-                                        archive_folder=self.archive_folder_name)
+                                        raw_folder=raw_folder, 
+                                        process_folder=process_folder, 
+                                        archive_folder=archive_folder)
 
         precision = self.default_precision
                 
