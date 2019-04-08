@@ -570,6 +570,19 @@ class ALBACollect(AbstractCollect):
         self.logger.info(" finishing data collection ")
         self.emit("progressStop")
 
+    def data_collection_cleanup(self):
+        self.logger.debug("Cleanup: moving omega to initial position %s" % self.omega_init_pos)
+        try:
+            self.omega_hwobj.move(self.omega_init_pos)
+        except:
+            self.logger.error("Omega needs to be stopped before restoring initial position")
+            self.omega_hwobj.stop()
+            self.omega_hwobj.move(self.omega_init_pos)
+            
+        AbstractCollect.data_collection_cleanup(self)
+        self.logger.debug("ALBA data_collection_cleanup finished")
+        
+
     def check_directory(self, basedir):
         if not os.path.exists(basedir):
             try:
