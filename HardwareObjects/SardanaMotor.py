@@ -16,6 +16,9 @@ taurusname is the only obligatory property.
 </device>
 """
 
+# TODO: implement nominal velocity concept, missing in Sardana.
+
+
 class SardanaMotor(AbstractMotor):
 
     suffix_position = "Position"
