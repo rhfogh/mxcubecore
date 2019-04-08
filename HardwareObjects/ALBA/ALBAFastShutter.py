@@ -31,6 +31,8 @@ from __future__ import print_function
 import logging
 
 from HardwareRepository import BaseHardwareObjects
+from taurus.core.tango.enums import DevState
+
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
@@ -41,6 +43,11 @@ STATE_OUT, STATE_IN, STATE_MOVING, STATE_FAULT, STATE_ALARM, STATE_UNKNOWN = \
 
 
 class ALBAFastShutter(BaseHardwareObjects.Device):
+    """
+    Shutter IN: motor position is 0 and IDLE state is High.
+    Shutter OUT: motor position is 0 and IDLE state is Low.
+    Shutter Fault: motor position is not 0.
+    """
 
     states = {
         STATE_OUT: "out",
@@ -82,8 +89,8 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
             self.chan_actuator.connectSignal('update', self.stateChanged)
             self.chan_motor_pos.connectSignal('update', self.motorPositionChanged)
             self.chan_motor_state.connectSignal('update', self.motorStateChanged)
-        except KeyError:
-            self.logger.warning('%s: cannot report FrontEnd State', self.name())
+        except Exception:
+            self.logger.warning('Error when initilaizing')
 
         try:
             state_string = self.getProperty("states")
@@ -108,17 +115,17 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
 
         if None in [self.actuator_value, self.motor_position, self.motor_state]:
             act_state = STATE_UNKNOWN
-        elif str(self.motor_state) == "MOVING":
+        elif self.motor_state == DevState.MOVING:
             act_state = STATE_MOVING
-        elif str(self.motor_state) != "ON" or abs(self.motor_position) > 0.01:
+        elif self.motor_state != DevState.ON or abs(self.motor_position) > 0.01:
             act_state = STATE_ALARM
         else:
             state = self.actuator_value.lower()
 
             if state == 'high':
-                act_state = STATE_OUT
-            else:
                 act_state = STATE_IN
+            else:
+                act_state = STATE_OUT
 
         if act_state != self.actuator_state:
             self.actuator_state = act_state
@@ -195,6 +202,7 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
 
     def is_open(self):
         if self.actuator_state == STATE_IN:
+
             return True
         else:
             return False
@@ -212,3 +220,5 @@ def test_hwo(hwo):
     print("Shutter status is: ", hwo.getStatus())
     print("Motor position is: ", hwo.getMotorPosition())
     print("Motor state is: ", hwo.getMotorState())
+    print("Is shutter open: ", hwo.is_open())
+    print("Is shutter close: ", hwo.is_close())
