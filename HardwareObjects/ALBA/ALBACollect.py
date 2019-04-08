@@ -314,17 +314,12 @@ class ALBACollect(AbstractCollect):
         shutok = self.check_shutters()
 
         if not shutok:
-            logging.getLogger("user_level_log").error(
-                " Shutters are not ready. BYPASSED. Comment line in ALBACollect.py")
+            self.logger.error("Shutters are NOT READY")
+            return False
         else:
-            logging.getLogger("user_level_log").error(
-                " Shutters ready but code is BYPASSED. Comment line in ALBACollect.py")
+            self.logger.debug("Shutters are READY")
 
         shutok = True  # DELETE THIS AFTER TESTS
-
-        if not shutok:
-            logging.getLogger("user_level_log").error(" Shutters not ready")
-            return False
 
         gevent.sleep(1)
         self.logger.info(
@@ -545,23 +540,24 @@ class ALBACollect(AbstractCollect):
 
     def check_shutters(self):
 
-        # Check fast shutter
-        if self.fastshut_hwobj.getState() != 0:
-            return False
+        # Shutters ready: 1, 1, 1, 1
+        
+        # fast shutter closed: State = 1
+        # slow shutter is close: State = 0
+        # photon shutter is close: State = 0
+        # front end is close: State = 0
 
-        # Check slow shutter
-        if self.slowshut_hwobj.getState() != 1:
-            return False
+        fast_shutter = self.fastshut_hwobj.getState()
+        slow_shutter = self.slowshut_hwobj.getState()
+        photon_shutter = self.photonshut_hwobj.getState()
+        front_end = self.frontend_hwobj.getState()
+        
+        self.logger.debug("fast shutter state is: %s" % fast_shutter) 
+        self.logger.debug("slow shutter state is: %s" % slow_shutter) 
+        self.logger.debug("photon shutter state is: %s" % photon_shutter) 
+        self.logger.debug("front_end state is: %s" % front_end) 
 
-        # Check photon shutter
-        if self.photonshut_hwobj.getState() != 1:
-            return False
-
-        # Check front end
-        if self.frontend_hwobj.getState() != 1:
-            return False
-
-        return True
+        return all([fast_shutter, slow_shutter, photon_shutter, front_end])
 
     def get_image_headers(self):
         headers = []
