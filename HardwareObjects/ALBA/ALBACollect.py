@@ -81,6 +81,8 @@ class ALBACollect(AbstractCollect):
         self.chan_kappa_pos = None
         self.chan_phi_pos = None
 
+        self.chan_undulator_gap = None
+
         self._error_msg = ""
         self.owner = None
         self.osc_id = None
@@ -119,6 +121,8 @@ class ALBACollect(AbstractCollect):
 
         self.chan_kappa_pos = self.getChannelObject("kappapos")
         self.chan_phi_pos = self.getChannelObject("phipos")
+
+        self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
 
         undulators = []
         try:
