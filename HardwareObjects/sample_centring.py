@@ -7,9 +7,12 @@ import logging
 import os
 import tempfile
 
+logger = logging.getLogger('HWR')
+
 try:
     #  !!!!!  ALBA  !!!!
     import lucid_xaloc as lucid
+    logger.warning("Importing specific XALOC lucid module")
 except ImportError:
     try:
       import lucid2 as lucid
@@ -17,7 +20,7 @@ except ImportError:
       try:
           import lucid
       except ImportError:
-          logging.warning("Could not find autocentring library, automatic centring is disabled")
+          logger.warning("Could not find autocentring library, automatic centring is disabled")
 
 
 
@@ -435,9 +438,10 @@ def find_loop(camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb):
   snapshot_filename = os.path.join(tempfile.gettempdir(), "mxcube_sample_snapshot.png")
   #camera.takeSnapshot(snapshot_filename, bw=True)
   camera.save_snapshot(snapshot_filename, bw=True)
-  
+  logger.debug("in find_loop: snapshot_filename is %s" % snapshot_filename)
+
   info, x, y = lucid.find_loop(snapshot_filename,IterationClosing=6)
-  
+  logger.debug("in find_loop: %s" % str(info))
   try:
     x = float(x)
     y = float(y)
@@ -465,17 +469,23 @@ def auto_center(camera,
     #check if loop is there at the beginning
     i = 0
     while -1 in find_loop(camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb):
+        logger.debug("in auto_center: loop not found...moving 90 degrees and searching again")
+
         phi.syncMoveRelative(90)
         i+=1
         if i>4:
             if callable(msg_cb):
                 msg_cb("No loop detected, aborting")
+                logger.debug("in auto_center: loop not detected, aborting")
+
             return
     
     # Number of lucid2 runs increased to 3 (Olof June 26th 2015)
     for k in range(3):
       if callable(msg_cb):
             msg_cb("Doing automatic centring")
+            logger.debug("in auto_center: doing automatic centring")
+
             
       centring_greenlet = gevent.spawn(center,
                                        phi, phiy, phiz,
@@ -487,10 +497,10 @@ def auto_center(camera,
 
       for a in range(n_points):
             x, y = find_loop(camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb) 
-            #logging.info("in autocentre, x=%f, y=%f",x,y)
+            logger.debug("in autocentre, x=%f, y=%f",x,y)
             if x < 0 or y < 0:
               for i in range(1,18):
-                #logging.info("loop not found - moving back %d" % i)
+                logger.debug("loop not found - moving back %d" % i)
                 phi.syncMoveRelative(5)
                 x, y = find_loop(camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb)
                 if -1 in (x, y):
