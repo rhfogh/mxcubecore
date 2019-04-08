@@ -759,7 +759,7 @@ class ISPyBClient2(HardwareObject):
             return (0,0,0)
 
         if self._collection:
-            logging.getLogger("HWR").debug("Storing data collection in lims. data to store: %s" % str(mx_collection))
+#            logging.getLogger("HWR").debug("Storing data collection in lims. Harvesting from data: %s" % str(mx_collection))
 
             data_collection = ISPyBValueFactory().\
                 from_data_collect_parameters(self._collection, mx_collection)
@@ -784,6 +784,8 @@ class ISPyBClient2(HardwareObject):
                 if detector:
                     detector_id = detector.detectorId
                     data_collection.detectorId = detector_id
+
+            logging.getLogger("HWR").debug("Storing data collection in lims. Data to store: %s" % str(data_collection))
 
             collection_id = self._collection.service.\
                             storeOrUpdateDataCollection(data_collection)
@@ -986,11 +988,11 @@ class ISPyBClient2(HardwareObject):
                     findSampleInfoLightForProposal(proposal_id,
                                                    self.beamline_name)
             except WebFault, e:
-                logging.getLogger("ispyb_client").error(str(e))
+                logging.getLogger("HWR").error(str(e))
             except URLError:
-                logging.getLogger("ispyb_client").exception(_CONNECTION_ERROR_MSG)
+                logging.getLogger("HWR").exception(_CONNECTION_ERROR_MSG)
         else:
-            logging.getLogger("ispyb_client").\
+            logging.getLogger("HWR").\
                 exception("Error in get_samples: could not connect to server")
 
         return response_samples
