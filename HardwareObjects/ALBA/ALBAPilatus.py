@@ -321,6 +321,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
                 if key == 'nb_images':
                     continue
                 header += "# %s %s\n" % (key, value)
+#            headers.append("%d : array_data/header_convention|%s;" %  (i, "PILATUS_1.2")) 
             headers.append("%d : array_data/header_contents|%s;" % (i, header))
 
         self.chan_saving_header_delimiter.setValue(["|", ";", ":"])
