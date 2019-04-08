@@ -92,7 +92,9 @@ class ALBACollect(AbstractCollect):
         self.graphics_manager_hwobj = None
 
         self.helical_positions = None
-        self.saved_omega_velocity = None
+#        self.saved_omega_velocity = None
+
+        self.omega_init_pos = None
 
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
@@ -227,6 +229,10 @@ class ALBACollect(AbstractCollect):
         nb_images = osc_seq['number_of_images']
         # total_range = image_range * nb_images
 
+        omega_pos = osc_seq['start']
+        # Save omega initial position to be recovered after collection (cleanup).
+        self.omega_init_pos = omega_pos
+
         ready = self.prepare_acquisition()
 
         if not ready:
@@ -238,7 +244,9 @@ class ALBACollect(AbstractCollect):
         # for progressBar brick
         self.emit("progressInit", "Collection", osc_seq['number_of_images'])
 
-        omega_pos = osc_seq['start']
+#        omega_pos = osc_seq['start']
+#        # Save position to recover omega position after collection (cleanup).
+#        self.omega_init_pos = omega_pos
 
         self.emit("collectStarted", (self.owner, 1))
 
@@ -284,9 +292,21 @@ class ALBACollect(AbstractCollect):
 
         basedir = fileinfo['directory']
 
-        #  save omega velocity
-        self.saved_omega_velocity = self.omega_hwobj.get_velocity()
+        # Save omega velocity
+        # self.saved_omega_velocity = self.omega_hwobj.get_velocity()
 
+        # Better use it nominal velocity (to be properly defined in Sardana motor)
+        # Ensure omega has its nominal velocity to go to the initial position
+        # We have to ensure omega is not moving when setting the velocity
+
+        try:
+            self.omega_hwobj.set_velocity(60)
+        except Exception:
+            self.logger.error("Error setting omega velocity, state is %s" % str(self.omega_hwobj.getState()))
+            self.omega_hwobj.wait_end_of_move(timeout=20)
+            self.omega_hwobj.set_velocity(60)
+            self.logger.info("Omega velocity set to its nominal value")
+        
         # create directories if needed
         self.check_directory(basedir)
 
@@ -326,7 +346,6 @@ class ALBACollect(AbstractCollect):
         return detok
 
     def prepare_collection(self, start_angle, nb_images, first_image_no):
-        # move omega to start angle
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
 
         # start_angle = osc_seq['start']
@@ -346,9 +365,16 @@ class ALBACollect(AbstractCollect):
                                       " total_distance: %s / speed: %s" %
                                       (nb_images, img_range, exp_time, total_dist,
                                        omega_speed))
-        self.logger.info(
-            "  setting omega velocity to 60 to go to initial position")
-        self.omega_hwobj.set_velocity(60)
+#        self.logger.info(
+#            "  setting omega velocity to 60 to go to initial position")
+#
+#        try:
+#            self.omega_hwobj.set_velocity(60)
+#        except Exception:
+#            self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
+#            self.logger.info("Trying again in 5 sec to set omega velocity")
+#            time.sleep(5)
+#            self.omega_hwobj.set_velocity(60)
 
         omega_acceltime = self.omega_hwobj.get_acceleration()
 
@@ -358,11 +384,20 @@ class ALBACollect(AbstractCollect):
         final_pos = start_angle + total_dist + safe_delta
 
         self.logger.info("Moving omega to initial position %s" % init_pos)
-        self.omega_hwobj.move(init_pos)
+        try:
+            self.omega_hwobj.wait_end_of_move(timeout=40)
+            self.omega_hwobj.move(init_pos)
+        except Exception:
+            self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
+            self.logger.info("Trying again in 5 sec to move omega to initial position %s" % init_pos)
+            time.sleep(5)
+            self.omega_hwobj.move(init_pos)
+
 
         self.detector_hwobj.prepare_collection(nb_images, first_image_no)
 
-        self.omega_hwobj.wait_end_of_move(timeout=10)
+        # TODO: Increase timeout: 
+        self.omega_hwobj.wait_end_of_move(timeout=40)
 
         self.logger.info(
             "Moving omega finished at %s" %
