@@ -358,7 +358,6 @@ class ALBACollect(AbstractCollect):
         total_time = nb_images * exp_time
         omega_speed = float(total_dist / total_time)
 
-        self.logger.info("  prepare detector  was not ok.")
         self.write_image_headers(start_angle)
 
         self.logger.info("nb_images: %s / img_range: %s / exp_time: %s /"
