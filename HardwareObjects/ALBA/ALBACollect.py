@@ -284,6 +284,8 @@ class ALBACollect(AbstractCollect):
 
     def data_collection_failed(self):
         self.logger.info("Data collection failed")
+        AbstractCollect.data_collection_failed()
+        self.collect_failed()
         # recovering sequence should go here
 
     def prepare_acquisition(self):

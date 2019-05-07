@@ -1061,7 +1061,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
         BaseQueueEntry.stop(self)
 
         try:
-            self.collect_hwobj.stopCollect('mxCuBE')
+            self.collect_hwobj.stopCollect()
             if self.processing_task is not None:
                 self.parallel_processing_hwobj.stop_processing()
                 logging.getLogger('user_level_log').error('Processing: Stoppend')
