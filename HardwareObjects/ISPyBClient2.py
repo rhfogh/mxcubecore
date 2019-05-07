@@ -785,7 +785,7 @@ class ISPyBClient2(HardwareObject):
                     detector_id = detector.detectorId
                     data_collection.detectorId = detector_id
 
-            logging.getLogger("HWR").debug("Storing data collection in lims. Data to store: %s" % str(data_collection))
+            #logging.getLogger("HWR").debug("Storing data collection in lims. Data to store: %s" % str(data_collection))
 
             collection_id = self._collection.service.\
                             storeOrUpdateDataCollection(data_collection)
