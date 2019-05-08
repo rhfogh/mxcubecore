@@ -92,7 +92,7 @@ class ALBADataAnalysis(DataAnalysis):
             sls_script,
             input_file,
             edna_directory,
-            'SCRATCH')
+            'USER')
         self.job.submit()
 
         self.logger.debug("Job submitted %s" % self.job.id)
