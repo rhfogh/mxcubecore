@@ -357,6 +357,11 @@ class ALBAMiniDiff(GenericDiffractometer):
         if not self.is_sample_view_phase():
             self.logger.info("Not in sample view phase. Asking supervisor to go")
             success = self.go_sample_view()
+            # TODO: workaround to set omega velocity to 60
+            try:
+                self.phi_motor_hwobj.set_velocity(60)
+            except:
+                self.logger.debug("Cannot apply workaround for omega velocity")
             if not success:
                 self.logger.info("Cannot set SAMPLE VIEW phase")
                 return False
