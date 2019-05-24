@@ -119,6 +119,8 @@ class Resolution(AbstractMotor):
           self.recalculateResolution()
         return self.currentResolution
 
+    get_position = getPosition
+
     def get_value_at_corner(self):
         dtox_pos = self.dtox.getPosition()
         beam_x, beam_y = self.get_beam_centre(dtox_pos)
