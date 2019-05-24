@@ -556,7 +556,8 @@ class ALBAMiniDiff(GenericDiffractometer):
         self.wait_device_ready()
 
     # TODO: define phases as enum members.
-    def set_phase(self, phase):
+    def set_phase(self, phase, timeout=None):
+        #TODO: implement timeout. Current API to fulfilll the API.
         """
         General function to set phase by using supervisor commands.
         """
