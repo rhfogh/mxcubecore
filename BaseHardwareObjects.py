@@ -4,6 +4,7 @@ import types
 import dispatcher
 from dispatcher import *
 from CommandContainer import CommandContainer
+from ConvertUtils import string_types
 
 if sys.version_info > (3, 0):
     from HardwareRepository import * 
@@ -112,7 +113,7 @@ class HardwareObjectNode:
         #python2.7
         #if type(key) == types.StringType:
         #python3.4
-        if type(key) == str:
+        if isinstance(key, string_types):
             objectName = key
             
             try:
@@ -128,7 +129,7 @@ class HardwareObjectNode:
         #python2.7
         #elif type(key) == types.IntType:
         #python3.4
-        elif type(key) == int:
+        elif isinstance(key, int):
             i = key
 
             if i < len(self.__objectsNames):
@@ -353,7 +354,7 @@ class HardwareObject(HardwareObjectNode, CommandContainer):
         signal = str(signal)
     
         if len(args)==1:
-          if type(args[0])==tuple:
+          if isinstance(args[0], tuple):
             args=args[0]
         dispatcher.send(signal, self, *args)  
 
@@ -363,7 +364,7 @@ class HardwareObject(HardwareObjectNode, CommandContainer):
             # TODO 2to3 
 
             #if type(sender) == bytes:
-            if type(sender) == str:
+            if isinstance(sender, string_types):
                 # provides syntactic sugar ; for
                 # self.connect(self, "signal", slot)
                 # it is possible to do
@@ -389,7 +390,7 @@ class HardwareObject(HardwareObjectNode, CommandContainer):
         if slot is None:
             # TODO 2to3
             #if type(sender) == bytes:
-            if type(sender) == str:
+            if isinstance(sender, string_types):
                 # provides syntactic sugar ; for
                 # self.connect(self, "signal", slot)
                 # it is possible to do
