@@ -313,7 +313,10 @@ class ALBACats(Cats90):
         @use_ht: mount a sample from hot tool.
         """
         if not self._chnPowered.getValue():
+            # TODO: implement a wait with timeout method.
+            self.logger.debug("CATS power is OFF. Trying to switch the power ON...")
             self._cmdPowerOn()  # try switching power on
+            time.sleep(1)
 
         current_tool = self.get_current_tool()
 
@@ -329,7 +332,7 @@ class ALBACats(Cats90):
 
         if not self._chnPowered.getValue():
             raise Exception(
-                "CATS power is not enabled. Please switch on arm power before"
+                "CATS power is not enabled. Please switch on arm power before "
                 "transferring samples.")
 
         # obtain mounting offsets from diffr
