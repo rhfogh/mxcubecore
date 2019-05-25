@@ -174,7 +174,7 @@ class CollectEmulator(CollectMockup):
             setup_data["phi_axis"] = ll0[6:]
 
         # get resolution limit and detector distance
-        detector_distance = data_collect_parameters.get("detector_distance", 0.0)
+        detector_distance = data_collect_parameters.get("detdistance", 0.0)
         if not detector_distance:
             resolution = data_collect_parameters["resolution"]["upper"]
             self.set_resolution(resolution)

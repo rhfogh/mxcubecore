@@ -54,6 +54,7 @@ class FluxMockup(HardwareObject,  AbstractFlux.AbstractFlux):
                      "attFactorChanged",
                      self.transmission_changed)
         self.transmission_changed(self.transmission_hwobj.getAttFactor())
+        self.measure_intensity()
 
     def beam_info_changed(self, beam_info):
         self.beam_info = beam_info
@@ -109,7 +110,7 @@ class FluxMockup(HardwareObject,  AbstractFlux.AbstractFlux):
 
     def measure_intensity(self):
         """Measures intesity"""
-        self.flux_value = 1e+12 + random() * 1e+12
+        self.flux_value = 1e+10 + random() * 1e+10
         self.update_flux_value()
 
     def update_values(self):

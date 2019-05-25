@@ -943,7 +943,7 @@ class GphlWorkflow(HardwareObject, object):
             # TODO Clarify if set_position does not have a built-in wait
             # TODO whether you need towait for somethign else too, ...
 
-            api.resolution.set_position(new_resolution)
+            api.resolution.move(new_resolution)
             # TODO it should be set_position, fix TineMotor (resolution at EMBL)
             # api.resolution.move(new_resolution)
             api.detector.wait_ready()
@@ -1137,7 +1137,7 @@ class GphlWorkflow(HardwareObject, object):
             # acq_parameters.overlap = overlap
             acq_parameters.exp_time = scan.exposure.time
             acq_parameters.num_passes = 1
-            acq_parameters.detector_distance = sweep.detectorSetting.axisSettings.get(
+            acq_parameters.detdistance = sweep.detectorSetting.axisSettings.get(
                 "Distance"
             )
             acq_parameters.resolution = 0.0  # Use detector distance
