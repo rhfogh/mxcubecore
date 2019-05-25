@@ -1854,7 +1854,7 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'dark': acq_params.take_dark_current,
              #'scan4d': 0,
             "resolution": {"upper": acq_params.resolution or 0.0},
-            "detector_distance": acq_params.detdistance,
+            "detdistance": acq_params.detdistance,
              'transmission': acq_params.transmission,
              'energy': acq_params.energy,
              #'input_files': 1,
