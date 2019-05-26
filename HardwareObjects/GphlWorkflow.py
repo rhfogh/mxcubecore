@@ -390,7 +390,6 @@ class GphlWorkflow(HardwareObject, object):
 
         data_model = self._queue_entry.get_data_model()
 
-        isInterleaved = geometric_strategy.isInterleaved
         allowed_widths = geometric_strategy.allowedWidths
         if allowed_widths:
             default_width_index = geometric_strategy.defaultWidthIdx or 0
@@ -635,23 +634,27 @@ class GphlWorkflow(HardwareObject, object):
 
         if (
             data_model.lattice_selected
+            and data_model.get_interleave_order()
+        ):
+            # NB We do not want the wedgeWdth widget for Diffractcal
+            field_list.append(
+                {
+                    "variableName": "wedgeWidth",
+                    "uiLabel": "Wedge width (deg)",
+                    "type": "text",
+                    "defaultValue": (
+                        "%s" % self.getProperty("default_wedge_width", 15)
+                    ),
+                    "lowerBound": 0,
+                    "upperBound": 7200,
+                    "decimals": 1,
+                }
+            )
+
+        if (
+            data_model.lattice_selected
             or "calibration" in data_model.get_type().lower()
         ):
-
-            if isInterleaved:
-                field_list.append(
-                    {
-                        "variableName": "wedgeWidth",
-                        "uiLabel": "Wedge width (deg)",
-                        "type": "text",
-                        "defaultValue": (
-                            "%s" % self.getProperty("default_wedge_width", 15)
-                        ),
-                        "lowerBound": 0,
-                        "upperBound": 7200,
-                        "decimals": 1,
-                    }
-                )
 
             field_list.append(
                 {
@@ -671,7 +674,7 @@ class GphlWorkflow(HardwareObject, object):
                         "defaultValue": bool(self.getProperty("centre_before_sweep")),
                     }
                 )
-            if isInterleaved:
+            if data_model.get_interleave_order():
                 field_list.append(
                     {
                         "variableName": "centre_before_scan",
@@ -721,13 +724,16 @@ class GphlWorkflow(HardwareObject, object):
         value = params.get(tag)
         if value:
             result[tag] = int(float(value) / image_width)
+        else:
+            # If not set is likely not used, but we want a detault value anyway
+            result[tag] = 150
         tag = "resolution"
         value = params.get(tag)
         if value:
             value = float(value)
             result["resolution"] = value
 
-        if isInterleaved:
+        if geometric_strategy.isInterleaved:
             result["interleaveOrder"] = data_model.get_interleave_order()
 
         for tag in beam_energies:
@@ -762,7 +768,13 @@ class GphlWorkflow(HardwareObject, object):
             # Data collection TODO: Use workflow info to distinguish
             new_dcg_name = "GPhL Data Collection"
         else:
-            new_dcg_name = "GPhL Characterisation"
+            strategy_type = (
+                gphl_workflow_model.get_workflow_parameters()["strategy_type"]
+            )
+            if strategy_type.startswith('diffractcal'):
+                new_dcg_name = "GPhL DiffractCal"
+            else:
+                new_dcg_name = "GPhL Characterisation"
         new_dcg_model = queue_model_objects.TaskGroup()
         new_dcg_model.set_enabled(True)
         new_dcg_model.set_name(new_dcg_name)
@@ -860,7 +872,7 @@ class GphlWorkflow(HardwareObject, object):
                 okp = tuple(initial_settings[x] for x in self.rotation_axis_roles)
                 dd0 = self.calculate_recentring(okp, **recen_parameters)
                 logging.getLogger("HWR").debug(
-                    "GPHL Recentring. okp, motors, %s, %s" + okp + sorted(dd0.items())
+                    "GPHL Recentring. okp, motors, %s, %s" % (okp, sorted(dd0.items()))
                 )
                 if centre_at_start:
                     motor_settings = initial_settings.copy()
@@ -1526,13 +1538,13 @@ class GphlWorkflow(HardwareObject, object):
             )
             collect_hwobj = api.collect
             # settings = goniostatRotation.axisSettings
-            api.diffractomer.move_motors(motor_settings)
+            api.diffractometer.move_motors(motor_settings)
             okp = tuple(int(motor_settings[x]) for x in self.rotation_axis_roles)
             timestamp = datetime.datetime.now().isoformat().split(".")[0]
             summed_angle = 0.0
             for snapshot_index in range(number_of_snapshots):
                 if snapshot_index:
-                    api.diffractomer.move_omega_relative(90)
+                    api.diffractometer.move_omega_relative(90)
                     summed_angle += 90
                 snapshot_filename = filename_template % (
                     okp + (timestamp, snapshot_index + 1)
@@ -1543,7 +1555,7 @@ class GphlWorkflow(HardwareObject, object):
                 )
                 collect_hwobj._take_crystal_snapshot(snapshot_filename)
             if summed_angle:
-                api.diffractomer.move_omega_relative(-summed_angle)
+                api.diffractometer.move_omega_relative(-summed_angle)
 
     def execute_sample_centring(
         self, centring_entry, goniostatRotation, requestedRotationId=None
