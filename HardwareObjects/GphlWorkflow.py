@@ -1538,7 +1538,8 @@ class GphlWorkflow(HardwareObject, object):
             )
             collect_hwobj = api.collect
             # settings = goniostatRotation.axisSettings
-            api.diffractometer.move_motors(motor_settings)
+            # NB we have to copy becasue move_motors modifies the dictionary
+            api.diffractometer.move_motors(motor_settings.copy())
             okp = tuple(int(motor_settings[x]) for x in self.rotation_axis_roles)
             timestamp = datetime.datetime.now().isoformat().split(".")[0]
             summed_angle = 0.0
