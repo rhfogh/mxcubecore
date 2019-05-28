@@ -227,12 +227,16 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
     def set_threshold_gain(self, value):
         self.chan_threshold_gain.setValue(value)
 
-    def set_energy_threshold(self):
+    def _set_energy_threshold(self):
         beamline_energy = self._get_beamline_energy()
         energy = self.get_energy_threshold()
         threshold = self.get_threshold()
         threshold_gain = self.get_threshold_gain()
         cam_state = self.get_cam_state()
+
+        self.logger.debug("beamline energy: %s" % beamline_energy)
+        self.logger.debug("energy_threhold: %s" % energy)
+        self.logger.debug("current threshold gain: %s" % threshold_gain)
 
         if round(beamline_energy, 6) < 7.538:
             beamline_energy = 7.538
@@ -251,8 +255,8 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
                     self.logger.debug(
                         "Setting detector energy_threshold: %s" % beamline_energy)
                 # wait until detector is configured
-                # Wait for 2 secs to let time for change
-                time.sleep(2)
+                # Wait for 3 secs to let time for change
+                time.sleep(3)
                 if not self.wait_standby():
                     raise RuntimeError("Detector could not be configured!")
             else:
@@ -263,17 +267,18 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         return self.chan_latency_time.getValue()
 
     def wait_standby(self, timeout=300):
+        logging.getLogger("user_level_log").info("Waiting detector to be in STANDBY")
         t0 = time.time()
         while self.get_cam_state() != 'STANDBY':
             if time.time() - t0 > timeout:
                 self.logger.debug("timeout waiting for Pilatus to be on STANDBY")
                 return False
-            time.sleep(0.1)
+            time.sleep(1)
         return True
 
     def prepare_acquisition(self, dcpars):
 
-        self.set_energy_threshold()
+        self._set_energy_threshold()
         latency_time = self.get_latency_time()
 
         osc_seq = dcpars['oscillation_sequence'][0]
