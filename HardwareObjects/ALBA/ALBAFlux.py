@@ -31,18 +31,19 @@ from __future__ import print_function
 import logging
 
 from HardwareRepository.HardwareObjects import AbstractFlux
-from HardwareRepository.BaseHardwareObjects import Device
+#from HardwareRepository.BaseHardwareObjects import Device
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
 __category__ = "General"
 
 
-class ALBAFlux(Device,  AbstractFlux.AbstractFlux):
+class ALBAFlux(AbstractFlux.AbstractFlux):
 
     def __init__(self, *args):
         self.logger = logging.getLogger("HWR.ALBAFlux")
-        Device.__init__(self, *args)
+        #Device.__init__(self, *args)
+        AbstractFlux.AbstractFlux.__init__(self, *args)
         self.current_chn = None
         self.transmission_chn = None
         self.last_flux_chn = None
@@ -89,7 +90,7 @@ class ALBAFlux(Device,  AbstractFlux.AbstractFlux):
 
         # The factor 1.25 converts from the average value over the beamsize
         # to an estimated flux density at the peak.
-        return 1.25 * AbstractFlux.AbstractFlux.get_dose_rate(energy=energy)
+        return 1.25 * AbstractFlux.AbstractFlux.get_dose_rate(self, energy=energy)
 
 
 def test_hwo(hwo):

@@ -50,6 +50,9 @@ class AbstractFlux(HardwareObject):
         ],
     )
 
+    def __init__(self, *args):
+        HardwareObject.__init__(self, *args)
+
     def get_flux(self):
         """Get flux at current transmission in units of photons/s"""
         raise NotImplementedError
@@ -80,4 +83,4 @@ class AbstractFlux(HardwareObject):
         return result
 
     def update_values(self):
-        self.emit("fluxValueChanged", self._value)
+        self.emit("fluxValueChanged", self.get_flux())

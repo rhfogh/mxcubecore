@@ -1823,7 +1823,7 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
     proc_params = data_collection.processing_parameters
 
     resolution = acq_params.resolution
-    return [{'comment': '',
+    result = [{'comment': '',
              #'helical': 0,
              #'motors': {},
              'take_video': acq_params.take_video,
@@ -1878,8 +1878,18 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'experiment_type': queue_model_enumerables.\
              EXPERIMENT_TYPE_STR[data_collection.experiment_type],
              'skip_images': acq_params.skip_existing_images,
-             'motors': centred_pos.as_dict() if centred_pos is not None else {}}]
-
+             'motors': centred_pos.as_dict() if centred_pos is not None else {}}
+    ]
+             
+    # Remove if escplicitly set to None, to avoid having them set when not needed
+    dd = result[0]
+    for tag in ('detdistance', 'energy', 'transmission'):
+        if tag in dd and not dd[tag]:
+            del dd[tag]
+    resolution = dd.get('resolution')
+    if resolution is not None and not resolution.get('upper'):
+        del dd['resolution']
+    return result
 
 def dc_from_edna_output(edna_result, reference_image_collection,
                         dcg_model, sample_data_model, beamline_setup_hwobj,

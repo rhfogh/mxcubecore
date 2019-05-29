@@ -775,6 +775,7 @@ class GphlWorkflow(HardwareObject, object):
                 new_dcg_name = "GPhL DiffractCal"
             else:
                 new_dcg_name = "GPhL Characterisation"
+        logging.getLogger("HWR").debug("setup_data_collection %s" % new_dcg_name)
         new_dcg_model = queue_model_objects.TaskGroup()
         new_dcg_model.set_enabled(True)
         new_dcg_model.set_name(new_dcg_name)
@@ -840,10 +841,10 @@ class GphlWorkflow(HardwareObject, object):
         centre_before_scan = parameters.pop("centre_before_scan", False)
         gphl_workflow_model.set_centre_before_sweep(centre_before_sweep)
         gphl_workflow_model.set_centre_before_scan(centre_before_scan)
+        logging.getLogger("HWR").debug(', '.join(str(x) for x in ('@~@~ CENTER', centre_at_start, centring_snapshots, centre_before_sweep, centre_before_scan, transcal_parameters, recen_parameters)))
         if not (
             centre_before_sweep
             or centre_before_scan
-            or centre_at_start
             or transcal_parameters
         ):
             centre_at_start = True
@@ -859,7 +860,8 @@ class GphlWorkflow(HardwareObject, object):
             translation = sweepSetting.translation
             initial_settings = sweep.get_initial_settings()
 
-            if translation is not None:
+            if translation is not None and gphl_workflow_model.lattice_selected:
+                logging.getLogger("HWR").debug("@~@~ translation %s" % translation)
                 # We already have a centring passed in (from stratcal, in practice)
                 if centre_at_start:
                     qe = self.enqueue_sample_centring(motor_settings=initial_settings)
@@ -868,6 +870,7 @@ class GphlWorkflow(HardwareObject, object):
                     )
 
             elif recen_parameters:
+                logging.getLogger("HWR").debug("@~@~ recen_params %s" % recen_parameters)
                 # We have parameters for recentring (from previous orientation)
                 okp = tuple(initial_settings[x] for x in self.rotation_axis_roles)
                 dd0 = self.calculate_recentring(okp, **recen_parameters)
@@ -895,6 +898,7 @@ class GphlWorkflow(HardwareObject, object):
 
             else:
                 # No centring or recentring info
+                logging.getLogger("HWR").debug("@~@~ else %s" % transcal_parameters)
                 if transcal_parameters:
                     # We can make recentring parameters.
                     # Centre now regardless and use parametters for successive sweeps
@@ -903,6 +907,8 @@ class GphlWorkflow(HardwareObject, object):
                     translation = self.execute_sample_centring(
                         qe, sweepSetting, requestedRotationId
                     )
+                    logging.getLogger("HWR").debug("@~@~ DONE sampe_centring %s" % translation)
+
                     if centring_snapshots:
                         dd0 = dict(
                             (x, initial_settings[x]) for x in self.rotation_axis_roles
@@ -1125,6 +1131,7 @@ class GphlWorkflow(HardwareObject, object):
         data_collections = []
         snapshot_counts = dict()
         found_orientations = set()
+        first_time = True
         for scan in collection_proposal.scans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
@@ -1149,12 +1156,19 @@ class GphlWorkflow(HardwareObject, object):
             # acq_parameters.overlap = overlap
             acq_parameters.exp_time = scan.exposure.time
             acq_parameters.num_passes = 1
-            acq_parameters.detdistance = sweep.detectorSetting.axisSettings.get(
-                "Distance"
-            )
-            acq_parameters.resolution = 0.0  # Use detector distance
-            acq_parameters.energy = ConvertUtils.H_OVER_E / sweep.beamSetting.wavelength
-            acq_parameters.transmission = scan.exposure.transmission * 100
+            if first_time:
+                first_time = False
+                acq_parameters.detdistance = sweep.detectorSetting.axisSettings.get(
+                    "Distance"
+                )
+                acq_parameters.resolution = 0.0  # Use detector distance
+                acq_parameters.energy = ConvertUtils.H_OVER_E / sweep.beamSetting.wavelength
+                acq_parameters.transmission = scan.exposure.transmission * 100
+            else:
+                acq_parameters.detdistance = 0.0
+                acq_parameters.resolution = 0.0
+                acq_parameters.energy = 0.0
+                acq_parameters.transmission = 0.0
             # acq_parameters.shutterless = self._has_shutterless()
             # acq_parameters.detector_mode = self._get_roi_modes()
             acq_parameters.inverse_beam = False
