@@ -1881,7 +1881,10 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'motors': centred_pos.as_dict() if centred_pos is not None else {}}
     ]
              
-    # Remove if escplicitly set to None, to avoid having them set when not needed
+    # NBNB HACK. These start life as default values, and you do NOT want to keep
+    # resetting the beamline to the current value,
+    # as this causes unnecessary hardware activities
+    # So remove them altogether if the value is (was excplicitly set to)  None or 0
     dd = result[0]
     for tag in ('detdistance', 'energy', 'transmission'):
         if tag in dd and not dd[tag]:

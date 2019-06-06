@@ -176,8 +176,12 @@ class CollectEmulator(CollectMockup):
         # get resolution limit and detector distance
         detector_distance = data_collect_parameters.get("detdistance", 0.0)
         if not detector_distance:
-            resolution = data_collect_parameters["resolution"]["upper"]
-            self.set_resolution(resolution)
+            dd = data_collect_parameters.get("resolution")
+            # resolution may not be set - if so you should take the current value
+            if dd:
+                resolution = dd.get("upper")
+                if resolution:
+                    self.set_resolution(resolution)
             detector_distance = self.get_detector_distance()
         # Add sweeps
         sweeps = []
@@ -185,7 +189,8 @@ class CollectEmulator(CollectMockup):
             motors = data_collect_parameters["motors"]
             sweep = OrderedDict()
 
-            sweep["lambda"] = ConvertUtils.H_OVER_E / data_collect_parameters["energy"]
+            energy = data_collect_parameters.get("energy") or api.energy.get_value()
+            sweep["lambda"] = ConvertUtils.H_OVER_E / energy
             sweep["res_limit"] = setup_data["res_limit_def"]
             sweep["exposure"] = osc["exposure_time"]
             ll0 = api.gphl_workflow.translation_axis_roles

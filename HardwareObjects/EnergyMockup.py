@@ -36,6 +36,8 @@ class EnergyMockup(Equipment):
    def getCurrentEnergy(self):
        return self.energy_value
 
+   get_value = getCurrentEnergy
+
    def getCurrentWavelength(self):
        current_en = self.getCurrentEnergy()
        if current_en is not None:
