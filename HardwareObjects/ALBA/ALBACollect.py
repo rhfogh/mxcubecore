@@ -96,6 +96,8 @@ class ALBACollect(AbstractCollect):
 
         self.omega_init_pos = None
 
+        self.bypass_shutters = False
+
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.ready_event = gevent.event.Event()
@@ -159,6 +161,10 @@ class ALBACollect(AbstractCollect):
 
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True, ))
+
+        self.bypass_shutters = bool(os.environ.get('MXCUBE_NO_SHUTTERS'))
+        if self.bypass_shutters:
+            self.logger.warning("Starting MXCuBE BYPASSING the SHUTTERS")
 
     def data_collection_hook(self):
         """Main collection hook
@@ -313,15 +319,15 @@ class ALBACollect(AbstractCollect):
         self.check_directory(basedir)
 
         # check fast shutter closed. others opened
-        shutok = self.check_shutters()
 
-        if not shutok:
-            self.logger.error("Shutters are NOT READY")
-            return False
+        if self.bypass_shutters:
+            self.logger.debug("Shutters BYPASSED")
         else:
-            self.logger.debug("Shutters are READY")
-
-        shutok = True  # DELETE THIS AFTER TESTS
+            if not self.check_shutters():
+                self.logger.error("Shutters NOT READY")
+                return False
+            else:
+                self.logger.debug("Shutters READY")
 
         gevent.sleep(1)
         self.logger.info(
