@@ -228,40 +228,52 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.chan_threshold_gain.setValue(value)
 
     def _set_energy_threshold(self):
-        beamline_energy = self._get_beamline_energy()
-        energy = self.get_energy_threshold()
-        threshold = self.get_threshold()
-        threshold_gain = self.get_threshold_gain()
-        cam_state = self.get_cam_state()
+        try:
+            beamline_energy = self._get_beamline_energy()
+            energy = self.get_energy_threshold()
+            threshold = self.get_threshold()
+            threshold_gain = self.get_threshold_gain()
+            cam_state = self.get_cam_state()
 
-        self.logger.debug("beamline energy: %s" % beamline_energy)
-        self.logger.debug("energy_threhold: %s" % energy)
-        self.logger.debug("current threshold gain: %s" % threshold_gain)
+            self.logger.debug("beamline energy: %s" % beamline_energy)
+            self.logger.debug("energy_threshold: %s" % energy)
+            self.logger.debug("current threshold gain: %s" % threshold_gain)
 
-        if round(beamline_energy, 6) < 7.538:
-            beamline_energy = 7.538
+            self.chan_energy_threshold.setValue(beamline_energy)
+            logging.getLogger("user_level_log").info(
+                "Setting detector energy_threshold: %s" % beamline_energy)
+            # wait until detector is configured
+            # Wait for 3 secs to let time for iState to change
+            time.sleep(3)
+            if not self.wait_standby():
+                raise RuntimeError("Detector could not be configured!")
 
-        kev_diff = abs(energy - beamline_energy)
-
-        if kev_diff > 1.2 or beamline_energy > 10.0:
-            if cam_state == 'STANDBY':
-                if beamline_energy > 10.0:
-                    if threshold_gain != 'LOW':
-                        self.set_threshold_gain('LOW')
-                        self.logger.debug(
-                            "Setting threshold_gain to LOW for energy %s > 10keV" % str(round(kev_diff, 4)))
-                else:
-                    self.set_energy_threshold(beamline_energy)
-                    self.logger.debug(
-                        "Setting detector energy_threshold: %s" % beamline_energy)
-                # wait until detector is configured
-                # Wait for 3 secs to let time for change
-                time.sleep(3)
-                if not self.wait_standby():
-                    raise RuntimeError("Detector could not be configured!")
-            else:
-                msg = "Cannot set energy threshold, detector not in STANDBY"
-                raise RuntimeError(msg)
+#            if round(beamline_energy, 6) < 7.538:
+#                beamline_energy = 7.538
+#
+#            kev_diff = abs(energy - beamline_energy)
+#
+#            if kev_diff > 1.2 or beamline_energy > 10.0:
+#                if cam_state == 'STANDBY':
+#                    if beamline_energy > 10.0:
+#                        if threshold_gain != 'LOW':
+#                            self.set_threshold_gain('LOW')
+#                            self.logger.debug(
+#                                "Setting threshold_gain to LOW for energy %s > 10keV" % str(round(kev_diff, 4)))
+#                    else:
+#                        self.chan_energy_threshold = beamline_energy
+#                        self.logger.debug(
+#                            "Setting detector energy_threshold: %s" % beamline_energy)
+#                    # wait until detector is configured
+#                    # Wait for 3 secs to let time for change
+#                    time.sleep(3)
+#                    if not self.wait_standby():
+#                        raise RuntimeError("Detector could not be configured!")
+#                else:
+#                    msg = "Cannot set energy threshold, detector not in STANDBY"
+#                    raise RuntimeError(msg)
+        except Exception as e:
+            self.logger.error("Exception when setting threshold to pilatus: %s" % str(e))
 
     def get_latency_time(self):
         return self.chan_latency_time.getValue()
@@ -274,6 +286,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
                 self.logger.debug("timeout waiting for Pilatus to be on STANDBY")
                 return False
             time.sleep(1)
+            self.logger.debug("Detector is %s" % self.get_cam_state())
         return True
 
     def prepare_acquisition(self, dcpars):
