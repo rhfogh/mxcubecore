@@ -239,14 +239,17 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             self.logger.debug("energy_threshold: %s" % energy)
             self.logger.debug("current threshold gain: %s" % threshold_gain)
 
-            self.chan_energy_threshold.setValue(beamline_energy)
-            logging.getLogger("user_level_log").info(
-                "Setting detector energy_threshold: %s" % beamline_energy)
-            # wait until detector is configured
-            # Wait for 3 secs to let time for iState to change
-            time.sleep(3)
-            if not self.wait_standby():
-                raise RuntimeError("Detector could not be configured!")
+            if abs(energy - beamline_energy) > 1.2:
+                self.chan_energy_threshold.setValue(beamline_energy)
+                logging.getLogger("user_level_log").info(
+                    "Setting detector energy_threshold: %s" % beamline_energy)
+                # wait until detector is configured
+                # Wait for 3 secs to let time for iState to change
+                time.sleep(3)
+                if not self.wait_standby():
+                    raise RuntimeError("Detector could not be configured!")
+            else:
+                logging.getLogger("user_level_log").info("Detector energy threshold is %s" % energy)
 
 #            if round(beamline_energy, 6) < 7.538:
 #                beamline_energy = 7.538
