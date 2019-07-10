@@ -889,6 +889,11 @@ class GphlWorkflow(HardwareObject, object):
 
                 # Get initial settings
                 settings = dict(sweepSetting.axisSettings)
+                # HACK - for some reason there is no value for 'phi' in the dict
+                # TODO fix this
+                scan_axis = sweepSetting.scanAxis
+                if scan_axis not in settings:
+                    settings[scan_axis] = 0.0
                 known_translation = None
                 if gphl_workflow_model.lattice_selected:
                     # We only trust translation settings for data collection,
