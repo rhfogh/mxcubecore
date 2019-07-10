@@ -73,6 +73,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
         self.chan_latency_time = None
 
+        self.chan_energy_threshold = None
         self.chan_threshold = None
         self.chan_threshold_gain = None
         self.chan_cam_state = None
@@ -113,6 +114,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
         self.chan_latency_time = self.getChannelObject('latency_time')
 
+        self.chan_energy_threshold = self.getChannelObject('energy_threshold')
         self.chan_threshold = self.getChannelObject('threshold')
         self.chan_threshold_gain = self.getChannelObject('threshold_gain')
         self.chan_cam_state = self.getChannelObject('cam_state')
@@ -161,11 +163,17 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         else:
             return self.default_distance_limits
 
+    def get_energy_threshold(self):
+        return self.chan_energy_threshold.getValue()
+
     def get_threshold(self):
         return self.chan_threshold.getValue()
 
     def get_threshold_gain(self):
         return self.chan_threshold_gain.getValue()
+
+    def get_cam_state(self):
+        return self.chan_cam_state.getValue()
 
     def has_shutterless(self):
         """Return True if has shutterless mode"""
@@ -179,7 +187,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             beam_x = self.chan_beam_x.getValue()
             beam_y = self.chan_beam_y.getValue()
         except BaseException as e:
-            logging.getLogger('HWR').debug("Cannot load beam channels\n%s" % str(e))
+            self.logger.debug("Cannot load beam channels\n%s" % str(e))
         return beam_x, beam_y
 
     def get_manufacturer(self):
@@ -207,42 +215,86 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
     def get_pixel_size(self):
         return self.getProperty("px"), self.getProperty("py")
 
-    def set_energy_threshold(self):
+    def _get_beamline_energy(self):
         try:
-            current_energy = self.chan_eugap.getValue()
+            beamline_energy = self.chan_eugap.getValue()
         except Exception as e:
-            logging.getLogger('HWR').debug("Error getting energy\n%s" % str(e))
-            current_energy = 12.6
-            logging.getLogger('HWR').debug("Setting default energy = %s" %
-                                           current_energy)
+            self.logger.debug("Error getting energy\n%s" % str(e))
+            beamline_energy = 12.6
+            self.logger.debug("Setting default energy = %s" % beamline_energy)
+        return beamline_energy
 
-        det_energy = self.get_threshold()
+    def set_threshold_gain(self, value):
+        self.chan_threshold_gain.setValue(value)
 
-        if round(current_energy, 6) < 7.538:
-            current_energy = 7.538
+    def _set_energy_threshold(self):
+        try:
+            beamline_energy = self._get_beamline_energy()
+            energy = self.get_energy_threshold()
+            threshold = self.get_threshold()
+            threshold_gain = self.get_threshold_gain()
+            cam_state = self.get_cam_state()
 
-        kev_diff = abs(det_energy - current_energy)
+            self.logger.debug("beamline energy: %s" % beamline_energy)
+            self.logger.debug("energy_threshold: %s" % energy)
+            self.logger.debug("current threshold gain: %s" % threshold_gain)
 
-        if kev_diff > 1.2:
-            self.logger.debug("Setting detector energy_threshold: %s" %
-                                           current_energy)
+            if abs(energy - beamline_energy) > 1.2:
+                self.chan_energy_threshold.setValue(beamline_energy)
+                logging.getLogger("user_level_log").info(
+                    "Setting detector energy_threshold: %s" % beamline_energy)
+                # wait until detector is configured
+                # Wait for 3 secs to let time for iState to change
+                time.sleep(3)
+                if not self.wait_standby():
+                    raise RuntimeError("Detector could not be configured!")
+            else:
+                logging.getLogger("user_level_log").info("Detector energy threshold is %s" % energy)
+
+#            if round(beamline_energy, 6) < 7.538:
+#                beamline_energy = 7.538
+#
+#            kev_diff = abs(energy - beamline_energy)
+#
+#            if kev_diff > 1.2 or beamline_energy > 10.0:
+#                if cam_state == 'STANDBY':
+#                    if beamline_energy > 10.0:
+#                        if threshold_gain != 'LOW':
+#                            self.set_threshold_gain('LOW')
+#                            self.logger.debug(
+#                                "Setting threshold_gain to LOW for energy %s > 10keV" % str(round(kev_diff, 4)))
+#                    else:
+#                        self.chan_energy_threshold = beamline_energy
+#                        self.logger.debug(
+#                            "Setting detector energy_threshold: %s" % beamline_energy)
+#                    # wait until detector is configured
+#                    # Wait for 3 secs to let time for change
+#                    time.sleep(3)
+#                    if not self.wait_standby():
+#                        raise RuntimeError("Detector could not be configured!")
+#                else:
+#                    msg = "Cannot set energy threshold, detector not in STANDBY"
+#                    raise RuntimeError(msg)
+        except Exception as e:
+            self.logger.error("Exception when setting threshold to pilatus: %s" % str(e))
 
     def get_latency_time(self):
         return self.chan_latency_time.getValue()
 
     def wait_standby(self, timeout=300):
+        logging.getLogger("user_level_log").info("Waiting detector to be in STANDBY")
         t0 = time.time()
-        while self.chan_cam_state == 'STANDBY':
+        while self.get_cam_state() != 'STANDBY':
             if time.time() - t0 > timeout:
-                logging.getLogger('HWR').debug("timeout waiting for Pilatus to be on"
-                                               "STANDBY")
+                self.logger.debug("timeout waiting for Pilatus to be on STANDBY")
                 return False
-            time.sleep(0.1)
+            time.sleep(1)
+            self.logger.debug("Detector is %s" % self.get_cam_state())
         return True
 
     def prepare_acquisition(self, dcpars):
 
-        self.set_energy_threshold()
+        self._set_energy_threshold()
         latency_time = self.get_latency_time()
 
         osc_seq = dcpars['oscillation_sequence'][0]
@@ -309,7 +361,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         headers = list()
         for i, sa in enumerate(startangles_list):
             # header = "_array_data.header_convention PILATUS_1.2\n" \
-            header ="# Detector: PILATUS 6M, S/N 60-0108, Alba\n" \
+            header = "# Detector: PILATUS 6M, S/N 60-0108, Alba\n" \
                 "# %s\n" \
                 "# Pixel_size 172e-6 m x 172e-6 m\n" \
                 "# Silicon sensor, thickness 0.000320 m\n" % time.strftime(
