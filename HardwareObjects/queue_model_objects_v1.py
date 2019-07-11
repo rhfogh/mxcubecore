@@ -1607,6 +1607,7 @@ class GphlWorkflow(TaskNode):
         self.path_template = PathTemplate()
         self._name = str()
         self._type = str()
+        self._characterisation_strategy = str()
         self._interleave_order = str()
         self._number = 0
         self._beam_energies = OrderedDict()
@@ -1617,6 +1618,11 @@ class GphlWorkflow(TaskNode):
         self._cell_parameters = None
         self._snapshot_count = None
         self._centre_before_sweep = None
+        self._centre_before_scan = None
+
+        self._dose_budget = None
+        self._characterisation_budget_fraction = 1.0
+        self._relative_rad_sensitivity = 1.0
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1674,6 +1680,13 @@ class GphlWorkflow(TaskNode):
     def set_space_group(self, value):
         self._space_group = value
 
+    # Characterisation strategy.
+    def get_characterisation_strategy(self):
+        return self._characterisation_strategy
+
+    def set_characterisation_strategy(self, value):
+        self._characterisation_strategy = value
+
     # Crystal system.
     def get_crystal_system(self):
         return self._crystal_system
@@ -1685,6 +1698,27 @@ class GphlWorkflow(TaskNode):
         return self._point_group
     def set_point_group(self, value):
         self._point_group = value
+
+    # Dose budget (MGy, float).
+    def get_dose_budget(self):
+        return self._dose_budget
+
+    def set_dose_budget(self, value):
+        self._dose_budget = value
+
+    # Fraction of dose budget intended for characterisation.
+    def get_characterisation_budget_fraction(self):
+        return self._characterisation_budget_fraction
+
+    def set_characterisation_budget_fraction(self, value):
+        self._characterisation_budget_fraction = value
+
+    # Radiation sensitivity of crystal, relative to a 'standard crystal'.
+    def get_relative_rad_sensitivity(self):
+        return self._relative_rad_sensitivity
+
+    def set_relative_rad_sensitivity(self, value):
+        self._relative_rad_sensitivity = value
 
     # Cell parameters - sequence of six floats (a,b,c,alpha,beta,gamma)
     def get_cell_parameters(self):
@@ -1710,6 +1744,12 @@ class GphlWorkflow(TaskNode):
         return self._centre_before_sweep
     def set_centre_before_sweep(self, value):
         self._centre_before_sweep = bool(value)
+
+    # (Re)centre before each scan?.
+    def get_centre_before_scan(self):
+        return self._centre_before_scan
+    def set_centre_before_scan(self, value):
+        self._centre_before_scan = bool(value)
 
     def get_path_template(self):
         return self.path_template
@@ -1783,7 +1823,7 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
     proc_params = data_collection.processing_parameters
 
     resolution = acq_params.resolution
-    return [{'comment': '',
+    result = [{'comment': '',
              #'helical': 0,
              #'motors': {},
              'take_video': acq_params.take_video,
@@ -1813,9 +1853,8 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'residues':  proc_params.num_residues,
              'dark': acq_params.take_dark_current,
              #'scan4d': 0,
-             # Next two are reset below:
-             'resolution': {'upper': resolution or 0.0},
-             'detdistance': acq_params.detdistance,
+            "resolution": {"upper": acq_params.resolution or 0.0},
+            "detdistance": acq_params.detdistance,
              'transmission': acq_params.transmission,
              'energy': acq_params.energy,
              #'input_files': 1,
@@ -1839,8 +1878,21 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'experiment_type': queue_model_enumerables.\
              EXPERIMENT_TYPE_STR[data_collection.experiment_type],
              'skip_images': acq_params.skip_existing_images,
-             'motors': centred_pos.as_dict() if centred_pos is not None else {}}]
-
+             'motors': centred_pos.as_dict() if centred_pos is not None else {}}
+    ]
+             
+    # NBNB HACK. These start life as default values, and you do NOT want to keep
+    # resetting the beamline to the current value,
+    # as this causes unnecessary hardware activities
+    # So remove them altogether if the value is (was excplicitly set to)  None or 0
+    dd = result[0]
+    for tag in ('detdistance', 'energy', 'transmission'):
+        if tag in dd and not dd[tag]:
+            del dd[tag]
+    resolution = dd.get('resolution')
+    if resolution is not None and not resolution.get('upper'):
+        del dd['resolution']
+    return result
 
 def dc_from_edna_output(edna_result, reference_image_collection,
                         dcg_model, sample_data_model, beamline_setup_hwobj,

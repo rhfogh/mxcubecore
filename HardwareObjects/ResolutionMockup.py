@@ -87,6 +87,8 @@ class ResolutionMockup(BaseHardwareObjects.Equipment):
             self.recalculateResolution()
         return self.currentResolution
 
+    get_position = getPosition
+
     def get_value(self):
         return self.getPosition()
 

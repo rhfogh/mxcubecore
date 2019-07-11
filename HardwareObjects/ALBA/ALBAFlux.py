@@ -30,18 +30,20 @@ from __future__ import print_function
 
 import logging
 
-from HardwareRepository.BaseHardwareObjects import Device
+from HardwareRepository.HardwareObjects import AbstractFlux
+#from HardwareRepository.BaseHardwareObjects import Device
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
 __category__ = "General"
 
 
-class ALBAFlux(Device):
+class ALBAFlux(AbstractFlux.AbstractFlux):
 
     def __init__(self, *args):
         self.logger = logging.getLogger("HWR.ALBAFlux")
-        Device.__init__(self, *args)
+        #Device.__init__(self, *args)
+        AbstractFlux.AbstractFlux.__init__(self, *args)
         self.current_chn = None
         self.transmission_chn = None
         self.last_flux_chn = None
@@ -76,6 +78,19 @@ class ALBAFlux(Device):
         current = self.current_chn.getValue()
         last_current = (last_flux_norm / 250.) * current
         return last_current
+
+    def get_dose_rate(self, energy=None):
+        """
+        Get dose rate in kGy/s for a standard crystal at current settings.
+        Assumes Gaussian beam with beamsize giving teh FWHH in both dimensions.
+
+        :param energy: float Energy for calculation of dose rate, in keV.
+        :return: float
+        """
+
+        # The factor 1.25 converts from the average value over the beamsize
+        # to an estimated flux density at the peak.
+        return 1.25 * AbstractFlux.AbstractFlux.get_dose_rate(self, energy=energy)
 
 
 def test_hwo(hwo):
