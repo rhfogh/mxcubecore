@@ -995,20 +995,24 @@ class GeometricStrategy(IdentifiedElement, Payload):
         return self._sweeps
 
     def get_ordered_sweeps(self):
-        """Get sweeps in acquisition order.
+        """Get sweeps in desired acquisition order.
 
-        WARNING we do not have the necessary information.
-        So we sort in increasing order by angles, in alphabetical name order,
-        (in pracite, 'kappa', 'kappa_phi', 'phi')
-        HORRIBLE HACK, but as it happens this will give
-        at least the first one correct mostly
-        and anyway is the best approximation we have
+        TEMPORARY HORRIBLE HACK
+
+        We need the order to be set in in stratcal and persisted through the workflow.
+        In the meantime this gives a standard acquisition order we can use, soprting by
+        1) sweep width,
+        2) angles, in alphabetical name order, in practice, 'kappa', 'kappa_phi', 'phi'
+
+        The sorting will (tend to) give aligned sweeps before unaligned,
+        and small kappa values before large ones
 
         TODO get this right, once the workflow allows"""
         ll0 = []
         for sweep in self._sweeps:
             dd0 = sweep.get_initial_settings()
-            ll0.append((tuple(dd0[x] for x in sorted(dd0)), sweep))
+            tpl = (sweep.width,) + tuple(dd0[x] for x in sorted(dd0))
+            ll0.append((tpl, sweep))
         #
         return list(tt0[1] for tt0 in sorted(ll0))
 
@@ -1037,6 +1041,38 @@ class CollectionProposal(IdentifiedElement, Payload):
     @property
     def scans(self):
         return self._scans
+
+
+    def get_ordered_scans(self):
+        """Get scans in desired acquisition order.
+
+        TEMPORARY HORRIBLE HACK
+
+        We need the order to reflect the input from stratcal
+        In the meantime this gives a standard acquisition order we can use, sorting by
+        1) sweep width,
+        2) angles, in alphabetical name order, in practice, 'kappa', 'kappa_phi', 'phi'
+
+        The sorting will (tend to) give aligned sweeps before unaligned,
+        and small kappa values before large ones,
+        without messing up interleaving
+
+        TODO get this right, once the workflow allows"""
+
+        # NB, the two-step sorting preserves the order of scans with the same sort key
+        # E.g. different wavelengths in wavelength interleaving.
+        sweepkeys = {}
+        for sweep in self.strategy.sweeps:
+            dd0 = sweep.get_initial_settings()
+            sweepkeys[sweep] =  (
+                (sweep.width,) + tuple(tpl[1] for tpl in sorted(dd0.items()))
+            )
+
+        ll0 = []
+        for scan in self._scans:
+            ll0.append((sweepkeys[scan.sweep], scan))
+        #
+        return list(tt0[1] for tt0 in sorted(ll0))
 
 
 class PriorInformation(Payload):

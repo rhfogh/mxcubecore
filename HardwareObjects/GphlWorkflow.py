@@ -1126,7 +1126,7 @@ class GphlWorkflow(HardwareObject, object):
         data_collections = []
         snapshot_counts = dict()
         found_orientations = set()
-        for scan in collection_proposal.scans:
+        for scan in collection_proposal.get_ordered_scans():
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
 
