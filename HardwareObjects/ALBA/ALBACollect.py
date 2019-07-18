@@ -742,11 +742,12 @@ class ALBACollect(AbstractCollect):
 
     def set_energy(self, value):
         """
-        Descript. :
+        Descript. : This is Synchronous to be able to calculate the resolution @ ALBA
         """
         #   program energy
         #   prepare detector for diffraction
         self.energy_hwobj.move_energy(value)
+        self.energy_hwobj.wait_move_energy_done()
 
     def set_wavelength(self, value):
         """
@@ -755,6 +756,7 @@ class ALBACollect(AbstractCollect):
         #   program energy
         #   prepare detector for diffraction
         self.energy_hwobj.move_wavelength(value)
+        self.energy_hwobj.wait_move_wavelength_done()
 
     def get_energy(self):
         return self.energy_hwobj.get_energy()
@@ -769,6 +771,8 @@ class ALBACollect(AbstractCollect):
         """
         Descript. : resolution is a motor in out system
         """
+        current_resolution = self.resolution_hwobj.getPosition()
+        self.logger.debug("Current resolution is %s, moving to %s" % (current_resolution, value))
         self.resolution_hwobj.move(value)
 
     def move_detector(self, value):

@@ -106,6 +106,9 @@ class ALBAEnergy(Device):
     def move_wavelength(self, value):
         self.wavelength_hwobj.move(value)
 
+    def wait_move_wavelength_done(self):
+        self.wavelenght_hwobj.wait_end_of_move()
+    
     def get_energy_limits(self):
         return self.energy_hwobj.getLimits()
 
