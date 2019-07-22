@@ -23,6 +23,7 @@ from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
 import uuid
+import operator
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -994,24 +995,18 @@ class GeometricStrategy(IdentifiedElement, Payload):
     def sweeps(self):
         return self._sweeps
 
-    def get_ordered_sweeps(self):
-        """Get sweeps in desired acquisition order.
+    @property
+    def orderedSweeps(self):
+        """Get sweeps in acquisition order.
 
-        TEMPORARY HORRIBLE HACK
-
-        We need the order to be set in in stratcal and persisted through the workflow.
-        In the meantime this gives a standard acquisition order we can use, soprting by
-        1) sweep width,
-        2) angles, in alphabetical name order, in practice, 'kappa', 'kappa_phi', 'phi'
-
-        The sorting will (tend to) give aligned sweeps before unaligned,
-        and small kappa values before large ones
-
-        TODO get this right, once the workflow allows"""
+        NB scans from sweeps are acquired in sweep group order.
+        Within the same sweep group the order is ARBITRARY,
+        since these are anyway interleaved.
+        This function sorts by setting angles, just to be dete4rministic"""
         ll0 = []
         for sweep in self._sweeps:
             dd0 = sweep.get_initial_settings()
-            tpl = (sweep.width,) + tuple(dd0[x] for x in sorted(dd0))
+            tpl = (sweep.sweepGroup,) + tuple(dd0[x] for x in sorted(dd0))
             ll0.append((tpl, sweep))
         #
         return list(tt0[1] for tt0 in sorted(ll0))
@@ -1042,37 +1037,18 @@ class CollectionProposal(IdentifiedElement, Payload):
     def scans(self):
         return self._scans
 
-
-    def get_ordered_scans(self):
+    @property
+    def orderedScans(self):
         """Get scans in desired acquisition order.
 
-        TEMPORARY HORRIBLE HACK
+        This function keeps the scan order within each sweep, but reorders the sweeps
 
-        We need the order to reflect the input from stratcal
-        In the meantime this gives a standard acquisition order we can use, sorting by
-        1) sweep width,
-        2) angles, in alphabetical name order, in practice, 'kappa', 'kappa_phi', 'phi'
-
-        The sorting will (tend to) give aligned sweeps before unaligned,
-        and small kappa values before large ones,
-        without messing up interleaving
+        NBNB TEMPORARY HACK
+         Eventually the workflow will provide the right order and this function
+        can be retired.
 
         TODO get this right, once the workflow allows"""
-
-        # NB, the two-step sorting preserves the order of scans with the same sort key
-        # E.g. different wavelengths in wavelength interleaving.
-        sweepkeys = {}
-        for sweep in self.strategy.sweeps:
-            dd0 = sweep.get_initial_settings()
-            sweepkeys[sweep] =  (
-                (sweep.width,) + tuple(tpl[1] for tpl in sorted(dd0.items()))
-            )
-
-        ll0 = []
-        for scan in self._scans:
-            ll0.append((sweepkeys[scan.sweep], scan))
-        #
-        return list(tt0[1] for tt0 in sorted(ll0))
+        return sorted(self._scans, key=operator.attrgetter("sweep.sweepGroup"))
 
 
 class PriorInformation(Payload):

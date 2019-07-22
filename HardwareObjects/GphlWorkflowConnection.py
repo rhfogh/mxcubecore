@@ -347,6 +347,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         # These env variables are needed in some cases for wrapper scripts
         # Specifically for the stratcal wrapper.
         envs["GPHL_INSTALLATION"] = self.software_paths["GPHL_INSTALLATION"]
+        # Next is for running aP_wf_propcess. Necessary?
+        envs["autoPROC_home"] = self.software_paths["GPHL_INSTALLATION"]
         envs["BDG_home"] = self.software_paths["BDG_home"]
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs

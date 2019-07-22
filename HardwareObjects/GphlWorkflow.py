@@ -414,7 +414,7 @@ class GphlWorkflow(HardwareObject, object):
 
         orientations = OrderedDict()
         strategy_length = 0
-        for sweep in geometric_strategy.get_ordered_sweeps():
+        for sweep in geometric_strategy.orderedSweeps:
             strategy_length += sweep.width
             rotation_id = sweep.goniostatSweepSetting.id_
             sweeps = orientations.setdefault(rotation_id, [])
@@ -486,9 +486,7 @@ class GphlWorkflow(HardwareObject, object):
         default_image_width = float(allowed_widths[default_width_index])
         default_exposure = acq_parameters.exp_time
         exposure_limits = api.detector.get_exposure_time_limits()
-        experiment_time = (
-                total_strategy_length * default_exposure / default_image_width
-        )
+        experiment_time = total_strategy_length * default_exposure / default_image_width
         if std_dose_rate:
             transmission = 100.0 * dose_budget / (std_dose_rate * experiment_time)
             transmission = min(transmission, 100.0)
@@ -626,16 +624,14 @@ class GphlWorkflow(HardwareObject, object):
                     "decimals": 4,
                 }
             )
-        if self.getProperty("disable_energy_change", False):
+        if self.getProperty("starting_beamline_energy", "current") != "configured":
             # Use current energy and disallow changes
             ll0[0]["defaultValue"] = api.energy.getCurrentEnergy()
+        if self.getProperty("starting_beamline_energy", "current") == "frozen":
             ll0[0]["readOnly"] = True
         field_list.extend(ll0)
 
-        if (
-            data_model.lattice_selected
-            and data_model.get_interleave_order()
-        ):
+        if data_model.lattice_selected and data_model.get_interleave_order():
             # NB We do not want the wedgeWdth widget for Diffractcal
             field_list.append(
                 {
@@ -656,33 +652,32 @@ class GphlWorkflow(HardwareObject, object):
             or "calibration" in data_model.get_type().lower()
         ):
 
+            # Default to centre_before_scan if there is no interleaving
+            sweeps = geometric_strategy.sweeps
+            centre_before_scan = len(orientations) > 1 and not (
+                data_model.get_interleave_order()
+                or len(sweeps) > len(set(x.sweepGroup for x in sweeps))
+            )
+
             field_list.append(
                 {
                     "variableName": "centre_at_start",
                     "uiLabel": "(Re)centre crystal before acquisition start?",
                     "type": "boolean",
-                    "defaultValue": bool(self.getProperty("centre_at_start")),
+                    "defaultValue": not centre_before_scan,
                 }
             )
 
             if len(orientations) > 1:
                 field_list.append(
                     {
-                        "variableName": "centre_before_sweep",
-                        "uiLabel": "(Re)centre crystal when orientation changes?",
-                        "type": "boolean",
-                        "defaultValue": bool(self.getProperty("centre_before_sweep")),
-                    }
-                )
-            if data_model.get_interleave_order():
-                field_list.append(
-                    {
                         "variableName": "centre_before_scan",
                         "uiLabel": "(Re)centre crystal at the start of each scan?",
                         "type": "boolean",
-                        "defaultValue": bool(self.getProperty("centre_before_scan")),
+                        "defaultValue": centre_before_scan,
                     }
                 )
+
             if data_model.get_snapshot_count():
                 field_list.append(
                     {
@@ -740,12 +735,7 @@ class GphlWorkflow(HardwareObject, object):
             beam_energies[tag] = float(params.get(tag, 0))
         result["beam_energies"] = beam_energies
 
-        for tag in (
-            "centre_before_sweep",
-            "centre_at_start",
-            "centre_before_scan",
-            "centring_snapshots",
-        ):
+        for tag in ("centre_at_start", "centre_before_scan", "centring_snapshots"):
             # This defaults to False if parameter is not queried
             result[tag] = bool(params.get(tag))
 
@@ -768,10 +758,10 @@ class GphlWorkflow(HardwareObject, object):
             # Data collection TODO: Use workflow info to distinguish
             new_dcg_name = "GPhL Data Collection"
         else:
-            strategy_type = (
-                gphl_workflow_model.get_workflow_parameters()["strategy_type"]
-            )
-            if strategy_type.startswith('diffractcal'):
+            strategy_type = gphl_workflow_model.get_workflow_parameters()[
+                "strategy_type"
+            ]
+            if strategy_type.startswith("diffractcal"):
                 new_dcg_name = "GPhL DiffractCal"
             else:
                 new_dcg_name = "GPhL Characterisation"
@@ -788,7 +778,10 @@ class GphlWorkflow(HardwareObject, object):
         # Preset energy, detector setting and resolution before opening UI
         # Preset energy
         beamSetting = geometric_strategy.defaultBeamSetting
-        if beamSetting and not self.getProperty("disable_energy_change"):
+        if (
+            beamSetting
+            and self.getProperty("starting_beamline_energy", "current") == "configured"
+        ):
             # First set beam_energy and give it time to settle,
             # so detector distance will trigger correct resolution later
             default_energy = ConvertUtils.H_OVER_E / beamSetting.wavelength
@@ -862,7 +855,6 @@ class GphlWorkflow(HardwareObject, object):
         api.transmission.set_value(100 * transmission)
         parameters["transmission"] = 0.01 * api.transmission.get_value()
 
-
         # Set up centring and recentring
         goniostatTranslations = []
         recen_parameters = {}
@@ -872,20 +864,19 @@ class GphlWorkflow(HardwareObject, object):
         # Decide whether to centre before individual sweeps
         centre_at_start = parameters.pop("centre_at_start", False)
         centring_snapshots = parameters.pop("centring_snapshots", False)
-        centre_before_sweep = parameters.pop("centre_before_sweep", False)
         centre_before_scan = parameters.pop("centre_before_scan", False)
-        gphl_workflow_model.set_centre_before_sweep(centre_before_sweep)
         gphl_workflow_model.set_centre_before_scan(centre_before_scan)
-        if not (centre_before_sweep or centre_before_scan or transcal_parameters):
+        if not (centre_before_scan or transcal_parameters):
             centre_at_start = True
 
-
         found_sweep_setting_ids = set()
-        for sweep in geometric_strategy.get_ordered_sweeps():
+        sweeps = geometric_strategy.orderedSweeps
+        if not centre_at_start:
+            sweeps.reverse()
+        for sweep in sweeps:
             sweepSetting = sweep.goniostatSweepSetting
             if sweepSetting.id_ not in found_sweep_setting_ids:
                 # Handle centring on first appearance of SweepSetting
-                found_sweep_setting_ids.add(sweepSetting.id_)
 
                 # Get initial settings
                 settings = dict(sweepSetting.axisSettings)
@@ -939,7 +930,7 @@ class GphlWorkflow(HardwareObject, object):
                             okp = tuple(
                                 int(settings[x]) for x in self.rotation_axis_roles
                             )
-                            self.collect_centring_snapshots('%s_%s_%s' % okp)
+                            self.collect_centring_snapshots("%s_%s_%s" % okp)
                         goniostatTranslations.append(translation)
                         recen_parameters["ref_xyz"] = tuple(
                             translation.axisSettings[x]
@@ -955,9 +946,12 @@ class GphlWorkflow(HardwareObject, object):
                 else:
                     # Either no transcal parameters so no recentring
                     # Or rely on pre-existing centring from stratcal (in practice)
-                    if centre_at_start:
+                    if centre_at_start or (
+                        centre_before_scan and not found_sweep_setting_ids
+                    ):
                         qe = self.enqueue_sample_centring(motor_settings=settings)
                         queue_entries.append((qe, sweepSetting, settings))
+                found_sweep_setting_ids.add(sweepSetting.id_)
 
         for qe, goniostatRotation, settings in queue_entries:
             goniostatTranslations.append(
@@ -965,7 +959,7 @@ class GphlWorkflow(HardwareObject, object):
             )
             if centring_snapshots:
                 okp = tuple(int(settings[x]) for x in self.rotation_axis_roles)
-                self.collect_centring_snapshots('%s_%s_%s' % okp)
+                self.collect_centring_snapshots("%s_%s_%s" % okp)
 
         # Return SampleCentred message
         sampleCentred = GphlMessages.SampleCentred(
@@ -1120,13 +1114,10 @@ class GphlWorkflow(HardwareObject, object):
             # Do not make snapshots during chareacterisation
             snapshot_count = 0
         centre_before_scan = bool(gphl_workflow_model.get_centre_before_scan())
-        enqueue_centring = (
-            bool(gphl_workflow_model.get_centre_before_sweep()) or centre_before_scan
-        )
         data_collections = []
         snapshot_counts = dict()
         found_orientations = set()
-        for scan in collection_proposal.get_ordered_scans():
+        for scan in collection_proposal.orderedScans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
 
@@ -1206,10 +1197,9 @@ class GphlWorkflow(HardwareObject, object):
             path_template.num_files = acq_parameters.num_images
 
             goniostatRotation = sweep.goniostatSweepSetting
-            if (
-                enqueue_centring and goniostatRotation.id_ not in found_orientations
-            ) or centre_before_scan:
+            if centre_before_scan and data_collections:
                 # Put centring on queue and collect using the resulting position
+                # - except for the first scan, where you will have centred already.
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
                 self.enqueue_sample_centring(
@@ -1525,7 +1515,7 @@ class GphlWorkflow(HardwareObject, object):
 
         return centring_entry
 
-    def collect_centring_snapshots(self, file_name_prefix='snapshot'):
+    def collect_centring_snapshots(self, file_name_prefix="snapshot"):
         """
 
         :param file_prefix: str
@@ -1551,9 +1541,10 @@ class GphlWorkflow(HardwareObject, object):
                 if snapshot_index:
                     api.diffractometer.move_omega_relative(90)
                     summed_angle += 90
-                snapshot_filename = (
-                    filename_template
-                    % (file_name_prefix, timestamp, snapshot_index + 1)
+                snapshot_filename = filename_template % (
+                    file_name_prefix,
+                    timestamp,
+                    snapshot_index + 1,
                 )
                 snapshot_filename = os.path.join(snapshot_directory, snapshot_filename)
                 logging.getLogger("HWR").debug(

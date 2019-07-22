@@ -1617,7 +1617,6 @@ class GphlWorkflow(TaskNode):
         self._point_group = None
         self._cell_parameters = None
         self._snapshot_count = None
-        self._centre_before_sweep = None
         self._centre_before_scan = None
 
         self._dose_budget = None
@@ -1738,12 +1737,6 @@ class GphlWorkflow(TaskNode):
         return self._snapshot_count
     def set_snapshot_count(self, value):
         self._snapshot_count = value
-
-    # (Re)centre before each sweep?.
-    def get_centre_before_sweep(self):
-        return self._centre_before_sweep
-    def set_centre_before_sweep(self, value):
-        self._centre_before_sweep = bool(value)
 
     # (Re)centre before each scan?.
     def get_centre_before_scan(self):
