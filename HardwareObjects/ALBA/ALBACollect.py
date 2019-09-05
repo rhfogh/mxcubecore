@@ -42,6 +42,7 @@ import logging
 from HardwareRepository.TaskUtils import task
 from AbstractCollect import AbstractCollect
 from taurus.core.tango.enums import DevState
+from resolution import get_dettaby, get_resolution
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
@@ -767,12 +768,19 @@ class ALBACollect(AbstractCollect):
         """
         self.transmission_hwobj.set_value(value)
 
-    def set_resolution(self, value):
+    def set_resolution(self, value,  energy=None):
         """
         Descript. : resolution is a motor in out system
         """
         current_resolution = self.resolution_hwobj.getPosition()
         self.logger.debug("Current resolution is %s, moving to %s" % (current_resolution, value))
+
+        if energy:
+            # calculate the detector position to achieve the desired resolution
+            _det_pos = get_dettaby(value, energy=energy)
+            # calulate the corresponding resolution
+            value = get_resolution(_det_pos, energy=energy)
+
         self.resolution_hwobj.move(value)
 
     def move_detector(self, value):
