@@ -90,8 +90,10 @@ class InstanceServer(Procedure):
         
         try:
             os.unlink(lockfilename)
-        except:
-            pass
+            logging.getLogger().debug("unlink %s" % lockfilename)
+        except Exception as e:
+            logging.getLogger().debug("cannot unlink lockfilename %s" % str(e))
+            #pass
         self.emit('instanceInitializing', ())
         if self.isLocal():
             self.startServer()
@@ -194,7 +196,8 @@ class InstanceServer(Procedure):
     def reconnect(self,quiet=False):
         try:
             self.instanceClient = InstanceClient(self.serverHost,self.serverPort)
-        except:
+        except Exception as e:
+            logging.getLogger("HWR").error('InstanceServer: cannot connect to server\n%s' % str(e))
             self.instanceClient = None
             if not quiet:
               logging.getLogger("HWR").error('InstanceServer: cannot connect to server')
