@@ -601,10 +601,10 @@ class ALBACollect(AbstractCollect):
                     raise
 
     def collect_finished(self, green):
-        logging.info("Data collection finished")
+        self.logger.info("Data collection finished")
 
     def collect_failed(self, par):
-        logging.exception("Data collection failed")
+        self.logger.exception("Data collection failed")
         self.current_dc_parameters["status"] = 'failed'
         exc_type, exc_value, exc_tb = sys.exc_info()
         failed_msg = 'Data collection failed!\n%s' % exc_value
@@ -809,7 +809,7 @@ class ALBACollect(AbstractCollect):
             #         raise
 
         except Exception as e:
-            logging.exception("Could not create processing file directory\n%s" % str(e))
+            self.logger.exception("Could not create processing file directory\n%s" % str(e))
             return
 
         # save directory names in current_dc_parameters. They will later be used
