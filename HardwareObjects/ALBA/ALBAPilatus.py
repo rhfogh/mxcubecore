@@ -60,6 +60,8 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.cmd_reset_frame_headers = None
         self.cmd_set_image_header = None
 
+        self.cmd_set_threshold_gain = None
+
         self.chan_saving_mode = None
         self.chan_saving_prefix = None
         self.chan_saving_directory = None
@@ -73,9 +75,9 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
         self.chan_latency_time = None
 
-        self.chan_energy_threshold = None
+        self.chan_energy = None
         self.chan_threshold = None
-        self.chan_threshold_gain = None
+        self.chan_gain = None
         self.chan_cam_state = None
 
         self.chan_beam_x = None
@@ -100,6 +102,8 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.cmd_reset_frame_headers = self.getCommandObject('reset_frame_headers')
         self.cmd_set_image_header = self.getCommandObject('set_image_header')
 
+        self.cmd_set_threshold_gain = self.getCommandObject('set_threshold_gain')
+
         self.chan_saving_mode = self.getChannelObject('saving_mode')
         self.chan_saving_prefix = self.getChannelObject('saving_prefix')
         self.chan_saving_directory = self.getChannelObject('saving_directory')
@@ -114,9 +118,9 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
         self.chan_latency_time = self.getChannelObject('latency_time')
 
-        self.chan_energy_threshold = self.getChannelObject('energy_threshold')
+        self.chan_energy = self.getChannelObject('energy')
         self.chan_threshold = self.getChannelObject('threshold')
-        self.chan_threshold_gain = self.getChannelObject('threshold_gain')
+        self.chan_gain = self.getChannelObject('gain')
         self.chan_cam_state = self.getChannelObject('cam_state')
 
         self.distance_motor_hwobj = self.getObjectByRole("distance_motor")
@@ -163,14 +167,14 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         else:
             return self.default_distance_limits
 
-    def get_energy_threshold(self):
-        return self.chan_energy_threshold.getValue()
+    def get_energy(self):
+        return self.chan_energy.getValue()
 
     def get_threshold(self):
         return self.chan_threshold.getValue()
 
-    def get_threshold_gain(self):
-        return self.chan_threshold_gain.getValue()
+    def get_gain(self):
+        return self.chan_gain.getValue()
 
     def get_cam_state(self):
         return self.chan_cam_state.getValue()
@@ -224,15 +228,20 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             self.logger.debug("Setting default energy = %s" % beamline_energy)
         return beamline_energy
 
-    def set_threshold_gain(self, value):
-        self.chan_threshold_gain.setValue(value)
+    def set_gain(self, value):
+        self.chan_gain.setValue(value)
 
-    def _set_energy_threshold(self):
+    def arm(self):
+        """
+        Configure detector electronics.
+
+        :return:
+        """
         try:
             beamline_energy = self._get_beamline_energy()
-            energy = self.get_energy_threshold()
+            energy = self.get_energy()
             threshold = self.get_threshold()
-            threshold_gain = self.get_threshold_gain()
+            threshold_gain = self.get_gain()
             cam_state = self.get_cam_state()
 
             self.logger.debug("beamline energy: %s" % beamline_energy)
@@ -240,7 +249,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             self.logger.debug("current threshold gain: %s" % threshold_gain)
 
             if abs(energy - beamline_energy) > 1.2:
-                self.chan_energy_threshold.setValue(beamline_energy)
+                self.chan_energy.setValue(beamline_energy)
                 logging.getLogger("user_level_log").info(
                     "Setting detector energy_threshold: %s" % beamline_energy)
                 # wait until detector is configured
@@ -294,7 +303,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
     def prepare_acquisition(self, dcpars):
 
-        self._set_energy_threshold()
+        self.arm()
         latency_time = self.get_latency_time()
 
         osc_seq = dcpars['oscillation_sequence'][0]
