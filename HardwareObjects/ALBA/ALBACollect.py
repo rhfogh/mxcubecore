@@ -580,12 +580,17 @@ class ALBACollect(AbstractCollect):
 
     def data_collection_cleanup(self):
         self.logger.debug("Cleanup: moving omega to initial position %s" % self.omega_init_pos)
-        try:
-            self.omega_hwobj.move(self.omega_init_pos)
-        except:
-            self.logger.error("Omega needs to be stopped before restoring initial position")
-            self.omega_hwobj.stop()
-            self.omega_hwobj.move(self.omega_init_pos)
+        #try:
+        self.detector_hwobj.stop_collection()
+        self.omega_hwobj.stop()
+        time.sleep(2)
+        self.data_collection_end()
+        time.sleep(2)
+        self.omega_hwobj.move(self.omega_init_pos)
+        #except:
+        #    self.logger.error("Omega needs to be stopped before restoring initial position")
+        #    self.omega_hwobj.stop()
+        #    self.omega_hwobj.move(self.omega_init_pos)
             
         AbstractCollect.data_collection_cleanup(self)
         self.logger.debug("ALBA data_collection_cleanup finished")
