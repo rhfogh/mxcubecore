@@ -162,7 +162,7 @@ class ALBACollect(AbstractCollect):
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True, ))
 
-        self.bypass_shutters = bool(os.environ.get('MXCUBE_NO_SHUTTERS'))
+        self.bypass_shutters = bool(os.environ.get('MXCUBE_BYPASS_SHUTTERS'))
         if self.bypass_shutters:
             self.logger.warning("Starting MXCuBE BYPASSING the SHUTTERS")
 
