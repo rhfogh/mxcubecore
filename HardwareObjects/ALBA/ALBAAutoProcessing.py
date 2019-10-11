@@ -217,12 +217,11 @@ class ALBAAutoProcessing(HardwareObject):
         self.logger.debug("Collection_id = %s " % dc_id)
         self.logger.debug("Output dir = %s " % output_dir)
 
-        job = ALBAEdnaProcJob()
-
         input_file = self.input_file  # TODO
         self.logger.debug("Input file = %s " % input_file)
 
-        job.run(dc_id, input_file, output_dir)
+        job = ALBAEdnaProcJob(dc_id, input_file, output_dir)
+        job.run()
 
 
 def test_hwo(hwo):
