@@ -104,7 +104,6 @@ class ALBAAutoProcJob(ALBAClusterJob):
 class ALBAEdnaProcJob(ALBAClusterJob):
     plugin_name = 'EDPluginControlEDNAprocv1_0'
     slurm_script = os.path.join(root, 'edna-mx/ednaproc/mxcube/edna-mx.ednaproc.sl')
-    xdsinp = os.path.join(root, 'edna-mx/ednaproc/benchmark/XDS.INP')
 
     def __init__(self, *args):
         super(ALBAEdnaProcJob, self).__init__(*args)
@@ -118,7 +117,7 @@ class ALBAEdnaProcJob(ALBAClusterJob):
                                          benchmark=False,
                                          dest=output_dir,
                                          use_scripts_root=True,
-                                         xds=self.xdsinp,
+                                         xds=None,
                                          configdef=None)
 
 
