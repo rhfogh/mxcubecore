@@ -476,7 +476,7 @@ class ALBACollect(AbstractCollect):
 
         self.image_headers["Threshold_setting"] = '%0f eV' %\
                                                   self.detector_hwobj.get_threshold()
-        self.image_headers["Gain_setting"] = '%s' % str(
+        self.image_headers["Gain_setting"] = '%s (vtr)' % str(
             self.detector_hwobj.get_gain())
 
         self.image_headers["Tau"] = '%s s' % str(199.1e-09)
