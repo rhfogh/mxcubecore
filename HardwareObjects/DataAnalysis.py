@@ -283,7 +283,8 @@ class DataAnalysis(AbstractDataAnalysis.AbstractDataAnalysis, HardwareObject):
         msg = "Starting EDNA using xml file %r", edna_input_file
         logging.getLogger("queue_exec").info(msg)
 
-        self.result = self.run_edna(edna_input_file, edna_results_file, edna_directory)
+        # self.result = self.run_edna(edna_input_file, edna_results_file, edna_directory)
+        self.result = self.run_edna(dc_id, edna_input_file, edna_results_file, edna_directory)
         logging.getLogger("queue_exec").info("edna job submitted")
 
         return self.result
@@ -295,7 +296,7 @@ class DataAnalysis(AbstractDataAnalysis.AbstractDataAnalysis, HardwareObject):
         """
         pass
 
-    def run_edna(self, input_file, results_file, edna_directory):
+    def run_edna(self, dc_id, input_file, results_file, edna_directory):
         edna_processing_thread = \
           EdnaProcessingThread(self.start_edna_command, edna_input_file,
                                edna_results_file, edna_directory)

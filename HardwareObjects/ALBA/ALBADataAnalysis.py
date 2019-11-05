@@ -35,7 +35,8 @@ import logging
 from DataAnalysis import DataAnalysis
 from XSDataMXCuBEv1_3 import XSDataResultMXCuBE
 from XSDataCommon import XSDataFile, XSDataString
-from ALBAClusterClient import XalocJob
+#from ALBAClusterClient import XalocJob
+from ALBAClusterJob import ALBAStrategyJob
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
@@ -71,11 +72,11 @@ class ALBADataAnalysis(DataAnalysis):
         output_dir.setPath(path)
         edna_input.setOutputFileDirectory(output_dir)
 
-    def run_edna(self, input_file, results_file, edna_directory):
-        return self.run(input_file, results_file, edna_directory)
+    def run_edna(self, dc_id, input_file, results_file, edna_directory):
+        return self.run(dc_id, input_file, results_file, edna_directory)
 
     def run(self, *args):
-        input_file, results_file, edna_directory = args
+        dc_id, input_file, results_file, edna_directory = args
 
         jobname = os.path.basename(os.path.dirname(edna_directory))
 
@@ -86,16 +87,19 @@ class ALBADataAnalysis(DataAnalysis):
         self.logger.debug(" results file: %s" % results_file)
         self.logger.debug(" edna directory: %s" % edna_directory)
 
-        self.job = XalocJob(
-            "edna-strategy",
-            jobname,
-            sls_script,
-            input_file,
-            edna_directory,
-            'USER')
-        self.job.submit()
+        # self.job = XalocJob(
+        #     "edna-strategy",
+        #     jobname,
+        #     sls_script,
+        #     input_file,
+        #     edna_directory,
+        #     'USER')
+        # self.job.submit()
 
-        self.logger.debug("Job submitted %s" % self.job.id)
+        self.job = ALBAStrategyJob(dc_id, input_file, edna_directory)
+        self.job.run()
+
+        self.logger.debug("Job submitted %s" % self.job.job.id)
 
         self.edna_directory = os.path.dirname(input_file)
         self.input_file = os.path.basename(input_file)
@@ -103,7 +107,7 @@ class ALBADataAnalysis(DataAnalysis):
         self.results_file = results_file
         self.logger.debug("Results file: %s" % self.results_file)
 
-        state = self.wait_done()
+        state = self.job.wait_done()
 
         if state == "COMPLETED":
             self.logger.debug("Job completed")
@@ -111,7 +115,7 @@ class ALBADataAnalysis(DataAnalysis):
             result = self.get_result()
         else:
             self.logger.debug("Job finished without success / state was %s" %
-                              self.job.state)
+                              self.job.job.state)
             result = ""
 
         return result
@@ -147,7 +151,7 @@ class ALBADataAnalysis(DataAnalysis):
 
     def get_result(self):
 
-        jobstatus = self.job.status
+        jobstatus = self.job.job.status
 
         self.logger.debug("Job COMPLETED")
         self.logger.debug("Status: %s" % jobstatus)
