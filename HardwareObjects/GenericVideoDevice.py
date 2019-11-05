@@ -73,7 +73,7 @@ class GenericVideoDevice(Device):
         self.cam_type = None
 
         self.cam_scale_factor = None
-
+        self.align_mode = False
         self.raw_image_dimensions = [None,None]
         self.image_dimensions = [None,None]
         self.image_polling = None
@@ -186,6 +186,9 @@ class GenericVideoDevice(Device):
         if raw_buffer is not None and raw_buffer.any():
             if self.cam_type == "basler":
                 raw_buffer = self.decoder(raw_buffer)
+                if self.align_mode:
+                    raw_buffer = cv2.applyColorMap(raw_buffer, cv2.COLORMAP_JET)
+
                 qimage = QImage(raw_buffer, width, height,
                                 width * 3,
                                 QImage.Format_RGB888)
