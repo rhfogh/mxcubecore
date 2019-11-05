@@ -33,6 +33,7 @@ from __future__ import print_function
 import logging
 import time
 
+from datetime import datetime
 from AbstractDetector import AbstractDetector
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from taurus import Device
@@ -369,12 +370,11 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
         headers = list()
         for i, sa in enumerate(startangles_list):
-            # header = "_array_data.header_convention PILATUS_1.2\n" \
             header = "# Detector: PILATUS 6M, S/N 60-0108, Alba\n" \
                 "# %s\n" \
                 "# Pixel_size 172e-6 m x 172e-6 m\n" \
-                "# Silicon sensor, thickness 0.000320 m\n" % time.strftime(
-                    "%Y/%b/%d %T")
+                "# Silicon sensor, thickness 0.000320 m\n" % datetime.now().strftime(
+                    "%Y-%m-%dT%T.%f")
 
             # Acquisition values (headers dictionary) but overwrites start angle
             image_headers["Start_angle"] = sa
@@ -382,7 +382,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
                 if key == 'nb_images':
                     continue
                 header += "# %s %s\n" % (key, value)
-#            headers.append("%d : array_data/header_convention|%s;" %  (i, "PILATUS_1.2")) 
+            headers.append("%d : array_data/header_convention|%s;" %  (i, "PILATUS_1.2")) 
             headers.append("%d : array_data/header_contents|%s;" % (i, header))
 
         self.chan_saving_header_delimiter.setValue(["|", ";", ":"])
