@@ -188,11 +188,3 @@ class ALBADigitalZoom(BaseHardwareObjects.Device):
         #TODO: server state is ALWAYS Unknown
         return True
         return state == self.STATE.READY
-
-
-def test_hwo(zoom):
-    print("Zoom position is : ", zoom.getPosition())
-    print("Zoom position name is : ", zoom.getCurrentPositionName())
-    print("Moving : ", zoom.motorIsMoving())
-    print("State : ", zoom.getState())
-    print("Positions : ", zoom.getPredefinedPositionsList())
