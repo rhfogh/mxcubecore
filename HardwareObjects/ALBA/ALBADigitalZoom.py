@@ -47,6 +47,7 @@ class DigitalZoomState(IntEnum):
     """
     Defines valid digital zoom states
     """
+
     UNKNOWN = 0
     READY = 1
     LOW_LIMIT = 2
@@ -184,9 +185,10 @@ class ALBADigitalZoom(Device):
 
         if state != self.current_state:
             self.logger.debug(
-                "State changed: {} -> {})".format(self.current_state, state))
+                "State changed: {} -> {})".format(self.current_state, state)
+            )
             self.current_state = state
-            self.emit('stateChanged', (state,))
+            self.emit("stateChanged", (state,))
 
     def positionChanged(self, position):
         """
@@ -205,9 +207,10 @@ class ALBADigitalZoom(Device):
 
         if position != self.current_position:
             self.logger.debug(
-                "Zoom changed: {} -> {}".format(self.current_position, position))
+                "Zoom changed: {} -> {}".format(self.current_position, position)
+            )
             self.current_position = position
-            self.emit('predefinedPositionChanged', position)
+            self.emit("predefinedPositionChanged", position)
             # TODO: blight range is 0-30
             # Links the zoom position with the backlight value
             # self.chan_blight.setValue(int(self.current_position.split()[0]))
