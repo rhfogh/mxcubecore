@@ -195,7 +195,7 @@ class GenericVideoDevice(Device):
             else:
                 raw_buffer = self.bgr_2_rgb(raw_buffer)
                 if self.align_mode:
-                    raw_buffer = cv2.applyColorMap(raw_buffer, cv2.COLORMAP_JET)
+                    raw_buffer = cv2.applyColorMap(cv2.bitwise_not(raw_buffer), cv2.COLORMAP_JET)
 
                 qimage = QImage(raw_buffer, width, height,
                                 QImage.Format_RGB888)
