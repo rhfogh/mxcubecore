@@ -65,7 +65,6 @@ class ALBADigitalZoom(Device):
         """ Define variables """
         Device.__init__(self, name)
         self.logger = logging.getLogger("HWR.ALBADigitalZoom")
-        self.chan_pos = None
         self.chan_state = None
         self.chan_labels = None
         self.chan_blight = None
@@ -110,7 +109,7 @@ class ALBADigitalZoom(Device):
         :return: None
 
         """
-        # self.logger.debug("Moving to position %s" % position)
+        self.logger.debug("Moving digital zoom to position %s" % position)
         self.chan_pos.setValue(int(position))
 
     def getLimits(self):
@@ -203,6 +202,7 @@ class ALBADigitalZoom(Device):
         """
         # TODO: Arrives an int, emits string
         # We should use the position received.
+        #self.logger.debug("positionChange event received: {}".format(position))
         position = self.getCurrentPositionName()
 
         if position != self.current_position:
@@ -210,7 +210,8 @@ class ALBADigitalZoom(Device):
                 "Zoom changed: {} -> {}".format(self.current_position, position)
             )
             self.current_position = position
-            self.emit("predefinedPositionChanged", position)
+            self.emit("positionChanged", position)
+            self.emit("predefinedPositionChanged", (position, 0))
             # TODO: blight range is 0-30
             # Links the zoom position with the backlight value
             # self.chan_blight.setValue(int(self.current_position.split()[0]))
@@ -226,3 +227,17 @@ class ALBADigitalZoom(Device):
         # return state == self.STATE.READY
         # TODO: Bug in Arinax server: state is ALWAYS UNKNOWN
         return True
+
+    def get_calibration(self):
+        _zoom_lut = {}
+        _zoom_lut[1] = 0.0000
+        _zoom_lut[2] = 0.1810
+        _zoom_lut[3] = 0.3620
+        _zoom_lut[4] = 0.5430
+        _zoom_lut[5] = 0.9088
+        _zoom_lut[6] = 0.9540
+        _zoom_lut[7] = 1.0000
+
+        x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
+        self.logger.debug("Getting calibration from zoom hwobj: {}".format(x))
+        return x, x
