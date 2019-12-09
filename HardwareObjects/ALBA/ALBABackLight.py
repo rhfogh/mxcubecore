@@ -60,7 +60,7 @@ class ALBABackLight(Device):
         self.rest_level = None
         self.default_rest_level = 0.0
         self.minimum_level = None
-        self.default_minimum_level = 7.0
+        self.default_minimum_level = 30.0
 
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
