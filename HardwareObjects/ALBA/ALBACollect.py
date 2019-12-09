@@ -643,6 +643,7 @@ class ALBACollect(AbstractCollect):
         return self.is_collect_phase()
 
     def is_collect_phase(self):
+        self.logger.debug("In is_collect_phase method")
         return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
 
     def go_to_sampleview(self, timeout=180):

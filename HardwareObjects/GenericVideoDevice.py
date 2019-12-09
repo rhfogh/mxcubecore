@@ -193,6 +193,10 @@ class GenericVideoDevice(Device):
                                 width * 3,
                                 QImage.Format_RGB888)
             else:
+                raw_buffer = self.bgr_2_rgb(raw_buffer)
+                if self.align_mode:
+                    raw_buffer = cv2.applyColorMap(cv2.bitwise_not(raw_buffer), cv2.COLORMAP_JET)
+
                 qimage = QImage(raw_buffer, width, height,
                                 QImage.Format_RGB888)
 
@@ -240,6 +244,12 @@ class GenericVideoDevice(Device):
         raw_dims = self.get_raw_image_size()
         image.resize(raw_dims[1], raw_dims[0], 2)
         return cv2.cvtColor(image, cv2.COLOR_YUV2RGB_UYVY)
+
+    def bgr_2_rgb(self, raw_buffer):
+        image = np.fromstring(raw_buffer, dtype=np.uint8)
+        raw_dims = self.get_raw_image_size()
+        image.resize(raw_dims[1], raw_dims[0], 3)
+        return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     def save_snapshot(self, filename, image_type='PNG',bw=True):
         if USEQT:

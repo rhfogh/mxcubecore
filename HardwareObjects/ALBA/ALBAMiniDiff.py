@@ -260,9 +260,10 @@ class ALBAMiniDiff(GenericDiffractometer):
         @offset: Unused
         @return: 2-tuple float
         """
-        calibx, caliby = self.calibration_hwobj.get_calibration()
+        #self.logger.debug("Getting calibration data")
+        #calibx, caliby = self.calibration_hwobj.get_calibration()
+        calibx, caliby = self.zoom_motor_hwobj.get_calibration()
         return 1000.0 / caliby, 1000.0 / caliby
-        # return 1000./self.md2.CoaxCamScaleX, 1000./self.md2.CoaxCamScaleY
 
     def get_pixels_per_mm(self):
         """
@@ -451,14 +452,15 @@ class ALBAMiniDiff(GenericDiffractometer):
 
         @value: zoom position.
         """
+        #self.logger.debug("zoom position changed")
         self.update_pixels_per_mm()
         self.current_motor_positions["zoom"] = value
-        self.refresh_omega_reference_position()
 
     def zoom_motor_predefined_position_changed(self, position_name, offset):
         """
         Update pixel size and emit signal.
         """
+        #self.logger.debug("zoom predefined position changed")
         self.update_pixels_per_mm()
         self.emit('zoomMotorPredefinedPositionChanged',
                   (position_name, offset, ))
