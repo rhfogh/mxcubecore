@@ -645,8 +645,11 @@ class GenericDiffractometer(HardwareObject):
         """
         self.emit_progress_message("Manual 3 click centring...")
         if self.use_sample_centring:
+            logging.getLogger('HWR').debug('***** Start manual centring:')
+            logging.getLogger('HWR').debug('\tpixels_per_mm: %s' % self.pixels_per_mm_x)
             logging.getLogger('HWR').debug(
-                '***** Start manual centring: %s' % self.pixels_per_mm_x)
+                '\tbeam_position: (%s, %s)' % (self.beam_position[0],self.beam_position[1]))
+
             self.current_centring_procedure = \
                  sample_centring.start({"phi": self.centring_phi,
                                         "phiy": self.centring_phiy,
