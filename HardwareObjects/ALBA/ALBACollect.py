@@ -644,7 +644,12 @@ class ALBACollect(AbstractCollect):
 
     def is_collect_phase(self):
         self.logger.debug("In is_collect_phase method")
-        return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
+        try:
+            return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
+        except Exception as e:
+            msg = "Cannot return current phase from supervisor. Please, restart MXCuBE."
+            self.logger.error(msg)
+            raise Exception(msg)
 
     def go_to_sampleview(self, timeout=180):
         self.logger.debug("Sending supervisor to sample view phase")
