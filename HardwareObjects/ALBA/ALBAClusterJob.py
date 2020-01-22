@@ -133,7 +133,7 @@ class ALBAStrategyJob(ALBAClusterJob):
                                          self.plugin_name,
                                          input_file,
                                          self.slurm_script,
-                                         workarea='USER',
+                                         workarea='SCRATCH',
                                          benchmark=False,
                                          dest=output_dir,
                                          use_scripts_root=True,
