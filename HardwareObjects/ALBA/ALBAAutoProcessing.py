@@ -209,7 +209,7 @@ class ALBAAutoProcessing(HardwareObject):
         self.input_file = ednaproc_input_file
 
     def trigger_auto_processing(self, dc_pars):
-        self.logger.debug("Triggering auto processing.")
+        logging.getLogger('user_level_log').info("Launching auto processing")
 
         dc_id = dc_pars['collection_id']
         output_dir = dc_pars['ednaproc_dir']
@@ -222,6 +222,7 @@ class ALBAAutoProcessing(HardwareObject):
 
         job = ALBAEdnaProcJob(dc_id, input_file, output_dir)
         job.run()
+        logging.getLogger('user_level_log').info("EDNA Processing Job ID: %s" % job.job.id)
 
 
 def test_hwo(hwo):
