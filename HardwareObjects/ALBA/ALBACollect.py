@@ -127,7 +127,7 @@ class ALBACollect(AbstractCollect):
         self.chan_kappa_pos = self.getChannelObject("kappapos")
         self.chan_phi_pos = self.getChannelObject("phipos")
 
-        self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
+        #self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
 
         undulators = []
         try:
@@ -629,13 +629,18 @@ class ALBACollect(AbstractCollect):
 
         t0 = time.time()
         while True:
+
+# TODO: This call return None !!!!
             super_state = self.supervisor_hwobj.get_state()
+            self.logger.debug("Supervisor current current_state is %s" % self.supervisor_hwobj.current_state)
             cphase = self.supervisor_hwobj.get_current_phase().upper()
-            if super_state != DevState.MOVING and cphase == "COLLECT":
+            self.logger.debug("Supervisor current phase is %s" % cphase)
+            if super_state == DevState.ON and cphase == "COLLECT":
                 break
             if time.time() - t0 > timeout:
-                self.logger.debug("Timeout sending supervisor to collect phase")
-                break
+                msg = "Timeout sending supervisor to collect phase"
+                self.logger.debug(msg)
+                raise RuntimeError(msg)
             gevent.sleep(0.5)
 
         self.logger.debug("New supervisor phase is %s" % cphase)

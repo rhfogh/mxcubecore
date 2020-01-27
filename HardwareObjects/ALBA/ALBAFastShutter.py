@@ -29,6 +29,7 @@ HwObj used to operate the Fast Shutter
 from __future__ import print_function
 
 import logging
+import time
 
 from HardwareRepository import BaseHardwareObjects
 from taurus.core.tango.enums import DevState
@@ -182,6 +183,9 @@ class ALBAFastShutter(BaseHardwareObjects.Device):
                                        (self.chan_motor_pos.getValue(),
                                         self.actuator_state))
         if abs(self.chan_motor_pos.getValue()) > 0.01:
+            while self.getMotorState() != DevState.ON:
+                time.sleep(0.5)
+            # closed position is 0
             self.chan_motor_pos.setValue(0)
         self.set_ttl('High')
 

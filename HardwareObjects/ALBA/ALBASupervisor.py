@@ -103,7 +103,14 @@ class ALBASupervisor(Device):
         return self.cmd_go_beam_view()
 
     def get_state(self):
-        return self.chan_state.getValue()
+        try:
+            _value = self.chan_state.getValue()
+            self.logger.debug('_value type: %s' % type(_value) )
+            self.logger.debug('_value: %s' % _value )
+        except Exception as e:
+            raise RuntimeError('Cannot get supervisor state:\n %s' % str(e))
+        return _value
+        #return self.chan_state.getValue()
 
     def detector_cover_changed(self, value):
         self.detector_cover_opened = value
