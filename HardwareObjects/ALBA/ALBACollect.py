@@ -322,25 +322,24 @@ class ALBACollect(AbstractCollect):
         # check fast shutter closed. others opened
 
         if self.bypass_shutters:
-            self.logger.debug("Shutters BYPASSED")
+            logging.getLogger('user_level_log').warning("Shutters BYPASSED")
         else:
             if not self.check_shutters():
                 msg = "Shutters NOT READY"
                 self.logger.error(msg)
                 return False, msg
             else:
-                self.logger.debug("Shutters READY")
+                logging.getLogger('user_level_log').info("Shutters READY")
 
         gevent.sleep(1)
         self.logger.info(
-            " Waiting for diffractometer to be ready. Now %s" % str(
-                self.diffractometer_hwobj.current_state))
+            "Waiting diffractometer ready (is %s)" % str(self.diffractometer_hwobj.current_state))
         self.diffractometer_hwobj.wait_device_ready(timeout=10)
-        self.logger.info("             diffractometer is now ready.")
+        self.logger.info("Diffractometer is now ready.")
 
         # go to collect phase
         if not self.is_collect_phase():
-            self.logger.info("Not in collect phase. Asking supervisor to go")
+            self.logger.info("Supervisor not in collect phase, asking to go...")
             success = self.go_to_collect()
             if not success:
                 msg = "Supervisor cannot set COLLECT phase"
@@ -612,7 +611,7 @@ class ALBACollect(AbstractCollect):
                     raise
 
     def collect_finished(self, green):
-        self.logger.info("Data collection finished")
+        logging.getLogger('user_level_log').info("Data collection finished")
 
     def collect_failed(self, par):
         self.logger.exception("Data collection failed")
@@ -653,7 +652,7 @@ class ALBACollect(AbstractCollect):
             return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
         except Exception as e:
             msg = "Cannot return current phase from supervisor. Please, restart MXCuBE."
-            self.logger.error(msg)
+            logging.getLogger('user_level_log').error(msg)
             raise Exception(msg)
 
     def go_to_sampleview(self, timeout=180):
