@@ -127,7 +127,7 @@ class ALBACollect(AbstractCollect):
         self.chan_kappa_pos = self.getChannelObject("kappapos")
         self.chan_phi_pos = self.getChannelObject("phipos")
 
-        self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
+        #self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
 
         undulators = []
         try:
