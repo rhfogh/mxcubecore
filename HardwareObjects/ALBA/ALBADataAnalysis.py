@@ -99,7 +99,7 @@ class ALBADataAnalysis(DataAnalysis):
         self.job = ALBAStrategyJob(dc_id, input_file, edna_directory)
         self.job.run()
 
-        self.logger.debug("Job submitted %s" % self.job.job.id)
+        logging.getLogger('user_level_log').info("Characterization Job ID: %s" % self.job.job.id)
 
         self.edna_directory = os.path.dirname(input_file)
         self.input_file = os.path.basename(input_file)
@@ -110,11 +110,11 @@ class ALBADataAnalysis(DataAnalysis):
         state = self.job.wait_done()
 
         if state == "COMPLETED":
-            self.logger.debug("Job completed")
+            logging.getLogger('user_level_log').info("Job completed")
             time.sleep(0.5)
             result = self.get_result()
         else:
-            self.logger.debug("Job finished without success / state was %s" %
+            logging.getLogger('user_level_log').info("Job finished without success / state was %s" %
                               self.job.job.state)
             result = ""
 

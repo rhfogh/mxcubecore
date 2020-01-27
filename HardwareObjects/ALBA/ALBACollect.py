@@ -240,10 +240,10 @@ class ALBACollect(AbstractCollect):
         # Save omega initial position to be recovered after collection (cleanup).
         self.omega_init_pos = omega_pos
 
-        ready = self.prepare_acquisition()
+        ready, msg = self.prepare_acquisition()
 
         if not ready:
-            self.collection_failed("Cannot prepare collection")
+            self.collection_failed(msg)
             self.stop_collect()
             return
 
@@ -322,32 +322,36 @@ class ALBACollect(AbstractCollect):
         # check fast shutter closed. others opened
 
         if self.bypass_shutters:
-            self.logger.debug("Shutters BYPASSED")
+            logging.getLogger('user_level_log').warning("Shutters BYPASSED")
         else:
             if not self.check_shutters():
-                self.logger.error("Shutters NOT READY")
-                return False
+                msg = "Shutters NOT READY"
+                self.logger.error(msg)
+                return False, msg
             else:
-                self.logger.debug("Shutters READY")
+                logging.getLogger('user_level_log').info("Shutters READY")
 
         gevent.sleep(1)
         self.logger.info(
-            " Waiting for diffractometer to be ready. Now %s" % str(
-                self.diffractometer_hwobj.current_state))
+            "Waiting diffractometer ready (is %s)" % str(self.diffractometer_hwobj.current_state))
         self.diffractometer_hwobj.wait_device_ready(timeout=10)
-        self.logger.info("             diffractometer is now ready.")
+        self.logger.info("Diffractometer is now ready.")
 
         # go to collect phase
         if not self.is_collect_phase():
-            self.logger.info("Not in collect phase. Asking supervisor to go")
+            self.logger.info("Supervisor not in collect phase, asking to go...")
             success = self.go_to_collect()
             if not success:
-                self.logger.error("Cannot set COLLECT phase for diffractometer")
-                return False
+                msg = "Supervisor cannot set COLLECT phase"
+                self.logger.error(msg)
+                return False, msg
 
         detok = self.detector_hwobj.prepare_acquisition(self.current_dc_parameters)
 
-        return detok
+        if not detok:
+            return False, 'Cannot prepare detector.'
+
+        return detok, 'Collection prepared'
 
     def prepare_collection(self, start_angle, nb_images, first_image_no):
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
@@ -607,7 +611,7 @@ class ALBACollect(AbstractCollect):
                     raise
 
     def collect_finished(self, green):
-        self.logger.info("Data collection finished")
+        logging.getLogger('user_level_log').info("Data collection finished")
 
     def collect_failed(self, par):
         self.logger.exception("Data collection failed")
@@ -653,7 +657,7 @@ class ALBACollect(AbstractCollect):
             return self.supervisor_hwobj.get_current_phase().upper() == "COLLECT"
         except Exception as e:
             msg = "Cannot return current phase from supervisor. Please, restart MXCuBE."
-            self.logger.error(msg)
+            logging.getLogger('user_level_log').error(msg)
             raise Exception(msg)
 
     def go_to_sampleview(self, timeout=180):
@@ -764,6 +768,7 @@ class ALBACollect(AbstractCollect):
         #   program energy
         #   prepare detector for diffraction
         self.energy_hwobj.move_energy(value)
+        logging.getLogger('user_level_log').warning("Setting beamline energy it can take a while, please be patient")
         self.energy_hwobj.wait_move_energy_done()
 
     def set_wavelength(self, value):
@@ -788,8 +793,10 @@ class ALBACollect(AbstractCollect):
         """
         Descript. : resolution is a motor in out system
         """
-        current_resolution = self.resolution_hwobj.getPosition()
-        self.logger.debug("Current resolution is %s, moving to %s" % (current_resolution, value))
+        # Current resolution non valid since depends on energy and detector distance!!
+        #current_resolution = self.resolution_hwobj.getPosition()
+        #self.logger.debug("Current resolution is %s, moving to %s" % (current_resolution, value))
+        self.logger.debug("Moving resolution to %s" % value)
 
         if energy:
             # calculate the detector position to achieve the desired resolution

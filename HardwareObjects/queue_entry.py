@@ -326,6 +326,7 @@ class BaseQueueEntry(QueueEntryContainer):
         self.set_enabled(False)
         self._set_background_color()
 
+
     def _set_background_color(self):
         view = self.get_view()
 
@@ -1016,7 +1017,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             raise QueueExecutionException(msg, self)
 
     def collect_started(self, owner, num_oscillations):
-        logging.getLogger("user_level_log").info('Collection: started')
+        logging.getLogger("user_level_log").info('Collection started...')
         self.get_view().setText(1, "Collecting")
 
     def collect_number_of_frames(self, number_of_images=0, exposure_time=0):
@@ -1049,7 +1050,8 @@ class DataCollectionQueueEntry(BaseQueueEntry):
         # this is to work around the remote access problem
         if self.processing_task is not None:
             self.get_view().setText(1, "Processing")
-            logging.getLogger("user_level_log").info('Processing: Please wait...')
+            #logging.getLogger("user_level_log").info('Processing: Please wait...')
+            logging.getLogger("user_level_log").info('Processing started')
             self.parallel_processing_hwobj.done_event.wait()
             self.parallel_processing_hwobj.done_event.clear()
 
@@ -1171,7 +1173,8 @@ class CharacterisationQueueEntry(BaseQueueEntry):
         log = logging.getLogger("queue_exec")
 
         self.get_view().setText(1, "Characterising")
-        log.info("Characterising, please wait ...")
+        #log.info("Characterising, please wait ...")
+        logging.getLogger('user_level_log').info("Characterising, please wait ...")
         char = self.get_data_model()
         reference_image_collection = char.reference_image_collection
         characterisation_parameters = char.characterisation_parameters
@@ -1190,7 +1193,7 @@ class CharacterisationQueueEntry(BaseQueueEntry):
             self.edna_result = self.data_analysis_hwobj.characterise(edna_input)
 
         if self.edna_result is not None:
-            log.info("Characterisation completed.")
+            logging.getLogger('user_level_log').info("Characterization completed.")
 
             char.html_report = self.data_analysis_hwobj.\
                                get_html_report(self.edna_result)
@@ -1243,18 +1246,19 @@ class CharacterisationQueueEntry(BaseQueueEntry):
             else:
                 self.get_view().setText(1, "No result")
                 self.status = QUEUE_ENTRY_STATUS.WARNING
-                log.warning("Characterisation completed " +\
+                log.warning("Characterization completed " +\
                             "successfully but without collection plan.")
         else:
             self.get_view().setText(1, "Charact. Failed")
 
             if self.data_analysis_hwobj.is_running():
-                log.error('EDNA-Characterisation, software is not responding.')
+                log.error('EDNA-Characterization, software is not responding.')
                 log.error("Characterisation completed with error: "\
                           + " data analysis server is not responding.")
             else:
-                log.error('EDNA-Characterisation completed with a failure.')
+                log.error('EDNA-Characterization completed with a failure.')
                 log.error("Characterisation completed with errors.")
+            logging.getLogger('user_level_log').warning("Characterisation Failed.")
 
         char.set_executed(True)
         self.get_view().setHighlighted(True)
