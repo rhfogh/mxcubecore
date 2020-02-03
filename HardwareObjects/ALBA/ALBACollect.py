@@ -636,9 +636,14 @@ class ALBACollect(AbstractCollect):
 
 # TODO: This call return None !!!!
             super_state = self.supervisor_hwobj.get_state()
-            self.logger.debug("Supervisor current current_state is %s" % self.supervisor_hwobj.current_state)
+            super_state2 = self.supervisor_hwobj.current_state
+
+            self.logger.debug("Supervisor get_state() is %s" % super_state)
+            self.logger.debug("Supervisor current current_state is %s" % super_state2)
+            
             cphase = self.supervisor_hwobj.get_current_phase().upper()
             self.logger.debug("Supervisor current phase is %s" % cphase)
+            
             if super_state == DevState.ON and cphase == "COLLECT":
                 break
             if time.time() - t0 > timeout:
@@ -647,7 +652,7 @@ class ALBACollect(AbstractCollect):
                 raise RuntimeError(msg)
             gevent.sleep(0.5)
 
-        self.logger.debug("New supervisor phase is %s" % cphase)
+        self.logger.debug("New supervisor phase is %s (Collect phase was requested)" % cphase)
 
         return self.is_collect_phase()
 

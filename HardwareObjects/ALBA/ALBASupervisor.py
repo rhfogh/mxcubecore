@@ -71,6 +71,12 @@ class ALBASupervisor(Device):
         self.chan_phase.connectSignal("update", self.phase_changed)
         self.chan_detector_cover.connectSignal("update", self.detector_cover_changed)
 
+
+        self.current_state = self.get_state()
+        self.current_phase = self.get_current_phase()
+        self.logger.debug("Supervisor state: {0}".format(self.current_state))
+        self.logger.debug("Supervisor phase: {0}".format(self.current_phase))
+
     def isReady(self):
         return True
 
@@ -82,6 +88,7 @@ class ALBASupervisor(Device):
         self.emit('stateChanged', self.current_state)
 
     def phase_changed(self, value):
+        # TODO: Define supervisor states with enum
         if value == 'Sample':
             value = 'Centring'
         self.current_phase = value
@@ -105,10 +112,9 @@ class ALBASupervisor(Device):
     def get_state(self):
         try:
             _value = self.chan_state.getValue()
-            self.logger.debug('_value type: %s' % type(_value) )
-            self.logger.debug('_value: %s' % _value )
+            self.logger.debug('get_state: (value={0}, type={1})'.format(_value, type(_value)))
         except Exception as e:
-            raise RuntimeError('Cannot get supervisor state:\n %s' % str(e))
+            raise RuntimeError('Cannot get supervisor state:\n%s' % str(e))
         return _value
         #return self.chan_state.getValue()
 
