@@ -22,10 +22,10 @@ __version__ = "2.3."
 __category__ = "General"
 
 import logging
-from HardwareRepository.BaseHardwareObjects import Equipment
+from sample_changer.PlateManipulatorMockup import PlateManipulatorMockup
 
 
-class ALBAPlateManipulator(Equipment):
+class ALBAPlateManipulator(PlateManipulatorMockup):
 
     def __init__(self, name):
-        Equipment.__init__(self, name)
+        PlateManipulatorMockup.__init__(self, name)
