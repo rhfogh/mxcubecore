@@ -324,10 +324,11 @@ class ALBACollect(AbstractCollect):
         if self.bypass_shutters:
             logging.getLogger('user_level_log').warning("Shutters BYPASSED")
         else:
-            if not self.check_shutters():
-                msg = "Shutters NOT READY"
-                self.logger.error(msg)
-                return False, msg
+            _ok, failed = self.check_shutters()
+            if not _ok:
+                msg = "Shutter(s) {} NOT READY".format(failed)
+                logging.getLogger('user_level_log').error(msg)
+                return _ok, msg
             else:
                 logging.getLogger('user_level_log').info("Shutters READY")
 
@@ -559,18 +560,22 @@ class ALBACollect(AbstractCollect):
         # slow shutter is close: State = 0
         # photon shutter is close: State = 0
         # front end is close: State = 0
-
         fast_shutter = self.fastshut_hwobj.getState()
         slow_shutter = self.slowshut_hwobj.getState()
         photon_shutter = self.photonshut_hwobj.getState()
         front_end = self.frontend_hwobj.getState()
-        
+
+        shutters = ['fast', 'slow', 'photon', 'front-end']
+        states = [fast_shutter, slow_shutter, photon_shutter, front_end]
+
+        failed = [s for s, state in zip(shutters, states) if not state]
+
         self.logger.debug("fast shutter state is: %s" % fast_shutter) 
         self.logger.debug("slow shutter state is: %s" % slow_shutter) 
         self.logger.debug("photon shutter state is: %s" % photon_shutter) 
         self.logger.debug("front_end state is: %s" % front_end) 
 
-        return all([fast_shutter, slow_shutter, photon_shutter, front_end])
+        return all([fast_shutter, slow_shutter, photon_shutter, front_end]), failed
 
     def get_image_headers(self):
         headers = []
