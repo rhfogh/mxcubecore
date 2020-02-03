@@ -236,6 +236,12 @@ class Session(HardwareObject):
             if sample_data_node.has_lims_data():
                 prefix = sample_data_node.crystals[0].protein_acronym + \
                          '-' + sample_data_node.name
+            else:
+                try:
+                    prefix = "B{0}X{1}".format(*sample_data_node.get_display_name().split(":"))
+                except Exception:
+                    prefix = str(sample_data_node.get_display_name())
+
         elif generic_name:
             prefix = '<acronym>-<name>'
 
