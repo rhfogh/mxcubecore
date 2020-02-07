@@ -374,7 +374,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
                 "# %s\n" \
                 "# Pixel_size 172e-6 m x 172e-6 m\n" \
                 "# Silicon sensor, thickness 0.000320 m\n" % datetime.now().strftime(
-                    "%Y-%m-%dT%T.%f")
+                        "%Y-%m-%dT%T.%f")[:-3]
 
             # Acquisition values (headers dictionary) but overwrites start angle
             image_headers["Start_angle"] = sa
