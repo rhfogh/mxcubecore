@@ -631,6 +631,7 @@ class ALBACollect(AbstractCollect):
         self.data_collection_end()
 
     def go_to_collect(self, timeout=180):
+        self.wait_supervisor_ready()
         self.logger.debug("Sending supervisor to collect phase")
         self.supervisor_hwobj.go_collect()
 
@@ -671,6 +672,7 @@ class ALBACollect(AbstractCollect):
             raise Exception(msg)
 
     def go_to_sampleview(self, timeout=180):
+        self.wait_supervisor_ready()
         self.logger.debug("Sending supervisor to sample view phase")
         self.supervisor_hwobj.go_sample_view()
 
@@ -693,6 +695,24 @@ class ALBACollect(AbstractCollect):
 
     def is_sampleview_phase(self):
         return self.supervisor_hwobj.get_current_phase().upper() == "SAMPLE"
+
+    def wait_supervisor_ready(self, timeout=30):
+        self.logger.debug("Waiting to supervisor ready")
+
+        gevent.sleep(0.5)
+
+        t0 = time.time()
+        while True:
+            super_state = self.supervisor_hwobj.get_state()
+            if super_state == DevState.ON:
+                break
+            if time.time() - t0 > timeout:
+                self.logger.debug("Timeout waiting for supervisor ready")
+                raise RuntimeError("Supervisor cannot be operated (state %s)" % super_state)
+                break
+            self.logger.debug("Supervisor state is %s" % super_state)
+            gevent.sleep(0.5)
+
 
     def configure_ni(self, startang, total_dist):
         self.logger.debug(
