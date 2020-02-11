@@ -259,6 +259,17 @@ class CatsMaint(Equipment):
         tool = self.get_current_tool()
         self._cmdHome(tool)            
 
+    def _doSoak(self):
+        """
+        Launch the "soak" trajectory on the CATS Tango DS
+
+        :returns: None
+        :rtype: None
+        """
+        tool = self.get_current_tool()
+        argin = [str(tool), "2"] # to send string array with two arg...
+        self._executeServerTask(self._cmdSoak, argin)
+
     def _doReset(self):
         """
         Launch the "reset" command on the CATS Tango DS
