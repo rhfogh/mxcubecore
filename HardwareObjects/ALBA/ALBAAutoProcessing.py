@@ -35,10 +35,11 @@ import os
 import math
 import logging
 
-from ALBAClusterJob import ALBAEdnaProcJob
+from ALBAClusterJob import ALBAEdnaProcJob, ALBAAutoProcJob
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from XSDataCommon import XSDataFile, XSDataString, XSDataInteger
-from XSDataAutoprocv1_0 import XSDataAutoprocInput
+from XSDataAutoprocv1_0 import XSDataAutoprocInput  # EDNA proc
+from XSDataControlAutoPROCv1_0 import XSDataInputControlAutoPROC  # AutoPROC GPhL
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
@@ -53,13 +54,15 @@ class ALBAAutoProcessing(HardwareObject):
         self.detsamdis_hwobj = None
         self.chan_beamx = None
         self.chan_beamy = None
-        self.input_file = None
+        self.ednaproc_input_file = None
+        self.autoproc_input_file = None
 
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         self.template_dir = self.getProperty("template_dir")
         self.logger.debug("Autoprocessing template_dir = %s" %
                                        self.template_dir)
+        # TODO: include these values in dc_pars or osc_seq dictionaries
         self.detsamdis_hwobj = self.getObjectByRole("detector_distance")
         self.chan_beamx = self.getChannelObject('beamx')
         self.chan_beamy = self.getChannelObject('beamy')
@@ -67,7 +70,9 @@ class ALBAAutoProcessing(HardwareObject):
     def create_input_files(self, dc_pars):
 
         xds_dir = dc_pars['xds_dir']
-        mosflm_dir = dc_pars['auto_dir']
+        mosflm_dir = dc_pars['mosflm_dir']
+        ednaproc_dir = dc_pars['ednaproc_dir']
+        autoproc_dir = dc_pars['autoproc_dir']
 
         fileinfo = dc_pars['fileinfo']
         osc_seq = dc_pars['oscillation_sequence'][0]
@@ -191,9 +196,9 @@ class ALBAAutoProcessing(HardwareObject):
 
         # CREATE EDNAPROC XML FILE
         collection_id = dc_pars['collection_id']
-        output_dir = dc_pars['ednaproc_dir']
+        ednaproc_dir = dc_pars['ednaproc_dir']
 
-        ednaproc_input_file = os.path.join(output_dir, "EDNAprocInput_%d.xml" %
+        ednaproc_input_file = os.path.join(ednaproc_dir, "EDNAprocInput_%d.xml" %
                                            collection_id)
         ednaproc_input = XSDataAutoprocInput()
 
@@ -206,23 +211,62 @@ class ALBAAutoProcessing(HardwareObject):
         ednaproc_input.setData_collection_id(XSDataInteger(collection_id))
 
         ednaproc_input.exportToFile(ednaproc_input_file)
-        self.input_file = ednaproc_input_file
+        self.ednaproc_input_file = ednaproc_input_file
+
+        # CREATE AUTOPROC XML FILE
+        self.create_autoproc_edna_input_file(dc_pars, data_range_start_num, data_range_finish_num, mdata_filename)
+
+    def create_autoproc_edna_input_file(self, dc_pars, fromN, toN, template, ispyb=True):
+
+        # Get data from data collection parameters
+        collection_id = dc_pars['collection_id']
+        images_dir = dc_pars['fileinfo']['directory']
+        template = template
+        first_image_nb = fromN
+        last_image_nb = toN
+        output_dir = dc_pars['autoproc_dir']
+
+        # Create EDNA data model input file
+        autoproc_input = XSDataInputControlAutoPROC()
+        # Add specific configuration file by the slurm script
+        autoproc_input.setConfigDef(XSDataFile(XSDataString("__configDef")))
+
+        if ispyb:
+            autoproc_input.setDataCollectionId(XSDataInteger(collection_id))
+        else:
+            autoproc_input.setDirN(XSDataFile(XSDataString(images_dir)))
+            autoproc_input.setFromN(XSDataInteger(first_image_nb))
+            autoproc_input.setToN(XSDataInteger(last_image_nb))
+            autoproc_input.setTemplateN(XSDataString(template))
+
+        # Export file
+        autoproc_input_filename = os.path.join(output_dir,
+                                               "AutoPROCInput_%d.xml" % collection_id)
+        autoproc_input.exportToFile(autoproc_input_filename)
+        self.autoproc_input_file = autoproc_input_filename
 
     def trigger_auto_processing(self, dc_pars):
-        logging.getLogger('user_level_log').info("Launching auto processing")
 
         dc_id = dc_pars['collection_id']
-        output_dir = dc_pars['ednaproc_dir']
-
         self.logger.debug("Collection_id = %s " % dc_id)
-        self.logger.debug("Output dir = %s " % output_dir)
 
-        input_file = self.input_file  # TODO
-        self.logger.debug("Input file = %s " % input_file)
-
-        job = ALBAEdnaProcJob(dc_id, input_file, output_dir)
+        # EDNAProc
+        ednaproc_dir = dc_pars['ednaproc_dir']
+        logging.getLogger('user_level_log').info("Trigger EDNAProc processing")
+        job = ALBAEdnaProcJob(dc_id, self.ednaproc_input_file, ednaproc_dir)
         job.run()
-        logging.getLogger('user_level_log').info("EDNA Processing Job ID: %s" % job.job.id)
+        self.logger.debug("EDNAProc input file = %s " % self.ednaproc_input_file)
+        self.logger.debug("Output dir = %s " % ednaproc_dir)
+        logging.getLogger('user_level_log').info("EDNAProc job ID: %s" % job.job.id)
+
+        # AutoPROC
+        autoproc_dir = dc_pars['autoproc_dir']
+        logging.getLogger('user_level_log').info("Trigger AutoPROC processing")
+        job = ALBAAutoProcJob(dc_id, self.autoproc_input_file, autoproc_dir)
+        job.run()
+        self.logger.debug("AutoPROC input file = %s " % self.autoproc_input_file)
+        self.logger.debug("Output dir = %s " % autoproc_dir)
+        logging.getLogger('user_level_log').info("AutoPROC job ID: %s" % job.job.id)
 
 
 def test_hwo(hwo):
