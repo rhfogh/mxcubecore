@@ -35,15 +35,10 @@ import logging
 from DataAnalysis import DataAnalysis
 from XSDataMXCuBEv1_3 import XSDataResultMXCuBE
 from XSDataCommon import XSDataFile, XSDataString
-#from ALBAClusterClient import XalocJob
-from ALBAClusterJob import ALBAStrategyJob
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
 __category__ = "General"
-
-root = os.environ['POST_PROCESSING_SCRIPTS_ROOT']
-sls_script = os.path.join(root, 'edna-mx/strategy/mxcube/edna-mx.strategy.sl')
 
 
 class ALBADataAnalysis(DataAnalysis):
@@ -52,70 +47,59 @@ class ALBADataAnalysis(DataAnalysis):
         DataAnalysis.__init__(self, name)
         self.logger = logging.getLogger("HWR.ALBADataAnalysis")
         self.job = None
-        self.edna_directory = None
+        self.output_dir = None
         self.input_file = None
         self.results_file = None
+        self.cluster = None
 
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
         DataAnalysis.init(self)
+        self.cluster = self.getObjectByRole("cluster")
 
-    def prepare_edna_input(self, edna_input, edna_directory):
+    def prepare_edna_input(self, input_file, output_dir):
 
         # used for strategy calculation (characterization) using data analysis cluster
         # ALBA specific
-        edna_input.process_directory = edna_directory
+        input_file.process_directory = output_dir
+        output_dir = XSDataFile(XSDataString(output_dir))
+        input_file.setOutputFileDirectory(output_dir)
 
-        output_dir = XSDataFile()
-        path = XSDataString()
-        path.setValue(edna_directory)
-        output_dir.setPath(path)
-        edna_input.setOutputFileDirectory(output_dir)
-
-    def run_edna(self, dc_id, input_file, results_file, edna_directory):
-        return self.run(dc_id, input_file, results_file, edna_directory)
+    def run_edna(self, dc_id, input_file, results_file, output_dir):
+        return self.run(dc_id, input_file, results_file, output_dir)
 
     def run(self, *args):
-        dc_id, input_file, results_file, edna_directory = args
 
-        jobname = os.path.basename(os.path.dirname(edna_directory))
+        log = logging.getLogger('user_level_log')
+        dc_id, input_file, results_file, output_dir = args
+        jobname = os.path.basename(os.path.dirname(output_dir))
 
         self.logger.debug("Submitting Job")
         self.logger.debug(" job_name: %s" % jobname)
-        self.logger.debug(" sls_script: %s, " % sls_script)
         self.logger.debug(" input file: %s" % input_file)
         self.logger.debug(" results file: %s" % results_file)
-        self.logger.debug(" edna directory: %s" % edna_directory)
+        self.logger.debug(" output directory: %s" % output_dir)
 
-        # self.job = XalocJob(
-        #     "edna-strategy",
-        #     jobname,
-        #     sls_script,
-        #     input_file,
-        #     edna_directory,
-        #     'USER')
-        # self.job.submit()
+        self.job = self.cluster.create_strategy_job(dc_id, input_file, output_dir)
+        self.cluster.run(self.job)
 
-        self.job = ALBAStrategyJob(dc_id, input_file, edna_directory)
-        self.job.run()
+        log.info("Characterization Job ID: %s" % self.job.job.id)
 
-        logging.getLogger('user_level_log').info("Characterization Job ID: %s" % self.job.job.id)
-
-        self.edna_directory = os.path.dirname(input_file)
+        self.output_dir = os.path.dirname(input_file)
         self.input_file = os.path.basename(input_file)
         # self.results_file = self.fix_path(results_file)
         self.results_file = results_file
         self.logger.debug("Results file: %s" % self.results_file)
 
-        state = self.job.wait_done()
+        state = self.cluster.wait_done(self.job)
 
         if state == "COMPLETED":
-            logging.getLogger('user_level_log').info("Job completed")
+            log.info("Job completed")
             time.sleep(0.5)
             result = self.get_result()
         else:
-            logging.getLogger('user_level_log').info("Job finished without success / state was %s" %
-                              self.job.job.state)
+            log.info("Job finished without success / state was %s" %
+                              state)
             result = ""
 
         return result
@@ -128,6 +112,7 @@ class ALBADataAnalysis(DataAnalysis):
         # outpath = os.path.join(dirname,'RESULTS',basename)
         return out_path
 
+    # TODO: Unused??
     def wait_done(self):
 
         state = None
@@ -151,7 +136,7 @@ class ALBADataAnalysis(DataAnalysis):
 
     def get_result(self):
 
-        jobstatus = self.job.job.status
+        jobstatus = self.job.status
 
         self.logger.debug("Job COMPLETED")
         self.logger.debug("Status: %s" % jobstatus)

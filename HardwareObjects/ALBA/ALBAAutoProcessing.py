@@ -35,7 +35,6 @@ import os
 import math
 import logging
 
-from ALBAClusterJob import ALBAEdnaProcJob, ALBAAutoProcJob
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from XSDataCommon import XSDataFile, XSDataString, XSDataInteger
 from XSDataAutoprocv1_0 import XSDataAutoprocInput  # EDNA proc
@@ -56,6 +55,7 @@ class ALBAAutoProcessing(HardwareObject):
         self.chan_beamy = None
         self.ednaproc_input_file = None
         self.autoproc_input_file = None
+        self.cluster = None
 
     def init(self):
         self.logger.debug("Initializing {0}".format(self.__class__.__name__))
@@ -66,6 +66,8 @@ class ALBAAutoProcessing(HardwareObject):
         self.detsamdis_hwobj = self.getObjectByRole("detector_distance")
         self.chan_beamx = self.getChannelObject('beamx')
         self.chan_beamy = self.getChannelObject('beamy')
+
+        self.cluster = self.getObjectByRole("cluster")
 
     def create_input_files(self, dc_pars):
 
@@ -253,8 +255,9 @@ class ALBAAutoProcessing(HardwareObject):
         # EDNAProc
         ednaproc_dir = dc_pars['ednaproc_dir']
         logging.getLogger('user_level_log').info("Trigger EDNAProc processing")
-        job = ALBAEdnaProcJob(dc_id, self.ednaproc_input_file, ednaproc_dir)
-        job.run()
+        job = self.cluter.create_ednaproc_job(dc_id, self.ednaproc_input_file, ednaproc_dir)
+        ##job.run()
+        self.cluster.run(job)
         self.logger.debug("EDNAProc input file = %s " % self.ednaproc_input_file)
         self.logger.debug("Output dir = %s " % ednaproc_dir)
         logging.getLogger('user_level_log').info("EDNAProc job ID: %s" % job.job.id)
@@ -262,8 +265,9 @@ class ALBAAutoProcessing(HardwareObject):
         # AutoPROC
         autoproc_dir = dc_pars['autoproc_dir']
         logging.getLogger('user_level_log').info("Trigger AutoPROC processing")
-        job = ALBAAutoProcJob(dc_id, self.autoproc_input_file, autoproc_dir)
-        job.run()
+        job = self.cluter.create_autoproc_job(dc_id, self.autoproc_input_file, autoproc_dir)
+        ##job.run()
+        self.cluster.run(job)
         self.logger.debug("AutoPROC input file = %s " % self.autoproc_input_file)
         self.logger.debug("Output dir = %s " % autoproc_dir)
         logging.getLogger('user_level_log').info("AutoPROC job ID: %s" % job.job.id)
