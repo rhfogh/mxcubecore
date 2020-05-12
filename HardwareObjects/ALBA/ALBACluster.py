@@ -34,8 +34,8 @@ import time
 import logging
 
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-from ALBAClusterClient import EDNAJob, Manager, Account
-from ALBAClusterClient.utils import create_edna_yml
+from slurm_client import EDNAJob, Manager, Account
+from slurm_client.utils import create_edna_yml
 
 
 __credits__ = ["ALBA Synchrotron"]
