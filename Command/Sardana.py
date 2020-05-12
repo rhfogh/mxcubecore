@@ -29,9 +29,7 @@ from gevent import monkey
 import Queue
 
 from ..CommandContainer import CommandObject, ChannelObject, ConnectionError
-
-from PyTango import DevFailed, ConnectionFailed
-import PyTango
+from tango import DevFailed, ConnectionFailed, DeviceAttribute
 
 try:
     from sardana.taurus.core.tango.sardana import registerExtensions
@@ -205,7 +203,7 @@ class SardanaMacro(CommandObject, SardanaObject):
         data = event.event[2]
 
         try:
-            if type(data) != PyTango.DeviceAttribute and type(data) != TangoAttrValue:
+            if type(data) != DeviceAttribute and type(data) != TangoAttrValue:
                 # logging.getLogger('HWR').debug("*** Event type %s" % type(data))
                 # logging.getLogger('HWR').debug("*** Event value %s" % str(data.value))
                 return
