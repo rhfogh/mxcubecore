@@ -42,7 +42,7 @@ import logging
 from HardwareRepository.TaskUtils import task
 from AbstractCollect import AbstractCollect
 from taurus.core.tango.enums import DevState
-from resolution import get_dettaby, get_resolution
+from xaloc.resolution import get_dettaby, get_resolution
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
