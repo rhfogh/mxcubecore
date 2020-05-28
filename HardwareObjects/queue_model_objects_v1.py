@@ -1204,8 +1204,8 @@ class PathTemplate(object):
         PathTemplate.archive_folder = archive_folder
 
     @staticmethod
-    def set_path_template_style(synchotron_name, template=None):
-        PathTemplate.synchotron_name = synchotron_name
+    def set_path_template_style(synchrotron_name, template=None):
+        PathTemplate.synchrotron_name = synchrotron_name
         PathTemplate.template = template
 
     @staticmethod
@@ -1304,14 +1304,14 @@ class PathTemplate(object):
 
     def get_archive_directory(self):
         """
-        Returns the archive directory, for longer term storage. synchotron_name
+        Returns the archive directory, for longer term storage. synchrotron_name
         is set via static function calles from session hwobj
 
         :rtype: str
         :returns: Archive directory
         """
         folders = self.directory.split('/')
-        if PathTemplate.synchotron_name == "MAXLAB":
+        if PathTemplate.synchrotron_name == "MAXLAB":
             archive_directory = self.directory
             archive_directory = archive_directory.replace("/data/data1/visitor", "/data/ispyb")
             archive_directory = archive_directory.replace("/data/data1/inhouse", "/data/ispyb")
@@ -1852,8 +1852,8 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
              'residues':  proc_params.num_residues,
              'dark': acq_params.take_dark_current,
              #'scan4d': 0,
-            "resolution": {"upper": acq_params.resolution or 0.0},
-            "detdistance": acq_params.detdistance,
+             "resolution": {"upper": acq_params.resolution or 0.0},
+             "detdistance": acq_params.detdistance,
              'transmission': acq_params.transmission,
              'energy': acq_params.energy,
              #'input_files': 1,
@@ -1885,7 +1885,7 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
     # as this causes unnecessary hardware activities
     # So remove them altogether if the value is (was excplicitly set to)  None or 0
     dd = result[0]
-    for tag in ('detector_distance', 'energy', 'transmission'):
+    for tag in ('detdistance', 'energy', 'transmission'):
         if tag in dd and not dd[tag]:
             del dd[tag]
     resolution = dd.get('resolution')
