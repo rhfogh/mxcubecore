@@ -273,8 +273,6 @@ class CollectEmulator(CollectMockup):
         file_info = data_collect_parameters["fileinfo"]
         if not os.path.exists(file_info["directory"]):
             os.makedirs(file_info["directory"])
-        if not os.path.exists(file_info["directory"]):
-            os.makedirs(file_info["directory"])
         infile = os.path.join(
             file_info["directory"], "simcal_in_%s.nml" % self._counter
         )
