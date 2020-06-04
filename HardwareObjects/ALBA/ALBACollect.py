@@ -42,7 +42,7 @@ import logging
 from HardwareRepository.TaskUtils import task
 from AbstractCollect import AbstractCollect
 from taurus.core.tango.enums import DevState
-from resolution import get_dettaby, get_resolution
+from xaloc.resolution import get_dettaby, get_resolution
 
 __credits__ = ["ALBA Synchrotron"]
 __version__ = "2.3"
@@ -849,83 +849,47 @@ class ALBACollect(AbstractCollect):
     def create_file_directories(self):
         """
         Method create directories for raw files and processing files.
-        Directorie for xds.input and auto_processing are created
+        Directories for xds, mosflm, ednaproc and autoproc
         """
         self.create_directories(
             self.current_dc_parameters['fileinfo']['directory'],
             self.current_dc_parameters['fileinfo']['process_directory'])
 
-        # create processing directories and img links
-        xds_directory, auto_directory, ednaproc_directory = self.prepare_input_files()
+        # create processing directories for each post process
+        for proc in ['xds', 'mosflm', 'ednaproc', 'autoproc']:
+            self._create_proc_files_directory(proc)
+
+    def _create_proc_files_directory(self, proc_name):
+
+        i = 1
+
+        while True:
+            _dirname = "%s_%s_%s_%d" % (
+                proc_name,
+                self.current_dc_parameters['fileinfo']['prefix'],
+                self.current_dc_parameters['fileinfo']['run_number'],
+                i)
+            _directory = os.path.join(
+                self.current_dc_parameters['fileinfo']['process_directory'],
+                _dirname)
+            if not os.path.exists(_directory):
+                break
+            i += 1
 
         try:
-            self.create_directories(xds_directory, auto_directory, ednaproc_directory)
-            os.system("chmod -R 777 %s %s %s" %
-                      (xds_directory, auto_directory, ednaproc_directory))
-            # TODO, create link of imgs for auto_processing
-            # try:
-            #     os.symlink(files_directory, os.path.join(process_directory, "img"))
-            # except os.error, e:
-            #     if e.errno != errno.EEXIST:
-            #         raise
-
+            self.create_directories(_directory)
+            os.system("chmod -R 777 %s" % _directory)
         except Exception as e:
-            self.logger.exception("Could not create processing file directory\n%s" % str(e))
+            msg = "Could not create directory %s\n%s" % (_directory, str(e))
+            self.logger.exception(msg)
             return
 
         # save directory names in current_dc_parameters. They will later be used
         #  by autoprocessing.
-        if xds_directory:
-            self.current_dc_parameters["xds_dir"] = xds_directory
-
-        if auto_directory:
-            self.current_dc_parameters["auto_dir"] = auto_directory
-
-    def prepare_input_files(self):
-        """
-        Descript. :
-        """
-        i = 1
-
-        while True:
-            xds_input_file_dirname = "xds_%s_%s_%d" % (
-                self.current_dc_parameters['fileinfo']['prefix'],
-                self.current_dc_parameters['fileinfo']['run_number'],
-                i)
-            xds_directory = os.path.join(
-                self.current_dc_parameters['fileinfo']['process_directory'],
-                xds_input_file_dirname)
-            if not os.path.exists(xds_directory):
-                break
-            i += 1
-
-        self.current_dc_parameters["xds_dir"] = xds_directory
-
-        mosflm_input_file_dirname = "mosflm_%s_%s_%d" % (
-            self.current_dc_parameters['fileinfo']['prefix'],
-            self.current_dc_parameters['fileinfo']['run_number'],
-            i)
-        mosflm_directory = os.path.join(
-            self.current_dc_parameters['fileinfo']['process_directory'],
-            mosflm_input_file_dirname)
-
-        self.logger.debug("XDS: %s / MOSFLM: %s" % (xds_directory, mosflm_directory))
-
-        while True:
-            ednaproc_dirname = "ednaproc_%s_%s_%d" % (
-                self.current_dc_parameters['fileinfo']['prefix'],
-                self.current_dc_parameters['fileinfo']['run_number'],
-                i)
-            ednaproc_directory = os.path.join(
-                self.current_dc_parameters['fileinfo']['process_directory'],
-                ednaproc_dirname)
-            if not os.path.exists(ednaproc_directory):
-                break
-            i += 1
-
-        self.current_dc_parameters["ednaproc_dir"] = ednaproc_directory
-
-        return xds_directory, mosflm_directory, ednaproc_directory
+        key = "%s_dir" % proc_name
+        self.current_dc_parameters[key] = _directory
+        self.logger.debug("dc_pars[%s] = %s" % (key, _directory))
+        return _directory
 
     def get_wavelength(self):
         """

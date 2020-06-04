@@ -41,8 +41,10 @@ import os
 import time
 import logging
 
-from ALBAClusterClient import EDNAJob, Manager, Account
-from ALBAClusterClient.utils import create_edna_yml
+from slurm_client import EDNAJob, Manager, Account
+#from ALBAClusterClient import EDNAJob, Manager, Account
+#from ALBAClusterClient.utils import create_edna_yml
+from slurm_client.utils import create_edna_yml
 
 # from XSDataMXCuBEv1_3 import XSDataResultMXCuBE
 
