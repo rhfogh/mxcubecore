@@ -83,7 +83,7 @@ class ALBADataAnalysis(DataAnalysis):
         self.job = self.cluster.create_strategy_job(dc_id, input_file, output_dir)
         self.cluster.run(self.job)
 
-        log.info("Characterization Job ID: %s" % self.job.job.id)
+        log.info("Characterization Job ID: %s" % self.job.id)
 
         self.output_dir = os.path.dirname(input_file)
         self.input_file = os.path.basename(input_file)

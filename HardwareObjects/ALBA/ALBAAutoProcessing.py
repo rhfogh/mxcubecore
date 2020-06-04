@@ -255,22 +255,22 @@ class ALBAAutoProcessing(HardwareObject):
         # EDNAProc
         ednaproc_dir = dc_pars['ednaproc_dir']
         logging.getLogger('user_level_log').info("Trigger EDNAProc processing")
-        job = self.cluter.create_ednaproc_job(dc_id, self.ednaproc_input_file, ednaproc_dir)
+        job = self.cluster.create_ednaproc_job(dc_id, self.ednaproc_input_file, ednaproc_dir)
         ##job.run()
         self.cluster.run(job)
         self.logger.debug("EDNAProc input file = %s " % self.ednaproc_input_file)
         self.logger.debug("Output dir = %s " % ednaproc_dir)
-        logging.getLogger('user_level_log').info("EDNAProc job ID: %s" % job.job.id)
+        logging.getLogger('user_level_log').info("EDNAProc job ID: %s" % job.id)
 
         # AutoPROC
         autoproc_dir = dc_pars['autoproc_dir']
         logging.getLogger('user_level_log').info("Trigger AutoPROC processing")
-        job = self.cluter.create_autoproc_job(dc_id, self.autoproc_input_file, autoproc_dir)
+        job = self.cluster.create_autoproc_job(dc_id, self.autoproc_input_file, autoproc_dir)
         ##job.run()
         self.cluster.run(job)
         self.logger.debug("AutoPROC input file = %s " % self.autoproc_input_file)
         self.logger.debug("Output dir = %s " % autoproc_dir)
-        logging.getLogger('user_level_log').info("AutoPROC job ID: %s" % job.job.id)
+        logging.getLogger('user_level_log').info("AutoPROC job ID: %s" % job.id)
 
 
 def test_hwo(hwo):

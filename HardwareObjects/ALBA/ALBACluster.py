@@ -95,7 +95,7 @@ class ALBACluster(HardwareObject):
     def create_strategy_job(self, collect_id, input_file, output_dir):
 
         plugin_name = self.pipelines['strategy']['plugin']
-        slurm_script = os.path.join(self._sripts_root,
+        slurm_script = os.path.join(self._scripts_root,
                                     self.pipelines['strategy']['script'])
 
         _yml_file = create_edna_yml(str(collect_id),
@@ -113,9 +113,9 @@ class ALBACluster(HardwareObject):
     def create_autoproc_job(self, collect_id, input_file, output_dir):
 
         plugin_name = self.pipelines['autoproc']['plugin']
-        slurm_script = os.path.join(self._sripts_root,
+        slurm_script = os.path.join(self._scripts_root,
                                     self.pipelines['autoproc']['script'])
-        configdef = os.path.join(self._sripts_root,
+        configdef = os.path.join(self._scripts_root,
                                  self.pipelines['autoproc']['configdef'])
 
         _yml_file = create_edna_yml(str(collect_id),
@@ -133,7 +133,7 @@ class ALBACluster(HardwareObject):
     def create_ednaproc_job(self, collect_id, input_file, output_dir):
 
         plugin_name = self.pipelines['ednaproc']['plugin']
-        slurm_script = os.path.join(self._sripts_root,
+        slurm_script = os.path.join(self._scripts_root,
                                     self.pipelines['ednaproc']['script'])
 
         _yml_file = create_edna_yml(str(collect_id),
