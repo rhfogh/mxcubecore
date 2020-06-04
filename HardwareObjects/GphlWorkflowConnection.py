@@ -348,6 +348,13 @@ class GphlWorkflowConnection(HardwareObject, object):
         # Specifically for the stratcal wrapper.
         envs["GPHL_INSTALLATION"] = self.software_paths["GPHL_INSTALLATION"]
         envs["BDG_home"] = self.software_paths["BDG_home"]
+        envs["GPHL_XDS_PATH"] = os.path.dirname(
+            self.software_paths["co.gphl.wf.xds.bin"]
+        )
+        GPHL_CCP4_PATH =  self.software_paths.get("GPHL_CCP4_PATH")
+        if GPHL_CCP4_PATH:
+            envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
+
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
         )
