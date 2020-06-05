@@ -95,7 +95,13 @@ class ALBASupervisor(Device):
         self.emit('phaseChanged', self.current_phase)
 
     def get_current_phase(self):
-        return self.chan_phase.getValue()
+        try:
+            _value = self.chan_phase.getValue()
+            self.logger.debug('get_current_phase: (value={0}, type={1})'.format(_value, type(_value)))
+        except Exception as e:
+            raise RuntimeError('Cannot get supervisor current phase:\n%s' % str(e))
+        return _value
+        # return self.chan_phase.getValue()
 
     def go_collect(self):
         return self.cmd_go_collect()

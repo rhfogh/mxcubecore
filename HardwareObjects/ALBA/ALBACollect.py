@@ -646,9 +646,12 @@ class ALBACollect(AbstractCollect):
 
             self.logger.debug("Supervisor get_state() is %s" % super_state)
             self.logger.debug("Supervisor current current_state is %s" % super_state2)
-            
-            cphase = self.supervisor_hwobj.get_current_phase().upper()
-            self.logger.debug("Supervisor current phase is %s" % cphase)
+            #TODO: review, sometimes get_current_phase returns None 
+            try:
+                cphase = self.supervisor_hwobj.get_current_phase().upper()
+                self.logger.debug("Supervisor current phase is %s" % cphase)
+            except:
+                cphase = None
             
             if super_state == DevState.ON and cphase == "COLLECT":
                 break
@@ -680,8 +683,12 @@ class ALBACollect(AbstractCollect):
 
         t0 = time.time()
         while True:
-            super_state = self.supervisor_hwobj.get_state()
-            cphase = self.supervisor_hwobj.get_current_phase().upper()
+            #TODO: review, some calls return None for get_current_phase()
+            try:
+                super_state = self.supervisor_hwobj.get_state()
+                cphase = self.supervisor_hwobj.get_current_phase().upper()
+            except:
+                super_state = cphase = None
             if super_state != DevState.MOVING and cphase == "SAMPLE":
                 break
             if time.time() - t0 > timeout:
