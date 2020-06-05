@@ -119,6 +119,18 @@ class ALBACats(Cats90):
             self.logger.error("Supervisor is already in transfer phase")
             return True
 
+        t0 = time.time()
+        while True:
+            state = str(self.super_state_channel.getValue())
+            if str(state) == "ON":
+                break
+
+            if (time.time() - t0) > TIMEOUT:
+                self.logger.error("Supervisor timeout waiting for ON state. Returning")
+                return False
+
+            time.sleep(0.1)
+
         self.go_transfer_cmd()
         ret = self._wait_phase_done('TRANSFER')
         return ret
