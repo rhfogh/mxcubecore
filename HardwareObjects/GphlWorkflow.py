@@ -661,16 +661,16 @@ class GphlWorkflow(HardwareObject, object):
             or "calibration" in data_model.get_type().lower()
         ):
 
-            field_list.append(
-                {
-                    "variableName": "centre_at_start",
-                    "uiLabel": "(Re)centre crystal before acquisition start?",
-                    "type": "boolean",
-                    "defaultValue": bool(self.getProperty("centre_at_start")),
-                }
-            )
 
             if len(orientations) > 1:
+                field_list.append(
+                    {
+                        "variableName": "centre_at_start",
+                        "uiLabel": "(Re)centre crystal before acquisition start?",
+                        "type": "boolean",
+                        "defaultValue": bool(self.getProperty("centre_at_start")),
+                    }
+                )
                 field_list.append(
                     {
                         "variableName": "centre_before_sweep",
@@ -679,6 +679,21 @@ class GphlWorkflow(HardwareObject, object):
                         "defaultValue": bool(self.getProperty("centre_before_sweep")),
                     }
                 )
+            else:
+                defval = (
+                    bool(self.getProperty("centre_at_start"))
+                    or bool(self.getProperty("centre_before_sweep"))
+
+                )
+                field_list.append(
+                    {
+                        "variableName": "centre_at_start",
+                        "uiLabel": "(Re)centre crystal before acquisition start?",
+                        "type": "boolean",
+                        "defaultValue":defval,
+                    }
+                )
+
             if data_model.get_interleave_order():
                 field_list.append(
                     {
@@ -1125,9 +1140,7 @@ class GphlWorkflow(HardwareObject, object):
             # Do not make snapshots during chareacterisation
             snapshot_count = 0
         centre_before_scan = bool(gphl_workflow_model.get_centre_before_scan())
-        enqueue_centring = (
-            bool(gphl_workflow_model.get_centre_before_sweep()) or centre_before_scan
-        )
+        centre_before_sweep = bool(gphl_workflow_model.get_centre_before_sweep())
         data_collections = []
         snapshot_counts = dict()
         found_orientations = set()
@@ -1212,7 +1225,7 @@ class GphlWorkflow(HardwareObject, object):
 
             goniostatRotation = sweep.goniostatSweepSetting
             if (
-                enqueue_centring and goniostatRotation.id_ not in found_orientations
+                centre_before_sweep and goniostatRotation.id_ not in found_orientations
             ) or centre_before_scan:
                 # Put centring on queue and collect using the resulting position
                 # NB this means that the actual translational axis positions
