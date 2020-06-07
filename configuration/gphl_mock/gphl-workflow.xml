@@ -280,7 +280,7 @@
             </options>
         </ThreeWavelengthMAD>
 
-        <NativeData_fast>
+        <NativeData_short>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>native_short</strategy_type>
             <documentation>
@@ -305,7 +305,7 @@
             <options>
                 <wfprefix>Native1_</wfprefix>
             </options>
-        </NativeData_fast>
+        </NativeData_short>
 
         <NativeData_medium>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
