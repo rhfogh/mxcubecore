@@ -339,11 +339,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         # # Any value is OK, just setting it is enough.
         # envs["AutoPROCWorkFlowUser"] = "1"
 
-        # Hack to pass alternative installation dir for processing
-        val = self.software_paths.get("gphl_wf_processing_installation")
-        if val:
-            envs["GPHL_PROC_INSTALLATION"] = val
-
         # These env variables are needed in some cases for wrapper scripts
         # Specifically for the stratcal wrapper.
         envs["GPHL_INSTALLATION"] = self.software_paths["GPHL_INSTALLATION"]
@@ -354,6 +349,12 @@ class GphlWorkflowConnection(HardwareObject, object):
         GPHL_CCP4_PATH =  self.software_paths.get("GPHL_CCP4_PATH")
         if GPHL_CCP4_PATH:
             envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
+        # Hack to pass alternative installation dir for processing
+        val = self.software_paths.get("gphl_wf_processing_installation")
+        if val:
+            envs["GPHL_PROC_INSTALLATION"] = val
+        else:
+            envs["GPHL_PROC_INSTALLATION"] =  envs["GPHL_INSTALLATION"]
 
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
