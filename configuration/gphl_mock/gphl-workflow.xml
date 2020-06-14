@@ -380,7 +380,8 @@
                 <!-- grid: Grid definition [axis_name:start:end:step], slowest-varying to fastest varying -->
                 <!-- EITHER file OR grid must be set.-->
                 <!--<grid>grid_axes_spec</grid>-->
-                <file>transcal_2stage.json</file>
+<!--                <file>transcal_2stage.json</file>-->
+                <file>transcal_2stage_0_252.json</file>
                 <!-- copy calibration result to configuration directory, -->
                 <!-- moving aside previous value -->
                 <updateblconfig/>
