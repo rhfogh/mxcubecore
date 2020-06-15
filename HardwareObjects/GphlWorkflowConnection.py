@@ -356,6 +356,9 @@ class GphlWorkflowConnection(HardwareObject, object):
         else:
             envs["GPHL_PROC_INSTALLATION"] =  envs["GPHL_INSTALLATION"]
 
+        # NBNB HACK - this ought to be done via config, but for now
+        envs["AutoProcScale_RunStaranisoCreate3D"] = "yes"
+
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
         )
