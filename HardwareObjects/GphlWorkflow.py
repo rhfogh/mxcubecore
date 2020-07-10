@@ -935,8 +935,8 @@ class GphlWorkflow(HardwareObject, object):
                         if centre_at_start:
                             motor_settings = settings.copy()
                             motor_settings.update(dd0)
-                            qe = self.enqueue_sample_centring(motor_settings=settings)
-                            queue_entries.append((qe, sweepSetting, settings))
+                            qe = self.enqueue_sample_centring(motor_settings=motor_settings)
+                            queue_entries.append((qe, sweepSetting, motor_settings))
                         else:
                             # Use calculated (re)centring
                             # Creating the Translation adds it to the Rotation
