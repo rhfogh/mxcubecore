@@ -43,13 +43,8 @@ class CollectEmulator(CollectMockup):
     def __init__(self, name):
         CollectMockup.__init__(self, name)
 
-        # # TODO get appropriate value
-        # # We must have a value for functions to work
-        # # This ought to be OK for a Pilatus 6M (See TangoResolution object)
-        # self.det_radius = 212.
-
-        # self._detector_distance = 300.
-        # self._wavelength = 1.0
+        self.instrument_data = None
+        self.segments = None
 
         self._counter = 1
 
@@ -68,25 +63,40 @@ class CollectEmulator(CollectMockup):
         result = OrderedDict()
         setup_data = result["setup_list"] = crystal_data
 
-        # update with instrument data
-        fp0 = api.gphl_workflow.file_paths.get("instrumentation_file")
-        instrument_input = f90nml.read(fp0)
 
-        instrument_data = instrument_input["sdcp_instrument_list"]
-        segments = instrument_input["segment_list"]
-        if isinstance(segments, dict):
+        if self.instrument_data is None:
+            # Read instrumentation.nml and put data into mock objects
+            # NB if we are here we must be in mock mode.
+            #
+            # update with instrument data
+            # You cannot do this at init time,
+            # as GPhL_wporkflow is not yet inittialised then.
+            fp0 = api.gphl_workflow.file_paths.get("instrumentation_file")
+            instrument_input = f90nml.read(fp0)
+
+            self.instrument_data = instrument_input["sdcp_instrument_list"]
+            self.segments = instrument_input["segment_list"]
+
+        #
+        # # update with instrument data
+        # fp0 = api.gphl_workflow.file_paths.get("instrumentation_file")
+        # instrument_input = f90nml.read(fp0)
+        #
+        # instrument_data = instrument_input["sdcp_instrument_list"]
+        # segments = instrument_input["segment_list"]
+        if isinstance(self.segments, dict):
             segment_count = 1
         else:
-            segment_count = len(segments)
+            segment_count = len(self.segments)
 
         sweep_count = len(data_collect_parameters["oscillation_sequence"])
 
         # Move beamstop settings to top level
-        ll0 = instrument_data.get("beamstop_param_names")
-        ll1 = instrument_data.get("beamstop_param_vals")
+        ll0 = self.instrument_data.get("beamstop_param_names")
+        ll1 = self.instrument_data.get("beamstop_param_vals")
         if ll0 and ll1:
             for tag, val in zip(ll0, ll1):
-                instrument_data[tag.lower()] = val
+                self.instrument_data[tag.lower()] = val
 
         # Setting parameters in order (may not be necessary, but ...)
         # Missing: *mu*
@@ -110,20 +120,24 @@ class CollectEmulator(CollectMockup):
             "det_qy",
             "det_nx",
             "det_ny",
-            "det_org_x",
-            "det_org_y",
+            # "det_org_x",
+            # "det_org_y",
             "det_coord_def",
         )
         for tag in tags:
-            val = instrument_data.get(remap.get(tag, tag))
+            val = self.instrument_data.get(remap.get(tag, tag))
             if val is not None:
                 setup_data[tag] = val
 
-        ll0 = instrument_data["gonio_axis_dirs"]
+        setup_data["det_org_x"], setup_data["det_org_y"] = (
+            api.detector.get_beam_centre()
+        )
+
+        ll0 = self.instrument_data["gonio_axis_dirs"]
         setup_data["omega_axis"] = ll0[:3]
         setup_data["kappa_axis"] = ll0[3:6]
         setup_data["phi_axis"] = ll0[6:]
-        ll0 = instrument_data["gonio_centring_axis_dirs"]
+        ll0 = self.instrument_data["gonio_centring_axis_dirs"]
         setup_data["trans_x_axis"] = ll0[:3]
         setup_data["trans_y_axis"] = ll0[3:6]
         setup_data["trans_z_axis"] = ll0[6:]
@@ -135,7 +149,7 @@ class CollectEmulator(CollectMockup):
             "beam_stop_s_distance",
         )
         for tag in tags:
-            val = instrument_data.get(remap.get(tag, tag))
+            val = self.instrument_data.get(remap.get(tag, tag))
             if val is not None:
                 setup_data[tag] = val
 
@@ -151,10 +165,10 @@ class CollectEmulator(CollectMockup):
         setup_data["n_sweeps"] = sweep_count
 
         # Add segments
-        result["segment_list"] = segments
+        result["segment_list"] = self.segments
 
         # Adjustments
-        val = instrument_data.get("beam")
+        val = self.instrument_data.get("beam")
         if val:
             setup_data["beam"] = val
 

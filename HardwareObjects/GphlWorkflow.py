@@ -164,9 +164,18 @@ class GphlWorkflow(HardwareObject, object):
         file_paths["instrumentation_file"] = fp0 = os.path.join(
             ss0, "instrumentation.nml"
         )
-        dd0 = f90nml.read(fp0)["sdcp_instrument_list"]
-        self.rotation_axis_roles = dd0["gonio_axis_names"]
-        self.translation_axis_roles = dd0["gonio_centring_axis_names"]
+        instrument_data = f90nml.read(fp0)["sdcp_instrument_list"]
+        self.rotation_axis_roles = instrument_data["gonio_axis_names"]
+        self.translation_axis_roles = instrument_data["gonio_centring_axis_names"]
+        detector = api.detector
+        if "Mockup" in detector.__class__.__name__:
+            # We are in mock  mode
+            # - set detector centre to match instrumentaiton.nml
+            # NB htis sould be done with isinstnce, but that seems to fail,
+            # probably because of import path mix-ups.
+            detector._set_beam_centre(
+                (instrument_data["det_org_x"], instrument_data["det_org_y"])
+            )
 
     def pre_execute(self, queue_entry):
 

@@ -223,7 +223,14 @@ class __HardwareRepositoryClient:
                         #t0 = time.time()
                         ho = self.parseXML(xmldata, hoName)
                         if type(ho) == str:
-                            return self.loadHardwareObject(ho)  
+                            # Changed so import redirection gets the ho name registered
+                            # return self.loadHardwareObject(ho)
+                            ho = self.loadHardwareObject(ho)
+                            if hoName in self.invalidHardwareObjects:
+                                self.invalidHardwareObjects.remove(hoName)
+
+                            self.hardwareObjects[hoName] = ho
+                            return ho
                     except:
                         logging.getLogger("HWR").exception("Cannot parse XML file for Hardware Object %s", hoName)
                     else:
@@ -244,7 +251,7 @@ class __HardwareRepositoryClient:
                                      node._addChannelsAndCommands()
                                   for child_node in node:
                                     addChannelsAndCommands(child_node)
-                                addChannelsAndCommands(ho) 
+                                addChannelsAndCommands(ho)
                             except:
                                 logging.getLogger('HWR').exception("Error while adding commands and/or channels to Hardware Object %s", hoName)
 
@@ -341,7 +348,7 @@ class __HardwareRepositoryClient:
             return self.getHardwareObject(item)
 
         raise KeyError
-    
+
 
     def getHardwareRepositoryPath(self):
        if self.server:
