@@ -58,8 +58,6 @@ __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
 
-States = queue_model_enumerables.States
-
 # Used to pass to priorInformation when no wavelengths are set (DiffractCal)
 DUMMY_WAVELENGTH = 999.999
 
@@ -68,19 +66,13 @@ class GphlWorkflow(HardwareObject, object):
     """Global Phasing workflow runner.
     """
 
-    TEST_SAMPLE_PREFIX = "emulate-"
+    STATES = GphlMessages.States
 
-    # object states
-    valid_states = [
-        States.OFF,  # Not active
-        States.ON,  # Active, awaiting execution order
-        States.OPEN,  # Active, awaiting input
-        States.RUNNING,  # Active, executing workflow
-    ]
+    TEST_SAMPLE_PREFIX = "emulate-"
 
     def __init__(self, name):
         super(GphlWorkflow, self).__init__(name)
-        self._state = States.OFF
+        self._state = self.STATES.OFF
 
         # HO that handles connection to GPhL workflow runner
         self._workflow_connection = None
@@ -181,9 +173,9 @@ class GphlWorkflow(HardwareObject, object):
 
         self._queue_entry = queue_entry
 
-        if self.get_state() == States.OFF:
+        if self.get_state() == self.STATES.OFF:
             api.gphl_connection.open_connection()
-            self.set_state(States.ON)
+            self.set_state(self.STATES.READY)
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -288,22 +280,22 @@ class GphlWorkflow(HardwareObject, object):
         return self._state
 
     def set_state(self, value):
-        if value in self.valid_states:
+        if value in self.STATES:
             self._state = value
             self.emit("stateChanged", (value,))
         else:
-            raise RuntimeError("GphlWorlflow set to invalid state: s" % value)
+            raise RuntimeError("GphlWorkflow set to invalid state: s" % value)
 
     def workflow_end(self):
         """
-        The workflow has finished, sets the state to 'ON'
+        The workflow has finished, sets the state to 'READY'
         """
 
         self._queue_entry = None
         self._data_collection_group = None
         # if not self._gevent_event.is_set():
         #     self._gevent_event.set()
-        self.set_state(States.ON)
+        self.set_state(self.STATES.READY)
         self._server_subprocess_names.clear()
         if api.gphl_connection is not None:
             api.gphl_connection.workflow_ended()
@@ -315,8 +307,17 @@ class GphlWorkflow(HardwareObject, object):
 
     def execute(self):
 
+        # Start execution of a new workflow
+        if self.get_state() != self.STATES.READY:
+            # TODO Add handling of potential conflicts.
+            # NBNB GPhL workflow cannot have multiple users
+            # unless they use separate persistence layers
+            raise RuntimeError(
+                "Cannot execute workflow - GphlWorkflow HardwareObject is not idle"
+            )
+
         try:
-            self.set_state(States.RUNNING)
+            self.set_state(self.STATES.BUSY)
 
             workflow_queue = gevent._threading.Queue()
             # Fork off workflow server process

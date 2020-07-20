@@ -23,6 +23,7 @@ from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
 import uuid
+import enum
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -180,6 +181,19 @@ POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
 ParsedMessage = namedtuple(
     "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
 )
+
+# TEMPORARY. Stand-in for HardwareObject states
+@enum.unique
+class States(enum.Enum):
+    """Duplicate of standard HardwareObject states"""
+
+
+    UNKNOWN = 0
+    WARNING = 1
+    BUSY = 2
+    READY = 3
+    FAULT = 4
+    OFF = 5
 
 
 # Abstract classes

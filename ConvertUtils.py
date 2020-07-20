@@ -5,14 +5,6 @@
 #
 #  This file is part of MXCuBE software.
 
-"""General data and functions, that can be shared between different HardwareObjects
-
-WARNING This must *always* be imported directly:
-'import General', 'from General import', ...
-Using from HardwareObjects import General (etc.) causes it to be imported twice
-so that States.On == States.ON is *not* always true.
-"""
-
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 

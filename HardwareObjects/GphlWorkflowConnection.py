@@ -40,8 +40,6 @@ import api
 import ConvertUtils
 import GphlMessages
 
-# NB MUST be imported via full path to match imports elsewhere:
-from queue_model_enumerables_v1 import States
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from HardwareRepository.HardwareRepository import getHardwareRepository
 
@@ -77,14 +75,7 @@ class GphlWorkflowConnection(HardwareObject, object):
     """
     This HO acts as a gateway to the Global Phasing workflow engine.
     """
-
-    # object states
-    valid_states = [
-        States.OFF,  # Not connected to remote server
-        States.ON,  # Connected, inactive, awaiting start (or disconnect)
-        States.RUNNING,  # Server is active and will produce next message
-        States.OPEN,  # Server is waiting for a message from the beamline
-    ]
+    STATES = GphlMessages.States
 
     def __init__(self, name):
         super(GphlWorkflowConnection, self).__init__(name)
@@ -104,7 +95,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         self._running_process = None
         self.collect_emulator_process = None
 
-        self._state = States.OFF
+        self._state = self.STATES.OFF
 
         # py4j connection parameters
         self._connection_parameters = {}
@@ -152,11 +143,11 @@ class GphlWorkflowConnection(HardwareObject, object):
         paths["BDG_home"] = paths.get("co.gphl.wf.bdg_licence_dir") or pp0
 
     def get_state(self):
-        """Returns a member of the General.States enumeration"""
+        """Returns a member of the self.STATES enumeration"""
         return self._state
 
     def set_state(self, value):
-        if value in self.valid_states:
+        if value in self.STATES:
             self._state = value
             dispatcher.send("stateChanged", self, self._state)
         else:
@@ -233,7 +224,7 @@ class GphlWorkflowConnection(HardwareObject, object):
 
         self.workflow_queue = workflow_queue
 
-        if self.get_state() != States.OFF:
+        if self.get_state() != self.STATES.OFF:
             # NB, for now workflow is started as the connection is made,
             # so we are never in state 'ON'/STANDBY
             raise RuntimeError("Workflow is already running, cannot be started")
@@ -369,7 +360,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             raise
 
         logging.getLogger("py4j.clientserver").setLevel(logging.WARNING)
-        self.set_state(States.RUNNING)
+        self.set_state(self.STATES.READY)
 
         logging.getLogger("HWR").debug(
             "GPhL workflow pid, returncode : %s, %s"
@@ -377,12 +368,12 @@ class GphlWorkflowConnection(HardwareObject, object):
         )
 
     def workflow_ended(self):
-        if self.get_state() == States.OFF:
+        if self.get_state() == self.STATES.OFF:
             # No workflow to abort
             return
 
         logging.getLogger("HWR").debug("GPhL workflow ended")
-        self.set_state(States.OFF)
+        self.set_state(self.STATES.OFF)
         if self._await_result is not None:
             # We are awaiting an answer - give an abort
             self._await_result.append((GphlMessages.BeamlineAbort(), None))
@@ -551,7 +542,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         ):
             # Requests:
             self._await_result = []
-            self.set_state(States.OPEN)
+            self.set_state(self.STATES.BUSY)
             if self.workflow_queue is None:
                 # Could be None if we have ended the workflow
                 return self._response_to_server(
@@ -565,8 +556,8 @@ class GphlWorkflowConnection(HardwareObject, object):
                     time.sleep(0.1)
                 result, correlation_id = self._await_result.pop(0)
                 self._await_result = None
-                if self.get_state() == States.OPEN:
-                    self.set_state(States.RUNNING)
+                if self.get_state() == self.STATES.BUSY:
+                    self.set_state(self.STATES.READY)
 
                 logging.getLogger("HWR").debug(
                     "GPhL - response=%s jobId=%s messageId=%s"
