@@ -1,4 +1,5 @@
-<device class="VimbaVideo"> 
+<device class="VimbaVideo">
+   <!-- camera IP address, not used by Vimba: 169.254.1.10 -->
    <type>Prosilica</type> 
    <mirror>(True, False)</mirror> 
    <interval>40</interval>

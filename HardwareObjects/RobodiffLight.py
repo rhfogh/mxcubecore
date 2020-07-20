@@ -1,10 +1,9 @@
 from HardwareRepository.BaseHardwareObjects import Device
-from HardwareRepository.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 import time
 import gevent
 
 
-class RobodiffLight(Device, AbstractMotor):
+class RobodiffLight(Device):
     states = {0: "out", 1: "in"}
     READ_CMD, READ_OUT = (0, 1)
     (NOTINITIALIZED, UNUSABLE, READY, MOVESTARTED, MOVING, ONLIMIT) = (0, 1, 2, 3, 4, 5)
@@ -52,14 +51,17 @@ class RobodiffLight(Device, AbstractMotor):
             while self.wago_controller.get(self.out_key) == 0:
                 time.sleep(0.5)
 
-    def get_value(self):
+    def getPosition(self):
         return self.wago_controller.get(self.light_level)
 
-    def get_limits(self):
+    def getLimits(self):
         return (0, 10)
 
-    def get_state(self):
+    def getState(self):
         return RobodiffLight.READY
 
-    def _set_value(self, value):
-        self.wago_controller.set(self.light_level, value)
+    def move(self, abs_pos):
+        self.wago_controller.set(self.light_level, abs_pos)
+
+    def moveRelative(self, rel_pos):
+        self.move(rel_pos + self.getPosition())

@@ -1,4 +1,4 @@
 <device class="MicrodiffLight">
   <exporter_address>p14md301.embl-hamburg.de:9001</exporter_address>
-  <actuator_name>BackLight</actuator_name>
+  <motor_name>BackLight</motor_name>
 </device>

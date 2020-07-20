@@ -15,7 +15,7 @@
 #  GNU Lesser General Public License for more details.
 #
 #  You should have received a copy of the GNU Lesser General Public License
-#  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
+#  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
 
@@ -52,7 +52,7 @@ class EMBLBeamFocusing(HardwareObject):
            attaches corresponding motors
         """
 
-        self.cmd_set_calibration_name = self.get_command_object("cmdSetCalibrationName")
+        self.cmd_set_calibration_name = self.getCommandObject("cmdSetCalibrationName")
         self.focus_modes = []
         for focus_mode in self["focusModes"]:
             self.focus_modes.append(
@@ -88,12 +88,12 @@ class EMBLBeamFocusing(HardwareObject):
                     "mGroupFocModeChanged",
                     self.motor_group_focus_mode_changed,
                 )
-                motors_group.re_emit_values()
+                motors_group.update_values()
         else:
             logging.getLogger("HWR").debug("BeamFocusing: No motors defined")
             self.active_focus_mode = self.focus_modes[0]["modeName"]
             self.size = self.focus_modes[0]["size"]
-        self.re_emit_values()
+        self.update_values()
 
         try:
             self.cmd_set_phase = eval(self.getProperty("setPhaseCmd"))
@@ -186,11 +186,6 @@ class EMBLBeamFocusing(HardwareObject):
                 return focus_mode["lensCombination"]
 
     def get_focus_mode_aperture(self, focus_mode_name=None):
-        """
-        Returns aperture associated to the current beam focus mode
-        :param focus_mode_name: diameter in micons
-        :return:
-        """
         if focus_mode_name is None:
             focus_mode_name, beam_size = self.get_active_focus_mode()
 
@@ -296,6 +291,6 @@ class EMBLBeamFocusing(HardwareObject):
             if focus_mode["modeName"] == self.active_focus_mode:
                 return focus_mode["diverg"][1]
 
-    def re_emit_values(self):
+    def update_values(self):
         """Reemits available signals"""
         self.emit("focusingModeChanged", self.active_focus_mode, self.size)

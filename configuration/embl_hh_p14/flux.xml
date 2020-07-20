@@ -10,9 +10,18 @@
    <object href="/attenuators" role="transmission" />
    <object href="/session" role="session" />
    <object href="/safshut" role="safety_shutter"/>
+   <object href="/eh1/beamFocusing" role="beam_focusing"/>
    
-   <channel type="tine" name="intensMean" tinename="/P14/BCUIntensity/Device0" timeout="100">ChannelsMean.get</channel>
-   <channel type="tine" name="intensRange" tinename="/P14/BCUIntensity/Device0">CurrentRange.set</channel>
+   <channel type="tine" name="intensMean" tinename="/P14/PinDiode/Device0" timeout="100">ChannelsMean.get</channel>
+   <channel type="tine" name="intensRange" tinename="/P14/PinDiode/Device0">CurrentRange.set</channel>
+
+   <channel type="tine" name="fluxStatus" tinename="/P14/flux-history/flux-record">status</channel>
+   <channel type="tine" name="fluxTransmission" tinename="/P14/flux-history/flux-record">transmission</channel>
+
+   <channel type="tine" name="fluxMessage" tinename="/P14/flux-history/flux-record" attach="datachange">error</channel>
+
+   <command type="tine" name="fluxRecord" tinename="/P14/flux-history/flux-record">intensity</command>
+   <command type="tine" name="slitsRecord" tinename="/P14/flux-history/flux-record">beam-size</command>  
  
    <intensity>
         <shutterOpenValue>opened</shutterOpenValue>
@@ -34,7 +43,7 @@
             </range>
             <range>
                 <CurMax>10e-2</CurMax>
-                <CurOffset>-2.780e-6</CurOffset>
+                <CurOffset>6.65e-7</CurOffset>
                 <CurIndex>0</CurIndex>
             </range>
         </ranges>

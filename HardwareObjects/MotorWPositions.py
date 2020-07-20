@@ -84,19 +84,19 @@ class MotorWPositions(AbstractMotor, Device):
                 pos = position.getProperty(role)
                 self.predefined_positions[name] = pos
         self.connect(self.motor, "stateChanged", self.motor_state_changed)
-        self.connect(self.motor, "valueChanged", self.motor_position_changed)
-        self.setIsReady(self.motor.is_ready())
+        self.connect(self.motor, "positionChanged", self.motor_position_changed)
+        self.setIsReady(self.motor.isReady())
 
-    def get_limits(self):
+    def getLimits(self):
         return (1, len(self.predefined_positions))
 
     def getPredefinedPositionsList(self):
         return sorted(self.predefined_positions.keys())
         # return self.predefined_positions
 
-    def get_current_position_name(self, pos=None):
+    def getCurrentPositionName(self, pos=None):
         if pos is None:
-            pos = self.motor.get_value()
+            pos = self.motor.getPosition()
         for (position_name, position) in self.predefined_positions.items():
             if self.delta >= abs(pos - position):
                 return position_name
@@ -104,7 +104,7 @@ class MotorWPositions(AbstractMotor, Device):
 
     def moveToPosition(self, position_name):
         try:
-            self.motor.set_value(self.predefined_positions[position_name])
+            self.motor.move(self.predefined_positions[position_name])
         except BaseException:
             logging.getLogger("HWR").exception("MotorWPositions: invalid position name")
 
@@ -115,7 +115,7 @@ class MotorWPositions(AbstractMotor, Device):
         """
         Descript. :
         """
-        return self.actuator_name
+        return self.motor_name
 
     def motor_state_changed(self, state):
         self.updateState(state)
@@ -123,47 +123,65 @@ class MotorWPositions(AbstractMotor, Device):
 
     def motor_position_changed(self, absolute_position=None):
         if absolute_position is None:
-            absolute_position = self.motor.get_value()
-        position_name = self.get_current_position_name(absolute_position)
+            absolute_position = self.motor.getPosition()
+        position_name = self.getCurrentPositionName(absolute_position)
         if self._last_position_name != position_name:
             self._last_position_name = position_name
             self.emit(
                 "predefinedPositionChanged",
                 (position_name, position_name and absolute_position or None),
             )
-        self.emit("valueChanged", (absolute_position,))
+        self.emit("positionChanged", (absolute_position,))
 
     def updateState(self, state=None):
         """
         Descript. :
         """
         if state is None:
-            state = self.get_state()
+            state = self.getState()
         self.setIsReady(state > AbstractMotor.UNUSABLE)
 
-    def get_state(self):
+    def getState(self):
         """
         Descript. : return motor state
         """
-        return self.motor.get_state()
+        return self.motor.getState()
 
-    def get_value(self):
+    def getPosition(self):
         """
         Descript. :
         """
-        return self.motor.get_value()
+        return self.motor.getPosition()
 
-    def set_value(self, absolute_position, timeout=0):
+    def getDialPosition(self):
         """
         Descript. :
         """
-        self.motor.set_value(absolute_position, timeout)
+        return self.motor.getDialPosition()
 
-    def set_value_relative(self, relative_position, timeout=0):
+    def move(self, absolute_position):
         """
         Descript. :
         """
-        self.motor.set_value_relative(relative_position, timeout)
+        self.motor.move(absolute_position)
+
+    def moveRelative(self, relative_position):
+        """
+        Descript. :
+        """
+        self.motor.moveRelative(relative_position)
+
+    def syncMove(self, absolute_position, timeout=None):
+        """
+        Descript. :
+        """
+        self.motor.syncMove(absolute_position, timeout)
+
+    def syncMoveRelative(self, relative_position, timeout=None):
+        """
+        Descript. :
+        """
+        self.motor.syncMoveRelative(relative_position, timeout)
 
     def stop(self):
         """

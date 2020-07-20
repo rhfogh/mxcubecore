@@ -7,18 +7,18 @@ class Pin(Sample):
 
     def __init__(self, basket, basket_no, sample_no):
         super(Pin, self).__init__(
-            basket, Pin.get_sample_address(basket_no, sample_no), True
+            basket, Pin.getSampleAddress(basket_no, sample_no), True
         )
-        self._set_holder_length(Pin.STD_HOLDERLENGTH)
+        self._setHolderLength(Pin.STD_HOLDERLENGTH)
 
-    def get_basket_no(self):
-        return self.get_container().get_index() + 1
+    def getBasketNo(self):
+        return self.getContainer().getIndex() + 1
 
-    def get_vial_no(self):
-        return self.get_index() + 1
+    def getVialNo(self):
+        return self.getIndex() + 1
 
     @staticmethod
-    def get_sample_address(basket_number, sample_number):
+    def getSampleAddress(basket_number, sample_number):
         return str(basket_number) + ":" + "%02d" % (sample_number)
 
 
@@ -28,19 +28,19 @@ class Basket(Container):
 
     def __init__(self, container, number):
         super(Basket, self).__init__(
-            self.__TYPE__, container, Basket.get_basket_address(number), True
+            self.__TYPE__, container, Basket.getBasketAddress(number), True
         )
         for i in range(Basket.NO_OF_SAMPLES_PER_PUCK):
             slot = Pin(self, number, i + 1)
-            self._add_component(slot)
+            self._addComponent(slot)
 
     @staticmethod
-    def get_basket_address(basket_number):
+    def getBasketAddress(basket_number):
         return str(basket_number)
 
-    def clear_info(self):
-        self.get_container()._reset_basket_info(self.get_index() + 1)
-        self.get_container()._trigger_info_changed_event()
+    def clearInfo(self):
+        self.getContainer()._reset_basket_info(self.getIndex() + 1)
+        self.getContainer()._triggerInfoChangedEvent()
 
 
 class CatsBessy(SampleChanger):
@@ -55,19 +55,19 @@ class CatsBessy(SampleChanger):
         super(CatsBessy, self).__init__(self.__TYPE__, False, *args, **kwargs)
         for i in range(CatsBessy.NO_OF_BASKETS):
             basket = Basket(self, i + 1)
-            self._add_component(basket)
+            self._addComponent(basket)
 
     def init(self):
         self._selected_sample = 1
         self._selected_basket = 1
 
-        self._state = self.get_channel_object("_state")
-        self._abort = self.get_command_object("_abort")
+        self._state = self.getChannelObject("_state")
+        self._abort = self.getCommandObject("_abort")
 
         self._basketChannels = []
         for basket_index in range(CatsBessy.NO_OF_BASKETS):
             self._basketChannels.append(
-                self.add_channel(
+                self.addChannel(
                     {
                         "type": "tango",
                         "name": "di_basket",
@@ -78,7 +78,7 @@ class CatsBessy(SampleChanger):
                 )
             )
 
-        self._lidStatus = self.add_channel(
+        self._lidStatus = self.addChannel(
             {
                 "type": "tango",
                 "name": "di_AllLidsClosed",
@@ -88,31 +88,31 @@ class CatsBessy(SampleChanger):
             "di_AllLidsClosed",
         )
         if self._lidStatus is not None:
-            self._lidStatus.connectSignal("update", self._update_operation_mode)
+            self._lidStatus.connectSignal("update", self._updateOperationMode)
         self._scIsCharging = None
 
-        self._load = self.add_command(
+        self._load = self.addCommand(
             {"type": "tango", "name": "put_bcrd", "tangoname": self.tangoname},
             "put_bcrd",
         )
-        self._unload = self.add_command(
+        self._unload = self.addCommand(
             {"type": "tango", "name": "put_bcrd", "tangoname": self.tangoname}, "get"
         )
-        self._chained_load = self.add_command(
+        self._chained_load = self.addCommand(
             {"type": "tango", "name": "getput_bcrd", "tangoname": self.tangoname},
             "getput_bcrd",
         )
-        self._barcode = self.add_command(
+        self._barcode = self.addCommand(
             {"type": "tango", "name": "barcode", "tangoname": self.tangoname}, "barcode"
         )
-        self._reset = self.add_command(
+        self._reset = self.addCommand(
             {"type": "tango", "name": "reset", "tangoname": self.tangoname}, "reset"
         )
-        self._abort = self.add_command(
+        self._abort = self.addCommand(
             {"type": "tango", "name": "abort", "tangoname": self.tangoname}, "abort"
         )
 
-        self._numSampleOnDiff = self.add_channel(
+        self._numSampleOnDiff = self.addChannel(
             {
                 "type": "tango",
                 "name": "NumSampleOnDiff",
@@ -121,7 +121,7 @@ class CatsBessy(SampleChanger):
             },
             "NumSampleOnDiff",
         )
-        self._lidSampleOnDiff = self.add_channel(
+        self._lidSampleOnDiff = self.addChannel(
             {
                 "type": "tango",
                 "name": "LidSampleOnDiff",
@@ -130,7 +130,7 @@ class CatsBessy(SampleChanger):
             },
             "LidSampleOnDiff",
         )
-        self._barcode = self.add_channel(
+        self._barcode = self.addChannel(
             {
                 "type": "tango",
                 "name": "Barcode",
@@ -139,7 +139,7 @@ class CatsBessy(SampleChanger):
             },
             "Barcode",
         )
-        self._path_running = self.add_channel(
+        self._pathRunning = self.addChannel(
             {
                 "type": "tango",
                 "name": "PathRunning",
@@ -149,99 +149,97 @@ class CatsBessy(SampleChanger):
             "PathRunning",
         )
 
-        self._init_sc_contents()
+        self._initSCContents()
 
         # SampleChanger.init must be called _after_ initialization of the Cats because it starts the update methods which access
         # the device server's status attributes
         SampleChanger.init(self)
 
-    def get_sample_properties(self):
+    def getSampleProperties(self):
         return (Pin.__HOLDER_LENGTH_PROPERTY__,)
 
     # ########################           TASKS           #########################
-    def _do_update_info(self):
+    def _doUpdateInfo(self):
         self._updateSCContents()
-        self._update_selection()
-        self._update_state()
-        self._update_loaded_sample()
+        self._updateSelection()
+        self._updateState()
+        self._updateLoadedSample()
 
-    def _do_change_mode(self, mode):
+    def _doChangeMode(self, mode):
         pass
 
-    def get_selected_component(self):
-        return self.get_components()[self._selected_basket - 1]
+    def getSelectedComponent(self):
+        return self.getComponents()[self._selected_basket - 1]
 
-    def _do_select(self, component):
+    def _doSelect(self, component):
         if isinstance(component, Sample):
-            selected_basket = self.get_selected_component()
+            selected_basket = self.getSelectedComponent()
             if (selected_basket is None) or (
-                selected_basket != component.get_container()
+                selected_basket != component.getContainer()
             ):
-                # self._execute_server_task(self._select_basket , component.get_basket_no())
-                self._selected_basket = component.get_basket_no()
-            # self._execute_server_task(self._select_sample, component.get_index()+1)
-            self._selected_sample = component.get_index() + 1
+                # self._executeServerTask(self._select_basket , component.getBasketNo())
+                self._selected_basket = component.getBasketNo()
+            # self._executeServerTask(self._select_sample, component.getIndex()+1)
+            self._selected_sample = component.getIndex() + 1
         elif isinstance(component, Container) and (
-            component.get_type() == Basket.__TYPE__
+            component.getType() == Basket.__TYPE__
         ):
-            # self._execute_server_task(self._select_basket, component.get_index()+1)
-            self._selected_basket = component.get_index() + 1
+            # self._executeServerTask(self._select_basket, component.getIndex()+1)
+            self._selected_basket = component.getIndex() + 1
 
-    def _do_abort(self):
+    def _doAbort(self):
         self._abort()
 
-    def _do_scan(self, component, recursive):
-        selected_basket = self.get_selected_component()
+    def _doScan(self, component, recursive):
+        selected_basket = self.getSelectedComponent()
         if isinstance(component, Sample):
             # scan a single sample
             if (selected_basket is None) or (
-                selected_basket != component.get_container()
+                selected_basket != component.getContainer()
             ):
-                self._do_select(component)
-            # self._execute_server_task(self._scan_samples, [component.get_index()+1,])
+                self._doSelect(component)
+            # self._executeServerTask(self._scan_samples, [component.getIndex()+1,])
             lid = ((self._selected_basket - 1) / 3) + 1
             sample = (((self._selected_basket - 1) % 3) * 10) + (
-                component.get_index() + 1
+                component.getIndex() + 1
             )
             argin = ["2", str(lid), str(sample), "0", "0"]
-            self._execute_server_task(self._barcode, argin)
+            self._executeServerTask(self._barcode, argin)
         elif isinstance(component, Container) and (
-            component.get_type() == Basket.__TYPE__
+            component.getType() == Basket.__TYPE__
         ):
             # component is a basket
             if recursive:
                 pass
-                # self._execute_server_task(self._scan_basket, (component.get_index()+1))
+                # self._executeServerTask(self._scan_basket, (component.getIndex()+1))
             else:
                 if (selected_basket is None) or (selected_basket != component):
-                    self._do_select(component)
-                # self._execute_server_task(self._scan_samples, (0,))
+                    self._doSelect(component)
+                # self._executeServerTask(self._scan_samples, (0,))
                 for sample_index in range(Basket.NO_OF_SAMPLES_PER_PUCK):
                     lid = ((self._selected_basket - 1) / 3) + 1
                     sample = (((self._selected_basket - 1) % 3) * 10) + (
                         sample_index + 1
                     )
                     argin = ["2", str(lid), str(sample), "0", "0"]
-                    self._execute_server_task(self._barcode, argin)
-        elif isinstance(component, Container) and (
-            component.get_type() == SC3.__TYPE__
-        ):
-            for basket in self.get_components():
-                self._do_scan(basket, True)
+                    self._executeServerTask(self._barcode, argin)
+        elif isinstance(component, Container) and (component.getType() == SC3.__TYPE__):
+            for basket in self.getComponents():
+                self._doScan(basket, True)
 
-    def _do_load(self, sample=None):
-        selected = self.get_selected_sample()
-        if self.has_loaded_sample():
-            if (sample is None) or (sample == self.get_loaded_sample()):
+    def _doLoad(self, sample=None):
+        selected = self.getSelectedSample()
+        if self.hasLoadedSample():
+            if (sample is None) or (sample == self.getLoadedSample()):
                 raise Exception(
                     "The sample "
-                    + str(self.get_loaded_sample().get_address())
+                    + str(self.getLoadedSample().getAddress())
                     + " is already loaded"
                 )
             lid = ((self._selected_basket - 1) / 3) + 1
             sample = (((self._selected_basket - 1) % 3) * 10) + self._selected_sample
             argin = ["2", str(lid), str(sample), "0", "0", "0", "0", "0"]
-            self._execute_server_task(self._chained_load, argin)
+            self._executeServerTask(self._chained_load, argin)
         else:
             if sample is None:
                 if selected is None:
@@ -249,41 +247,42 @@ class CatsBessy(SampleChanger):
                 else:
                     sample = selected
             elif (sample is not None) and (sample != selected):
-                self._do_select(sample)
-            # self._execute_server_task(self._load,sample.get_holder_length())
+                self._doSelect(sample)
+            # self._executeServerTask(self._load,sample.getHolderLength())
+            # import pdb; pdb.set_trace()
             lid = ((self._selected_basket - 1) / 3) + 1
             sample = (((self._selected_basket - 1) % 3) * 10) + self._selected_sample
             argin = ["2", str(lid), str(sample), "0", "0", "0", "0", "0"]
-            self._execute_server_task(self._load, argin)
+            self._executeServerTask(self._load, argin)
 
-    def _do_unload(self, sample_slot=None):
+    def _doUnload(self, sample_slot=None):
         if sample_slot is not None:
-            self._do_select(sample_slot)
+            self._doSelect(sample_slot)
         argin = ["2", "0", "0", "0", "0"]
-        self._execute_server_task(self._unload, argin)
+        self._executeServerTask(self._unload, argin)
 
-    def _do_reset(self):
-        self._execute_server_task(self._reset)
+    def _doReset(self):
+        self._executeServerTask(self._reset)
 
-    def clear_basket_info(self, basket):
+    def clearBasketInfo(self, basket):
         self._reset_basket_info(basket)
 
     # ########################           PRIVATE           #########################
-    def _update_operation_mode(self, value):
+    def _updateOperationMode(self, value):
         self._scIsCharging = not value
 
-    def _execute_server_task(self, method, *args):
-        self._wait_device_ready(3.0)
+    def _executeServerTask(self, method, *args):
+        self._waitDeviceReady(3.0)
         task_id = method(*args)
         # introduced wait because it takes some time before the attribute PathRunning is set
         # after launching a transfer
         time.sleep(2.0)
         ret = None
         if task_id is None:  # Reset
-            while self._is_device_busy():
+            while self._isDeviceBusy():
                 gevent.sleep(0.1)
         else:
-            while str(self._path_running.getValue()).lower() == "true":
+            while str(self._pathRunning.getValue()).lower() == "true":
                 gevent.sleep(0.1)
             # try:
             #    ret = self._check_task_result(task_id)
@@ -292,20 +291,18 @@ class CatsBessy(SampleChanger):
             ret = True
         return ret
 
-    def _update_state(self):
+    def _updateState(self):
         try:
-            state = self._read_state()
+            state = self._readState()
         except BaseException:
             state = SampleChangerState.Unknown
-        if state == SampleChangerState.Moving and self._is_device_busy(
-            self.get_state()
-        ):
+        if state == SampleChangerState.Moving and self._isDeviceBusy(self.getState()):
             return
         if self._scIsCharging and not (state == SampleChangerState.Alarm):
             state = SampleChangerState.Charging
-        self._set_state(state)
+        self._setState(state)
 
-    def _read_state(self):
+    def _readState(self):
         state = self._state.getValue()
         if state is not None:
             stateStr = str(state).upper()
@@ -319,9 +316,9 @@ class CatsBessy(SampleChanger):
         }
         return state_converter.get(stateStr, SampleChangerState.Unknown)
 
-    def _is_device_busy(self, state=None):
+    def _isDeviceBusy(self, state=None):
         if state is None:
-            state = self._read_state()
+            state = self._readState()
         return state not in (
             SampleChangerState.Ready,
             SampleChangerState.Loaded,
@@ -331,16 +328,17 @@ class CatsBessy(SampleChanger):
             SampleChangerState.StandBy,
         )
 
-    def _is_device_ready(self):
-        state = self._read_state()
+    def _isDeviceReady(self):
+        state = self._readState()
         return state in (SampleChangerState.Ready, SampleChangerState.Charging)
 
-    def _wait_device_ready(self, timeout=None):
+    def _waitDeviceReady(self, timeout=None):
         with gevent.Timeout(timeout, Exception("Timeout waiting for device ready")):
-            while not self._is_device_ready():
+            while not self._isDeviceReady():
                 gevent.sleep(0.01)
 
-    def _update_selection(self):
+    def _updateSelection(self):
+        # import pdb; pdb.set_trace()
         basket = None
         sample = None
         try:
@@ -350,24 +348,22 @@ class CatsBessy(SampleChanger):
                 and basket_no > 0
                 and basket_no <= CatsBessy.NO_OF_BASKETS
             ):
-                basket = self.get_component_by_address(
-                    Basket.get_basket_address(basket_no)
-                )
+                basket = self.getComponentByAddress(Basket.getBasketAddress(basket_no))
                 sample_no = self._selected_sample
                 if (
                     sample_no is not None
                     and sample_no > 0
                     and sample_no <= Basket.NO_OF_SAMPLES_PER_PUCK
                 ):
-                    sample = self.get_component_by_address(
-                        Pin.get_sample_address(basket_no, sample_no)
+                    sample = self.getComponentByAddress(
+                        Pin.getSampleAddress(basket_no, sample_no)
                     )
         except BaseException:
             pass
-        self._set_selected_component(basket)
-        self._set_selected_sample(sample)
+        self._setSelectedComponent(basket)
+        self._setSelectedSample(sample)
 
-    def _update_loaded_sample(self):
+    def _updateLoadedSample(self):
         loadedSampleLid = self._lidSampleOnDiff.getValue()
         loadedSampleNum = self._numSampleOnDiff.getValue()
         if loadedSampleLid != -1 or loadedSampleNum != -1:
@@ -380,20 +376,21 @@ class CatsBessy(SampleChanger):
             samplePos = None
 
         if basket is not None and samplePos is not None:
-            new_sample = self.get_component_by_address(
-                Pin.get_sample_address(basket, samplePos)
+            new_sample = self.getComponentByAddress(
+                Pin.getSampleAddress(basket, samplePos)
             )
         else:
             new_sample = None
 
-        if self.get_loaded_sample() != new_sample:
+        if self.getLoadedSample() != new_sample:
+            # import pdb; pdb.set_trace()
             # remove 'loaded' flag from old sample but keep all other information
-            old_sample = self.get_loaded_sample()
+            old_sample = self.getLoadedSample()
             if old_sample is not None:
                 # there was a sample on the gonio
                 loaded = False
                 has_been_loaded = True
-                old_sample._set_loaded(loaded, has_been_loaded)
+                old_sample._setLoaded(loaded, has_been_loaded)
             if new_sample is not None:
                 # update information of recently loaded sample
                 datamatrix = str(self._barcode.getValue())
@@ -402,18 +399,18 @@ class CatsBessy(SampleChanger):
                     datamatrix = "----------"
                 loaded = True
                 has_been_loaded = True
-                new_sample._set_info(new_sample.is_present(), datamatrix, scanned)
-                new_sample._set_loaded(loaded, has_been_loaded)
+                new_sample._setInfo(new_sample.isPresent(), datamatrix, scanned)
+                new_sample._setLoaded(loaded, has_been_loaded)
 
-    def _init_sc_contents(self):
+    def _initSCContents(self):
         # create temporary list with default basket information
         basket_list = [("", 4)] * CatsBessy.NO_OF_BASKETS
         # write the default basket information into permanent Basket objects
         for basket_index in range(CatsBessy.NO_OF_BASKETS):
-            basket = self.get_components()[basket_index]
+            basket = self.getComponents()[basket_index]
             datamatrix = None
             present = scanned = False
-            basket._set_info(present, datamatrix, scanned)
+            basket._setInfo(present, datamatrix, scanned)
 
         # create temporary list with default sample information and indices
         sample_list = []
@@ -424,49 +421,48 @@ class CatsBessy(SampleChanger):
                 )
         # write the default sample information into permanent Pin objects
         for spl in sample_list:
-            sample = self.get_component_by_address(
-                Pin.get_sample_address(spl[1], spl[2])
-            )
+            sample = self.getComponentByAddress(Pin.getSampleAddress(spl[1], spl[2]))
             datamatrix = None
             present = scanned = loaded = has_been_loaded = False
-            sample._set_info(present, datamatrix, scanned)
-            sample._set_loaded(loaded, has_been_loaded)
-            sample._set_holder_length(spl[4])
+            sample._setInfo(present, datamatrix, scanned)
+            sample._setLoaded(loaded, has_been_loaded)
+            sample._setHolderLength(spl[4])
 
     def _updateSCContents(self):
         for basket_index in range(CatsBessy.NO_OF_BASKETS):
             # get presence information from the device server
             newBasketPresence = self._basketChannels[basket_index].getValue()
             # get saved presence information from object's internal bookkeeping
-            basket = self.get_components()[basket_index]
+            basket = self.getComponents()[basket_index]
 
             # check if the basket was newly mounted or removed from the dewar
-            if newBasketPresence ^ basket.is_present():
+            if newBasketPresence ^ basket.isPresent():
+                # import pdb; pdb.set_trace()
                 # a mounting action was detected ...
                 if newBasketPresence:
                     # basket was mounted
                     present = True
                     scanned = False
                     datamatrix = None
-                    basket._set_info(present, datamatrix, scanned)
+                    basket._setInfo(present, datamatrix, scanned)
                 else:
                     # basket was removed
                     present = False
                     scanned = False
                     datamatrix = None
-                    basket._set_info(present, datamatrix, scanned)
+                    basket._setInfo(present, datamatrix, scanned)
                 # set the information for all dependent samples
                 for sample_index in range(Basket.NO_OF_SAMPLES_PER_PUCK):
-                    sample = self.get_component_by_address(
-                        Pin.get_sample_address((basket_index + 1), (sample_index + 1))
+                    sample = self.getComponentByAddress(
+                        Pin.getSampleAddress((basket_index + 1), (sample_index + 1))
                     )
-                    present = sample.get_container().is_present()
+                    present = sample.getContainer().isPresent()
                     if present:
                         datamatrix = "          "
                     else:
                         datamatrix = None
                     scanned = False
-                    sample._set_info(present, datamatrix, scanned)
+                    sample._setInfo(present, datamatrix, scanned)
                     # forget about any loaded state in newly mounted or removed basket)
                     loaded = has_been_loaded = False
-                    sample._set_loaded(loaded, has_been_loaded)
+                    sample._setLoaded(loaded, has_been_loaded)

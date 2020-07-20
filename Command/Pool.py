@@ -175,7 +175,7 @@ class PoolChannel(ChannelObject):
             else:
                 self.device.set_timeout_millis(self.timeout)
 
-                if isinstance(polling, int):
+                if isinstance(polling, types.IntType):
                     self.pollingTimer = qt.QTimer()
                     self.pollingTimer.connect(
                         self.pollingTimer, qt.SIGNAL("timeout()"), self.poll

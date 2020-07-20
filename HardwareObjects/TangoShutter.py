@@ -112,7 +112,7 @@ In the example the tango attribute is called "exper_shutter"
 
 """
 
-from HardwareRepository import HardwareRepository as HWR
+from HardwareRepository import HardwareRepository
 from HardwareRepository import BaseHardwareObjects
 
 import logging
@@ -155,16 +155,17 @@ class TangoShutter(BaseHardwareObjects.Device):
 
     def init(self):
         self.state_value_str = "unknown"
+
         try:
-            self.shutter_channel = self.get_channel_object("State")
+            self.shutter_channel = self.getChannelObject("State")
             self.shutter_channel.connectSignal("update", self.shutterStateChanged)
         except KeyError:
             logging.getLogger().warning(
                 "%s: cannot connect to shutter channel", self.name()
             )
 
-        self.open_cmd = self.get_command_object("Open")
-        self.close_cmd = self.get_command_object("Close")
+        self.open_cmd = self.getCommandObject("Open")
+        self.close_cmd = self.getCommandObject("Close")
 
     def shutterStateChanged(self, value):
         self.state_value_str = self._convert_state_to_str(value)
@@ -200,12 +201,12 @@ class TangoShutter(BaseHardwareObjects.Device):
 
 
 def test():
-    hwr = HWR.getHardwareRepository()
+    hwr = HardwareRepository.getHardwareRepository()
     hwr.connect()
 
     shut = hwr.getHardwareObject("/fastshutter")
 
-    print(("Shutter State is: ", shut.readShutterState()))
+    print("Shutter State is: ", shut.readShutterState())
 
 
 if __name__ == "__main__":

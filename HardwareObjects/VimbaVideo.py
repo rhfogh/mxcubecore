@@ -1,4 +1,5 @@
 import time
+import logging
 import atexit
 import numpy as np
 from pymba import *
@@ -10,7 +11,7 @@ except ImportError:
 
 from gui.utils.QtImport import QImage, QPixmap
 from HardwareRepository.HardwareObjects.abstract.AbstractVideoDevice import (
-    AbstractVideoDevice,
+    AbstractVideoDevice
 )
 
 from abstract.AbstractVideoDevice import AbstractVideoDevice
@@ -30,8 +31,8 @@ class VimbaVideo(AbstractVideoDevice):
     def init(self):
         # start Vimba
         self.camera_index = self.getProperty("camera_index", 0)
-        self.use_qt = self.getProperty("use_qt", True)
-
+        self.use_qt = self.getProperty('use_qt', True)
+             
         atexit.register(self.close_camera)
         AbstractVideoDevice.init(self)
 
@@ -59,42 +60,56 @@ class VimbaVideo(AbstractVideoDevice):
 
             while True:
                 self.frame0.waitFrameCapture(1000)
-                self.frame0.queueFrameCapture()
+                try:
+                    frame_ok = True
+                    self.frame0.queueFrameCapture()
+                except:
+                    logging.getLogger("HWR").error("Vimba video: Error in frame capture. Restarting camera in 5 sec...")
+                    frame_ok = False
+                    time.sleep(1)
+                    self.camera.flushCaptureQueue()
+                    self.camera.endCapture()
+                    self.camera.revokeAllFrames()
+                    self.camera.closeCamera()
+                    time.sleep(5)
 
-                if self.use_qt:
-                    self.qimage = QImage(
-                        self.frame0.getBufferByteData(),
-                        self.raw_image_dimensions[0],
-                        self.raw_image_dimensions[1],
-                        QImage.Format_RGB888,
-                    )
-                    if self.cam_mirror is not None:
-                        self.qimage = self.qimage.mirrored(
-                            self.cam_mirror[0], self.cam_mirror[1]
+                    #self.camera = vimba.getCamera(cameraIds[self.camera_index])
+                    self.camera.openCamera(cameraAccessMode=2)
+                    self.camera.framerate = 1
+                    self.frame0 = self.camera.getFrame()  # creates a frame
+                    self.frame0.announceFrame()
+                    self.camera.startCapture()
+                    logging.getLogger("HWR").info("Vimba video: Camera restarted")
+
+                if frame_ok: 
+                    if self.use_qt:
+                        self.qimage = QImage(
+                            self.frame0.getBufferByteData(),
+                            self.raw_image_dimensions[0],
+                            self.raw_image_dimensions[1],
+                            QImage.Format_RGB888,
                         )
-                    if self.qpixmap is None:
-                        self.qpixmap = QPixmap(self.qimage)
+                        if self.cam_mirror is not None:
+                            self.qimage = self.qimage.mirrored(
+                                self.cam_mirror[0], self.cam_mirror[1]
+                            )
+                        if self.qpixmap is None:
+                            self.qpixmap = QPixmap(self.qimage)
+                        else:
+                            self.qpixmap.convertFromImage(self.qimage)
+                        self.emit("imageReceived", self.qpixmap)
                     else:
-                        self.qpixmap.convertFromImage(self.qimage)
-                    self.emit("imageReceived", self.qpixmap)
-                else:
-                    image_data = np.ndarray(
-                        buffer=self.frame0.getBufferByteData(),
-                        dtype=np.uint8,
-                        shape=(
-                            self.frame0.height,
-                            self.frame0.width,
-                            self.frame0.pixel_bytes,
-                        ),
-                    )
-                    image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGBA)
-                    ret, im = cv2.imencode(".jpg", image_data)
-                    self.emit(
-                        "imageReceived",
-                        im.tostring(),
-                        self.frame0.width,
-                        self.frame0.height,
-                    )
+                        image_data = np.ndarray(buffer=self.frame0.getBufferByteData(),
+                                                dtype=np.uint8,
+                                                shape=(self.frame0.height,
+                                                       self.frame0.width,
+                                                       self.frame0.pixel_bytes))
+                        image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGBA)
+                        ret, im = cv2.imencode('.jpg', image_data)
+                        self.emit("imageReceived",
+                                  im.tostring(),
+                                  self.frame0.width,
+                                  self.frame0.height)
 
                 time.sleep(sleep_time)
 

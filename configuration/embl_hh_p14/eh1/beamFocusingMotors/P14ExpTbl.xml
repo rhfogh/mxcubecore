@@ -15,7 +15,7 @@
           <updateTolerance>0.100</updateTolerance>
 	  <evalTolerance>0.300</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.0, 'Double': 5.38, 'Imaging': 0.0}</focusingModes>
+          <focusingModes>{'Collimated': 0.0, 'Double': 5.689, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes>
         </motor>
         <motor>
           <motorName>ExTblHUp</motorName>
@@ -27,7 +27,8 @@
           <updateTolerance>0.100</updateTolerance>
 	  <evalTolerance>0.300</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.0, 'Double': -3.008, 'Imaging': 0.0}</focusingModes>
+	  <!--focusingModes>{'Collimated': 0.0, 'Double': -3.0998, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes-->
+          <focusingModes>{'Collimated': 0.0, 'Double': -3.070, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes>
         </motor>
         <motor>
           <motorName>ExTblHDwn</motorName>
@@ -39,7 +40,8 @@
           <updateTolerance>0.100</updateTolerance>
 	  <evalTolerance>0.300</evalTolerance>
           <statusModes>{'Move': 4097, 'Ready': 4096}</statusModes>
-          <focusingModes>{'Collimated': 0.0, 'Double': -9.92, 'Imaging': 0.0}</focusingModes>
+	  <!--focusingModes>{'Collimated': 0.0, 'Double': -8.9770, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes-->
+	  <focusingModes>{'Collimated': 0.0, 'Double': -8.9140, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes>
         </motor>
         <motor>
           <motorName>ExTblVerDwnI</motorName>
@@ -51,7 +53,7 @@
           <updateTolerance>0.100</updateTolerance>
 	  <evalTolerance>0.300</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.0, 'Double': 9.383, 'Imaging': 0.0}</focusingModes>
+          <focusingModes>{'Collimated': 0.0, 'Double': 9.692, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes>
         </motor>
         <motor>
           <motorName>ExTblVerDwnO</motorName>
@@ -63,7 +65,7 @@
           <updateTolerance>0.100</updateTolerance>
 	  <evalTolerance>0.300</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.0, 'Double': 9.383, 'Imaging': 0.0}</focusingModes>
+          <focusingModes>{'Collimated': 0.0, 'Double': 9.692, 'Imaging': 0.0, 'TREXX': 0.0}</focusingModes>
         </motor>
     </motors>
 </device>

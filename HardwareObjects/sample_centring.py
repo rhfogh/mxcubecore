@@ -59,13 +59,13 @@ def prepare(centring_motors_dict):
     USER_CLICKED_EVENT = gevent.event.AsyncResult()
 
     motors_to_move = dict()
-    for m in centring_motors_dict.values():
+    for m in centring_motors_dict.itervalues():
         if m.reference_position is not None:
             motors_to_move[m.motor] = m.reference_position
     move_motors(motors_to_move)
 
     SAVED_INITIAL_POSITIONS = dict(
-        [(m.motor, m.motor.get_value()) for m in centring_motors_dict.values()]
+        [(m.motor, m.motor.getPosition()) for m in centring_motors_dict.itervalues()]
     )
 
     phi = centring_motors_dict["phi"]
@@ -125,7 +125,7 @@ def start_plate(
     centring_motors_dict.pop("plateTranslation")
     phi, phiy, phiz, sampx, sampy = prepare(centring_motors_dict)
 
-    phi.set_value(lim_pos)
+    phi.move(lim_pos)
 
     CURRENT_CENTRING = gevent.spawn(
         centre_plate,
@@ -171,7 +171,7 @@ def start_plate_1_click(
     sampy = centring_motors_dict["sampy"]
     phiz = centring_motors_dict["phiz"]
 
-    # phi.set_value(phi_min)
+    # phi.move(phi_min)
     plate_vertical()
 
     CURRENT_CENTRING = gevent.spawn(
@@ -230,8 +230,8 @@ def centre_plate1Click(
                 raise RuntimeError("Aborted while waiting for point selection")
 
             # Move to beam
-            phiz.set_value_relative((y - beam_yc) / float(pixelsPerMm_Ver))
-            phiy.set_value_relative(-(x - beam_xc) / float(pixelsPerMm_Hor))
+            phiz.moveRelative((y - beam_yc) / float(pixelsPerMm_Ver))
+            phiy.moveRelative(-(x - beam_xc) / float(pixelsPerMm_Hor))
 
             # Distance to previous click to end centring if it converges
             dx = abs(previous_click_x - x)
@@ -243,14 +243,14 @@ def centre_plate1Click(
             # centring point
             if i % 2 == 0:
                 phi_min = (
-                    phi.get_value()
+                    phi.getPosition()
                 )  # in case the phi range sent us to a position where sample is invisible, if user moves phi, this modifications is saved for future moves
-                phi.set_value(phi_max)
+                phi.move(phi_max)
             else:
                 phi_max = (
-                    phi.get_value()
+                    phi.getPosition()
                 )  # in case the phi range sent us to a position where sample is invisible, if user moves phi, this modifications is saved for future moves
-                phi.set_value(phi_min)
+                phi.move(phi_min)
 
             READY_FOR_NEXT_POINT.set()
             i += 1
@@ -264,7 +264,10 @@ def centre_plate1Click(
     centred_pos = SAVED_INITIAL_POSITIONS.copy()
 
     centred_pos.update(
-        {sampx.motor: float(sampx.get_value()), sampy.motor: float(sampy.get_value())}
+        {
+            sampx.motor: float(sampx.getPosition()),
+            sampy.motor: float(sampy.getPosition()),
+        }
     )
 
     return centred_pos
@@ -301,9 +304,9 @@ def centre_plate(
             USER_CLICKED_EVENT = gevent.event.AsyncResult()
             X.append(x / float(pixelsPerMm_Hor))
             Y.append(y / float(pixelsPerMm_Ver))
-            phi_positions.append(phi.direction * math.radians(phi.get_value()))
+            phi_positions.append(phi.direction * math.radians(phi.getPosition()))
             if i != n_points - 1:
-                phi.set_value_relative(phi.direction * phi_angle, timeout=None)
+                phi.syncMoveRelative(phi.direction * phi_angle)
             READY_FOR_NEXT_POINT.set()
             i += 1
     except BaseException:
@@ -332,7 +335,7 @@ def centre_plate(
     d_horizontal = d[0] - (beam_xc / float(pixelsPerMm_Hor))
     d_vertical = d[1] - (beam_yc / float(pixelsPerMm_Ver))
 
-    phi_pos = math.radians(phi.direction * phi.get_value())
+    phi_pos = math.radians(phi.direction * phi.getPosition())
     phiRotMatrix = numpy.matrix(
         [
             [math.cos(phi_pos), -math.sin(phi_pos)],
@@ -343,12 +346,12 @@ def centre_plate(
     centred_pos = SAVED_INITIAL_POSITIONS.copy()
     centred_pos.update(
         {
-            sampx.motor: float(sampx.get_value() + sampx.direction * dx),
-            sampy.motor: float(sampy.get_value() + sampy.direction * dy),
-            phiz.motor: float(phiz.get_value() + phiz.direction * d_vertical[0, 0])
+            sampx.motor: float(sampx.getPosition() + sampx.direction * dx),
+            sampy.motor: float(sampy.getPosition() + sampy.direction * dy),
+            phiz.motor: float(phiz.getPosition() + phiz.direction * d_vertical[0, 0])
             if phiz.__dict__.get("reference_position") is None
             else phiz.reference_position,
-            phiy.motor: float(phiy.get_value() + phiy.direction * d_horizontal[0, 0])
+            phiy.motor: float(phiy.getPosition() + phiy.direction * d_horizontal[0, 0])
             if phiy.__dict__.get("reference_position") is None
             else phiy.reference_position,
         }
@@ -363,18 +366,18 @@ def centre_plate(
     raise RuntimeError("Aborted while waiting for point selection")
   USER_CLICKED_EVENT = gevent.event.AsyncResult()
   y_offset = -(y-beam_yc)  / float(pixelsPerMm_Ver)
-  plateTranslation.set_value_relative(y_offset)
+  plateTranslation.moveRelative(y_offset)
   """
 
     return centred_pos
 
 
 def ready(*motors):
-    print([(m.actuator_name, m.is_ready()) for m in motors])
-    return all([m.is_ready() for m in motors])
+    return not any([m.motorIsMoving() for m in motors])
 
 
 def move_motors(motor_positions_dict):
+    # import pdb; pdb.set_trace()
     def wait_ready(timeout=None):
         with gevent.Timeout(timeout):
             while not ready(*motor_positions_dict.keys()):
@@ -385,8 +388,8 @@ def move_motors(motor_positions_dict):
     if not ready(*motor_positions_dict.keys()):
         raise RuntimeError("Motors not ready")
 
-    for motor, position in motor_positions_dict.items():
-        motor.set_value(position)
+    for motor, position in motor_positions_dict.iteritems():
+        motor.move(position)
 
     wait_ready()
 
@@ -425,13 +428,11 @@ def center(
             except BaseException:
                 raise RuntimeError("Aborted while waiting for point selection")
             USER_CLICKED_EVENT = gevent.event.AsyncResult()
-            print("-------------------->", pixelsPerMm_Hor)
             X.append(x / float(pixelsPerMm_Hor))
             Y.append(y / float(pixelsPerMm_Ver))
-            print(phi.get_value())
-            phi_positions.append(phi.direction * math.radians(phi.get_value()))
+            phi_positions.append(phi.direction * math.radians(phi.getPosition()))
             if i != n_points - 1:
-                phi.set_value_relative(phi.direction * phi_angle)
+                phi.syncMoveRelative(phi.direction * phi_angle)
             READY_FOR_NEXT_POINT.set()
             i += 1
     except BaseException:
@@ -460,7 +461,7 @@ def center(
     d_horizontal = d[0] - (beam_xc / float(pixelsPerMm_Hor))
     d_vertical = d[1] - (beam_yc / float(pixelsPerMm_Ver))
 
-    phi_pos = math.radians(phi.direction * phi.get_value())
+    phi_pos = math.radians(phi.direction * phi.getPosition())
     phiRotMatrix = numpy.matrix(
         [
             [math.cos(phi_pos), -math.sin(phi_pos)],
@@ -471,12 +472,12 @@ def center(
     centred_pos = SAVED_INITIAL_POSITIONS.copy()
     centred_pos.update(
         {
-            sampx.motor: float(sampx.get_value() + sampx.direction * dx),
-            sampy.motor: float(sampy.get_value() + sampy.direction * dy),
-            phiz.motor: float(phiz.get_value() + phiz.direction * d_vertical[0, 0])
+            sampx.motor: float(sampx.getPosition() + sampx.direction * dx),
+            sampy.motor: float(sampy.getPosition() + sampy.direction * dy),
+            phiz.motor: float(phiz.getPosition() + phiz.direction * d_vertical[0, 0])
             if phiz.__dict__.get("reference_position") is None
             else phiz.reference_position,
-            phiy.motor: float(phiy.get_value() + phiy.direction * d_horizontal[0, 0])
+            phiy.motor: float(phiy.getPosition() + phiy.direction * d_horizontal[0, 0])
             if phiy.__dict__.get("reference_position") is None
             else phiy.reference_position,
         }
@@ -576,7 +577,7 @@ def auto_center(
     # check if loop is there at the beginning
     i = 0
     while -1 in find_loop(camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb):
-        phi.set_value_relative(90)
+        phi.syncMoveRelative(90)
         i += 1
         if i > 4:
             if callable(msg_cb):
@@ -608,7 +609,7 @@ def auto_center(
             if x < 0 or y < 0:
                 for i in range(1, 18):
                     # logging.info("loop not found - moving back %d" % i)
-                    phi.set_value_relative(5)
+                    phi.syncMoveRelative(5)
                     x, y = find_loop(
                         camera, pixelsPerMm_Hor, chi_angle, msg_cb, new_point_cb
                     )
@@ -630,7 +631,7 @@ def auto_center(
                 if -1 in (x, y):
                     centring_greenlet.kill()
                     raise RuntimeError("Could not centre sample automatically.")
-                phi.set_value_relative(-i * 5)
+                phi.syncMoveRelative(-i * 5)
             else:
                 user_click(x, y, wait=True)
 

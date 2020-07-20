@@ -31,11 +31,14 @@
   <object href="/energyscan" role="energyscan"/>
   <object href="/image-tracking" role="image_tracking"/>
   <object href="/parallel-processing" role="parallel_processing"/>
-<!--  <object href="/ppu-control" role="ppu_control"/>-->
+  <object href="/ppu-control" role="ppu_control"/>
   <object href="/session" role="session"/>
   <object href="/xrf-spectrum" role="xrf_spectrum"/>
   <object href="/xray-imaging" role="xray_imaging"/>
-  
+
+  <object href="/gphl-workflow" role="gphl_workflow"/>
+  <object href="/gphl-setup" role="gphl_connection"/>
+ 
 
   <!-- advanced methods are defined as a list with method names.
        Each name is then converted to class name.
@@ -44,8 +47,8 @@
        then queue skip exception will be raised.
   -->
   <advancedMethods>["MeshScan"]</advancedMethods>
-  <autoprocessingMethods>["EDNAproc"]</autoprocessingMethods>
-<!--  <run_processing_parallel>True</run_processing_parallel>-->
+  <autoprocessingMethods>["EDNAproc", "autoPROC(anom)", "autoPROC_staraniso(anom)"]</autoprocessingMethods>
+  <run_processing_parallel>True</run_processing_parallel>
 
   <!-- Is it possible to change the beam wavelentgh.
        Should perhaps be associated with the diffractometer -->
@@ -58,7 +61,7 @@
   <acquisition_limit_values>
     <!-- <exposure_time>0.040, 10000</exposure_time> -->
     <kappa>-5, 240</kappa>
-    <number_of_images>1, 99999</number_of_images>
+    <number_of_images>1, 59999</number_of_images>
   </acquisition_limit_values>
 
   <default_acquisition_values>
@@ -70,7 +73,7 @@
     <run_number>1</run_number>
     <overlap>0</overlap>
     <number_of_images>1</number_of_images>
-    <detector_binning_mode>1</detector_binning_mode>
+    <detector_mode>1</detector_mode>
     <compression>True</compression>
   </default_acquisition_values>
   <default_helical_values>
@@ -82,7 +85,7 @@
     <run_number>1</run_number>
     <overlap>0</overlap>
     <number_of_images>100</number_of_images>
-    <detector_binning_mode>1</detector_binning_mode>
+    <detector_mode>1</detector_mode>
   </default_helical_values>
   <default_characterisation_values>
     <exposure_time>0.040</exposure_time>
@@ -93,7 +96,7 @@
     <run_number>1</run_number>
     <overlap>0</overlap>
     <number_of_images>1</number_of_images>
-    <detector_binning_mode>1</detector_binning_mode>
+    <detector_mode>1</detector_mode>
   </default_characterisation_values>
    <default_advanced_values>
     <exposure_time>0.0014</exposure_time>
@@ -104,7 +107,7 @@
     <run_number>1</run_number>
     <overlap>0</overlap>
     <number_of_images>1</number_of_images>
-    <detector_binning_mode>1</detector_binning_mode>
+    <detector_mode>1</detector_mode>
   </default_advanced_values>
    <default_imaging_values>
     <exposure_time>0.01</exposure_time>
@@ -115,6 +118,6 @@
     <run_number>1</run_number>
     <overlap>0</overlap>
     <number_of_images>360</number_of_images>
-    <detector_binning_mode>"0"</detector_binning_mode>
+    <detector_mode>"0"</detector_mode>
   </default_imaging_values>
  </object>

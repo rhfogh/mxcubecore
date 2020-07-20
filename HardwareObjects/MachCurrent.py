@@ -17,26 +17,25 @@ import logging
 class MachCurrent(BaseHardwareObjects.Device):
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
-
         self.opmsg = ""
 
     def init(self):
         try:
-            chanCurrent = self.get_channel_object("Current")
+            chanCurrent = self.getChannelObject("Current")
             chanCurrent.connectSignal("update", self.valueChanged)
             self.setIsReady(True)
-        except Exception as e:
-            logging.getLogger("HWR").exception(e)
+        except KeyError:
+            logging.getLogger().warning("%s: cannot read current", self.name())
 
     def valueChanged(self, value):
         mach = value
 
         try:
-            opmsg = self.get_channel_object("OperatorMsg").getValue()
-            fillmode = self.get_channel_object("FillingMode").getValue()
+            opmsg = self.getChannelObject("OperatorMsg").getValue()
+            fillmode = self.getChannelObject("FillingMode").getValue()
             fillmode = fillmode.strip()
 
-            refill = self.get_channel_object("RefillCountdown").getValue()
+            refill = self.getChannelObject("RefillCountdown").getValue()
         except Exception as e:
             logging.getLogger("HWR").exception(e)
             opmsg, fillmode, value, refill = ("", "", -1, -1)
@@ -50,7 +49,7 @@ class MachCurrent(BaseHardwareObjects.Device):
 
     def getCurrent(self):
         try:
-            value = self.get_channel_object("Current").getValue()
+            value = self.getChannelObject("Current").getValue()
         except Exception as e:
             logging.getLogger("HWR").exception(e)
             value = -1
@@ -58,8 +57,9 @@ class MachCurrent(BaseHardwareObjects.Device):
         return value
 
     def getMessage(self):
+
         try:
-            msg = self.get_channel_object("OperatorMsg").getValue()
+            msg = self.getChannelObject("OperatorMsg").getValue()
         except Exception as e:
             logging.getLogger("HWR").exception(e)
             msg = ""
@@ -68,7 +68,7 @@ class MachCurrent(BaseHardwareObjects.Device):
 
     def getFillMode(self):
         try:
-            fmode = self.get_channel_object("FillingMode").getValue()
+            fmode = self.getChannelObject("FillingMode").getValue()
         except Exception as e:
             logging.getLogger("HWR").exception(e)
             fmode = ""

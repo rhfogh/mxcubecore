@@ -1,5 +1,5 @@
 <object class="EMBLDetector">
-  <object hwrid="/eh1/detector-distance" role="detector_distance"/>
+  <object hwrid="/eh1/detector-distance" role="distance_motor"/>
 
   <!--
   <channel type="tine" name="chanTemperature" tinename="/P14/detector/pilatus6m">temperature</channel>

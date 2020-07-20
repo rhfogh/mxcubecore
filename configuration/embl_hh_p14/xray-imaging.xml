@@ -13,10 +13,10 @@
   <object href="/dbconnection" role="lims_client"/>
   <object href="/session" role="session"/>
 
-  <!-- <channel type="tine" name="chanFrame" tinename="/P14/arapaho/arapaho" attach="event">frame</channel> 
+  <channel type="tine" name="chanFrame" tinename="/P14/arapaho/arapaho" attach="event">frame</channel> 
 
   <channel type="tine" name="chanFrameCount" tinename="/P14/arapaho/arapaho" attach="datachange" timeout="100">frame-count</channel>
-  <channel type="tine" name="chanFFSSIM" tinename="/P14/arapaho/arapaho">ff-ssim</channel>
+  <channel type="tine" name="chanFFSSIM" tinename="/P14/arapaho/arapaho" attach="event">ff-ssim</channel>
 
   <channel type="tine" name="collectStatus" tinename="/P14/collection/mx-standard" attach="event">status</channel>
   <channel type="tine" name="collectError" tinename="/P14/collection/mx-standard" attach="event">error</channel>
@@ -49,7 +49,10 @@
   <command type="tine" name="cameraLiveView" tinename="/P14/pco-camera/pco-camera">ff-live-view</command>
   <command type="tine" name="cameraFFSSIM" tinename="/P14/pco-camera/pco-camera">ff-ssim</command>
 
-  <command type="tine" name="collectAbort"   tinename="/P14/collection/mx-standard">abort</command> -->
+  <command type="tine" name="collectAbort"   tinename="/P14/collection/mx-standard">abort</command>
 
   <interval>40</interval>
+  <reference_distance>136.00</reference_distance>
+  <reference_angle>-0.003482</reference_angle>
+  <!--reference_angle>0.003482</reference_angle through the mirrors-->
 </object>     

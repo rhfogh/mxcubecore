@@ -134,7 +134,7 @@ class EMBLMotorsGroup(Device):
             self.motors_list.append(temp_dict)
 
         try:
-            self.chan_positions = self.add_channel(
+            self.chan_positions = self.addChannel(
                 {
                     "type": "tine",
                     "tinename": self.server_address + self.group_address,
@@ -145,15 +145,13 @@ class EMBLMotorsGroup(Device):
             self.chan_positions.connectSignal("update", self.positions_changed)
             self.positions_changed(self.chan_positions.getValue())
         except BaseException:
-            msg = "EMBLMotorsGroup: unable to add channel %s/%s %s" % (
-                self.server_address,
-                self.group_address,
-                self.positionAddr,
+            logging.getLogger("HWR").warning(
+                "EMBLMotorsGroup: unable to "
+                + "add channel %s/%s %s"
+                % (self.server_address, self.group_address, self.positionAddr)
             )
-            logging.getLogger("HWR").error(msg)
-
         try:
-            self.chan_status = self.add_channel(
+            self.chan_status = self.addChannel(
                 {
                     "type": "tine",
                     "tinename": self.server_address + self.group_address,
@@ -164,12 +162,11 @@ class EMBLMotorsGroup(Device):
             self.chan_status.connectSignal("update", self.status_changed)
             self.status_changed(self.chan_status.getValue())
         except BaseException:
-            msg = "EMBLMotorsGroup: unable to add channel %s/%s %s" % (
-                self.server_address,
-                self.group_address,
-                self.statusAddr,
+            logging.getLogger("HWR").warning(
+                "EMBLMotorsGroup: unable to "
+                + "add channel %s/%s %s"
+                % (self.server_address, self.group_address, self.statusAddr)
             )
-            logging.getLogger("HWR").error(msg)
 
     def get_motors_dict(self):
         """Returns dict with motors"""
@@ -336,14 +333,11 @@ class EMBLMotorsGroup(Device):
 
     def is_motor_ready(self, motor_name):
         """Returns True if motors is ready"""
-        is_ready = False
         for motor in self.motors_list:
             if motor["motorName"] == motor_name:
-                is_ready = motor["status"] == motor["statusModes"]["Ready"]
-                break
-        return is_ready
+                return motor["status"] == motor["statusModes"]["Ready"]
 
-    def re_emit_values(self):
+    def update_values(self):
         """
         Reemits all signals
         :return:

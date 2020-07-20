@@ -24,8 +24,6 @@ import os
 from HardwareRepository.TaskUtils import task
 from HardwareRepository.HardwareObjects.abstract.AbstractCollect import AbstractCollect
 
-from HardwareRepository import HardwareRepository as HWR
-
 
 __credits__ = ["EMBL Hamburg"]
 __category__ = "General"
@@ -84,53 +82,61 @@ class EMBLCollect(AbstractCollect):
         self.cmd_collect_abort = None
         self.cmd_collect_xds_data_range = None
 
+        self.flux_hwobj = None
+        self.graphics_manager_hwobj = None
+        self.image_tracking_hwobj = None
+
     def init(self):
         """Main init method"""
 
         AbstractCollect.init(self)
 
+        self.flux_hwobj = self.getObjectByRole("flux")
+        self.graphics_manager_hwobj = self.getObjectByRole("graphics_manager")
+        self.image_tracking_hwobj = self.getObjectByRole("image_tracking")
+
         self._exp_type_dict = {"Mesh": "raster", "Helical": "Helical"}
 
-        self.chan_collect_status = self.get_channel_object("collectStatus")
+        self.chan_collect_status = self.getChannelObject("collectStatus")
         self._actual_collect_status = self.chan_collect_status.getValue()
         self.chan_collect_status.connectSignal("update", self.collect_status_update)
-        self.chan_collect_frame = self.get_channel_object("collectFrame")
+        self.chan_collect_frame = self.getChannelObject("collectFrame")
         self.chan_collect_frame.connectSignal("update", self.collect_frame_update)
-        self.chan_collect_error = self.get_channel_object("collectError")
+        self.chan_collect_error = self.getChannelObject("collectError")
         self.chan_collect_error.connectSignal("update", self.collect_error_update)
-        self.cmd_collect_compression = self.get_command_object("collectCompression")
-        self.cmd_collect_description = self.get_command_object("collectDescription")
-        self.cmd_collect_detector = self.get_command_object("collectDetector")
-        self.cmd_collect_directory = self.get_command_object("collectDirectory")
-        self.cmd_collect_energy = self.get_command_object("collectEnergy")
-        self.cmd_collect_exposure_time = self.get_command_object("collectExposureTime")
-        self.cmd_collect_images_per_trigger = self.get_command_object(
+        self.cmd_collect_compression = self.getCommandObject("collectCompression")
+        self.cmd_collect_description = self.getCommandObject("collectDescription")
+        self.cmd_collect_detector = self.getCommandObject("collectDetector")
+        self.cmd_collect_directory = self.getCommandObject("collectDirectory")
+        self.cmd_collect_energy = self.getCommandObject("collectEnergy")
+        self.cmd_collect_exposure_time = self.getCommandObject("collectExposureTime")
+        self.cmd_collect_images_per_trigger = self.getCommandObject(
             "collectImagesPerTrigger"
         )
-        self.cmd_collect_helical_position = self.get_command_object(
+        self.cmd_collect_helical_position = self.getCommandObject(
             "collectHelicalPosition"
         )
-        self.cmd_collect_in_queue = self.get_command_object("collectInQueue")
-        self.cmd_collect_num_images = self.get_command_object("collectNumImages")
-        self.cmd_collect_overlap = self.get_command_object("collectOverlap")
-        self.cmd_collect_processing = self.get_command_object("collectProcessing")
-        self.cmd_collect_range = self.get_command_object("collectRange")
-        self.cmd_collect_raster_lines = self.get_command_object("collectRasterLines")
-        self.cmd_collect_raster_range = self.get_command_object("collectRasterRange")
-        self.cmd_collect_resolution = self.get_command_object("collectResolution")
-        self.cmd_collect_scan_type = self.get_command_object("collectScanType")
-        self.cmd_collect_shutter = self.get_command_object("collectShutter")
-        self.cmd_collect_shutterless = self.get_command_object("collectShutterless")
-        self.cmd_collect_start_angle = self.get_command_object("collectStartAngle")
-        self.cmd_collect_start_image = self.get_command_object("collectStartImage")
-        self.cmd_collect_template = self.get_command_object("collectTemplate")
-        self.cmd_collect_transmission = self.get_command_object("collectTransmission")
-        self.cmd_collect_space_group = self.get_command_object("collectSpaceGroup")
-        self.cmd_collect_unit_cell = self.get_command_object("collectUnitCell")
-        self.cmd_collect_xds_data_range = self.get_command_object("collectXdsDataRange")
+        self.cmd_collect_in_queue = self.getCommandObject("collectInQueue")
+        self.cmd_collect_num_images = self.getCommandObject("collectNumImages")
+        self.cmd_collect_overlap = self.getCommandObject("collectOverlap")
+        self.cmd_collect_processing = self.getCommandObject("collectProcessing")
+        self.cmd_collect_range = self.getCommandObject("collectRange")
+        self.cmd_collect_raster_lines = self.getCommandObject("collectRasterLines")
+        self.cmd_collect_raster_range = self.getCommandObject("collectRasterRange")
+        self.cmd_collect_resolution = self.getCommandObject("collectResolution")
+        self.cmd_collect_scan_type = self.getCommandObject("collectScanType")
+        self.cmd_collect_shutter = self.getCommandObject("collectShutter")
+        self.cmd_collect_shutterless = self.getCommandObject("collectShutterless")
+        self.cmd_collect_start_angle = self.getCommandObject("collectStartAngle")
+        self.cmd_collect_start_image = self.getCommandObject("collectStartImage")
+        self.cmd_collect_template = self.getCommandObject("collectTemplate")
+        self.cmd_collect_transmission = self.getCommandObject("collectTransmission")
+        self.cmd_collect_space_group = self.getCommandObject("collectSpaceGroup")
+        self.cmd_collect_unit_cell = self.getCommandObject("collectUnitCell")
+        self.cmd_collect_xds_data_range = self.getCommandObject("collectXdsDataRange")
 
-        self.cmd_collect_start = self.get_command_object("collectStart")
-        self.cmd_collect_abort = self.get_command_object("collectAbort")
+        self.cmd_collect_start = self.getCommandObject("collectStart")
+        self.cmd_collect_abort = self.getCommandObject("collectAbort")
 
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True,))
@@ -149,7 +155,7 @@ class EMBLCollect(AbstractCollect):
             "error",
             "not available",
         ]:
-            HWR.beamline.diffractometer.save_centring_positions()
+            self.diffractometer_hwobj.save_centring_positions()
             comment = "Comment: %s" % str(
                 self.current_dc_parameters.get("comments", "")
             )
@@ -161,19 +167,19 @@ class EMBLCollect(AbstractCollect):
             file_info = self.current_dc_parameters["fileinfo"]
             sample_ref = self.current_dc_parameters["sample_reference"]
 
-            if HWR.beamline.image_tracking is not None:
-                HWR.beamline.image_tracking.set_image_tracking_state(True)
+            if self.image_tracking_hwobj is not None:
+                self.image_tracking_hwobj.set_image_tracking_state(True)
 
             if self.cmd_collect_compression is not None:
                 self.cmd_collect_compression(file_info["compression"])
             self.cmd_collect_description(comment)
-            self.cmd_collect_detector(HWR.beamline.detector.get_collect_name())
+            self.cmd_collect_detector(self.detector_hwobj.get_collect_name())
             self.cmd_collect_directory(str(file_info["directory"]))
             self.cmd_collect_exposure_time(osc_seq["exposure_time"])
             self.cmd_collect_in_queue(self.current_dc_parameters["in_queue"] != False)
             self.cmd_collect_overlap(osc_seq["overlap"])
             #            self.cmd_collect_overlap(-0.5)
-            shutter_name = HWR.beamline.detector.get_shutter_name()
+            shutter_name = self.detector_hwobj.get_shutter_name()
             if shutter_name is not None:
                 self.cmd_collect_shutter(shutter_name)
 
@@ -288,7 +294,7 @@ class EMBLCollect(AbstractCollect):
             and self.break_bragg_released
         ):
             self.break_bragg_released = False
-            HWR.beamline.energy.set_break_bragg()
+            self.energy_hwobj.set_break_bragg()
 
     def collect_frame_update(self, frame):
         """Image frame update
@@ -321,7 +327,7 @@ class EMBLCollect(AbstractCollect):
 
     def trigger_auto_processing(self, process_event, frame_number):
         """Starts autoprocessing"""
-        HWR.beamline.offline_processing.execute_autoprocessing(
+        self.autoprocessing_hwobj.execute_autoprocessing(
             process_event,
             self.current_dc_parameters,
             frame_number,
@@ -331,10 +337,10 @@ class EMBLCollect(AbstractCollect):
     def stop_collect(self):
         """Stops collect"""
 
-        AbstractCollect.stop_collect(self)
-
+        self.aborted_by_user = True
         self.cmd_collect_abort()
-        HWR.beamline.detector.close_cover()
+        self.collection_failed("Aborted by user")
+        self.detector_hwobj.close_cover()
 
     def set_helical_pos(self, arg):
         """Sets helical positions
@@ -362,15 +368,12 @@ class EMBLCollect(AbstractCollect):
         self.cmd_collect_num_images(num_total_frames / num_lines)
         # GB collection server interface assumes the order: fast, slow for mesh
         # range. Need reversal at P14:
-        if HWR.beamline.session.beamline_name == "P13":
-            self.cmd_collect_raster_range(mesh_range)
-        else:
-            self.cmd_collect_raster_range(mesh_range[::-1])
+        self.cmd_collect_raster_range(mesh_range[::-1])
 
     @task
     def _take_crystal_snapshot(self, snapshot_filename):
         """Saves crystal snapshot"""
-        HWR.beamline.sample_view.save_scene_snapshot(snapshot_filename)
+        self.graphics_manager_hwobj.save_scene_snapshot(snapshot_filename)
 
     @task
     def _take_crystal_animation(self, animation_filename, duration_sec=1):
@@ -378,34 +381,47 @@ class EMBLCollect(AbstractCollect):
            Animation is saved as the fourth snapshot
         """
 
-        HWR.beamline.sample_view.save_scene_animation(animation_filename, duration_sec)
+        self.graphics_manager_hwobj.save_scene_animation(
+            animation_filename, duration_sec
+        )
 
-    # def set_energy(self, value):
-    #     """Sets energy"""
-    #     """
-    #     if abs(value - self.get_energy()) > 0.005 and not self.break_bragg_released:
-    #         self.break_bragg_released = True
-    #         if hasattr(HWR.beamline.energy, "release_break_bragg"):
-    #             HWR.beamline.energy.release_break_bragg()
-    #         self.cmd_collect_energy(value * 1000.0)
-    #     else:
-    #     """
-    #     self.cmd_collect_energy(self.get_energy() * 1000)
+    def set_energy(self, value):
+        """Sets energy"""
+        if abs(value - self.get_energy()) > 0.005 and not self.break_bragg_released:
+            self.break_bragg_released = True
+            if hasattr(self.energy_hwobj, "release_break_bragg"):
+                self.energy_hwobj.release_break_bragg()
+        self.cmd_collect_energy(value * 1000.0)
 
-    # def set_resolution(self, value):
-    #     """Sets resolution in A"""
-    #     if not value:
-    #         value = self.get_resolution()
-    #     self.cmd_collect_resolution(value)
+    def get_energy(self):
+        """Returns energy value in keV"""
+        return self.energy_hwobj.get_current_energy()
 
-    # def set_transmission(self, value):
-    #     """Sets transmission in %"""
-    #     self.cmd_collect_transmission(value)
+    def set_resolution(self, value):
+        """Sets resolution in A"""
+        if not value:
+            value = self.get_resolution()
+        self.cmd_collect_resolution(value)
+
+    def set_transmission(self, value):
+        """Sets transmission in %"""
+        self.cmd_collect_transmission(value)
+
+    def set_detector_roi_mode(self, roi_mode):
+        """Sets detector ROI mode
+
+        :param roi_mode: roi mode
+        :type roi_mode: str (0, C2, ..)
+        """
+        self.detector_hwobj.set_collect_mode(roi_mode)
 
     @task
     def move_motors(self, motor_position_dict):
         """Move to centred position"""
-        HWR.beamline.diffractometer.move_motors(motor_position_dict)
+        self.diffractometer_hwobj.move_motors(motor_position_dict)
+
+    def move_detector(self, value):
+        self.detector_hwobj.set_distance(value, timeout=30)
 
     def prepare_input_files(self):
         """Prepares xds directory"""
@@ -428,6 +444,26 @@ class EMBLCollect(AbstractCollect):
 
         return xds_directory, ""
 
+    def get_wavelength(self):
+        """Returns wavelength"""
+        return self.energy_hwobj.get_current_wavelength()
+
+    def get_detector_distance(self):
+        """Returns detector distance in mm"""
+        return self.detector_hwobj.get_distance()
+
+    def get_detector_distance_limits(self):
+        """Returns detector distance limits"""
+        return self.detector_hwobj.get_distance_limits()
+
+    def get_resolution(self):
+        """Returns resolution in A"""
+        return self.resolution_hwobj.getPosition()
+
+    def get_transmission(self):
+        """Returns transmision in %"""
+        return self.transmission_hwobj.get_value()
+
     def get_undulators_gaps(self):
         """Return triplet with gaps. In our case we have one gap,
         """
@@ -438,25 +474,33 @@ class EMBLCollect(AbstractCollect):
                 und_gaps = list(und_gaps)
         return und_gaps
 
+    def get_measured_intensity(self):
+        """Returns flux"""
+        return float("%.3e" % self.flux_hwobj.get_flux())
+
     def get_machine_current(self):
         """Returns flux"""
-        return HWR.beamline.machine_info.get_current()
+        return self.machine_info_hwobj.get_current()
 
     def get_machine_message(self):
         """Returns machine message"""
-        return HWR.beamline.machine_info.get_message()
+        return self.machine_info_hwobj.get_message()
 
     def get_machine_fill_mode(self):
         """Returns machine filling mode"""
-        fill_mode = str(HWR.beamline.machine_info.get_message())
+        fill_mode = str(self.machine_info_hwobj.get_message())
         return fill_mode[:20]
 
     def getBeamlineConfiguration(self, *args):
         """Returns beamline config"""
         return self.bl_config._asdict()
 
+    def get_flux(self):
+        """Returns flux"""
+        return self.get_measured_intensity()
+
     def get_total_absorbed_dose(self):
-        return float("%.3e" % HWR.beamline.flux.get_total_absorbed_dose())
+        return float("%.3e" % self.flux_hwobj.get_total_absorbed_dose())
 
     def set_run_autoprocessing(self, status):
         """Enables or disables autoprocessing after a collection"""

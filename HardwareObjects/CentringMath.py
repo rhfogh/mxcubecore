@@ -1,4 +1,4 @@
-from HardwareRepository import HardwareRepository as HWR
+from HardwareRepository import HardwareRepository
 from HardwareRepository.BaseHardwareObjects import Procedure
 import math
 import numpy
@@ -13,8 +13,9 @@ class CentringMath(Procedure):
     def init(self):
         """
         Ggonio axes definitions are static
-        motorHO is expected to have get_value() that returns coordinate in mm
+        motorHO is expected to have get_position() that returns coordinate in mm
         """
+        self.static_positions = None
         self.motorConstraints = []
         self.gonioAxes = []
         for axis in self["gonioAxes"]:
@@ -23,7 +24,7 @@ class CentringMath(Procedure):
                     "type": axis.type,
                     "direction": eval(axis.direction),
                     "motor_name": axis.motorname,
-                    "motor_HO": HWR.getHardwareRepository().getHardwareObject(
+                    "motor_HO": HardwareRepository.getHardwareRepository().getHardwareObject(
                         axis.motorHO
                     ),
                 }
@@ -73,20 +74,22 @@ class CentringMath(Procedure):
         self.F = self.factor_matrix()
         self.tau = self.translation_datum()
 
-    def initCentringProcedure(self):
+    def initCentringProcedure(self, static_positions = None ):
+        self.static_positions = static_positions
         # call before starting rotate-click sequence
         self.centringDataTensor = []
         self.centringDataMatrix = []
         self.motorConstraints = []
 
-    def appendCentringDataPoint(self, camera_coordinates):
+    def appendCentringDataPoint(self, camera_coordinates): #, static_positions = None ):
         # call after each click and send click points - but relative in mm
+        #self.static_positions = static_positions
         self.centringDataTensor.append(self.factor_matrix())
         self.centringDataMatrix.append(
             self.camera_coordinates_to_vector(camera_coordinates)
         )
 
-    def centeredPosition(self, return_by_name=False):
+    def centeredPosition(self, return_by_name=False, shift_to_constraints=False):
         # call after appending the last click. Returns a {motorHO:position} dictionary.
         M = numpy.zeros(shape=(self.translationAxesCount, self.translationAxesCount))
         V = numpy.zeros(shape=(self.translationAxesCount))
@@ -106,13 +109,23 @@ class CentringMath(Procedure):
                         )
         tau_cntrd = numpy.dot(numpy.linalg.pinv(M, rcond=1e-6), V)
 
-        # print tau_cntrd
-        tau_cntrd = self.apply_constraints(M, tau_cntrd)
-        # print tau_cntrd
+        #print tau_cntrd
+        if shift_to_constraints:
+           tau_cntrd = self.shift_to_constraints(tau_cntrd)
+        else:
+           tau_cntrd = self.apply_constraints(M, tau_cntrd)
+        #print "------------------> TAU", tau_cntrd
+        #print "------------------> DATUM", self.translation_datum()        
 
         return self.vector_to_centred_positions(
             -tau_cntrd + self.translation_datum(), return_by_name
         )
+
+    def shift_to_constraints(self, tau):
+        for c in self.motorConstraints:
+            #print tau[c["index"]]
+            tau[c["index"]] = 0 #c["position"]
+        return tau
 
     def apply_constraints(self, M, tau):
         V = numpy.zeros(shape=(self.translationAxesCount))
@@ -127,6 +140,15 @@ class CentringMath(Procedure):
             tau[c["index"]] = c["position"]
         return tau
 
+    def axis_get_position(self, motor_name):
+       if self.static_positions:
+          #print "------------------> STATIC ", self.static_positions
+          return self.static_positions[motor_name]
+       else:
+          for axis in self.gonioAxes: 
+              if axis["motor_name"] == motor_name:
+                 return axis["motor_HO"].get_position()
+
     def factor_matrix(self):
         # This should be connected to goniostat rotation datum update, with F globalized
         F = numpy.zeros(shape=(self.translationAxesCount, len(self.cameraAxes)))
@@ -134,8 +156,10 @@ class CentringMath(Procedure):
         j = 0
         for axis in self.gonioAxes:  # skip base gonio axis
             if axis["type"] == "rotation":
+                #print axis["motor_name"], self.axis_get_position(axis["motor_name"])
                 Ra = self.rotation_matrix(
-                    axis["direction"], axis["motor_HO"].get_value()
+                    #axis["direction"], axis["motor_HO"].get_position()
+                    axis["direction"], self.axis_get_position(axis["motor_name"])
                 )
                 R = numpy.dot(Ra, R)
             elif axis["type"] == "translation":
@@ -179,7 +203,8 @@ class CentringMath(Procedure):
         vector = []
         for axis in self.gonioAxes:
             if axis["type"] == "translation":
-                vector.append(axis["motor_HO"].get_value())
+                #vector.append(axis["motor_HO"].get_position())
+                vector.append(self.axis_get_position(axis["motor_name"]))
         return vector
 
     def centred_positions_to_vector(self, centrings_dictionary):
@@ -230,7 +255,8 @@ class CentringMath(Procedure):
             if axis["type"] == "translation" and motor_HO is axis["motor_HO"]:
                 index += 1
                 self.motorConstraints.append(
-                    {"index": index, "position": motor_HO.get_value() - position}
+                    #{"index": index, "position": motor_HO.get_position() - position}
+                    {"index": index, "position": self.axis_get_position(axis["motor_name"]) - position}
                 )
                 return
 

@@ -22,7 +22,7 @@
 import logging
 import gevent
 
-from HardwareRepository.HardwareObjects.abstract.AbstractEnergy import AbstractEnergy
+from HardwareRepository.BaseHardwareObjects import Device
 
 
 __credits__ = ["EMBL Hamburg"]
@@ -30,25 +30,27 @@ __license__ = "LGPLv3+"
 __category__ = "General"
 
 
-class EMBLEnergy(AbstractEnergy):
+class EMBLEnergy(Device):
     """
     Defines interface to the Tine energy server
     """
 
     def __init__(self, name):
-        AbstractEnergy.__init__(self, name)
+
+        Device.__init__(self, name)
 
         self.ready_event = None
-        self.undulator_gaps = ()
+        self.tunable = False
+        self.current_energy = 0
+        self.current_wav = 0
+        self.moving = None
+        self.default_en = 0
+        self.en_lims = [None, None]
+        self.undulator_gaps = []
         self.ctrl_bytes = None
         self.bragg_break_status = None
-        self.do_beam_alignment = False
+        self.do_beam_alignment = True
         self.delta = 0
-        self._tunable = True
-        self._energy_value = None
-        self._wavelength_value = None
-        self._energy_limits = ()
-        self._moving = None
 
         self.chan_energy = None
         self.chan_limit_low = None
@@ -63,31 +65,33 @@ class EMBLEnergy(AbstractEnergy):
         self.cmd_reset_perp = None
 
     def init(self):
+
+        self.moving = False
         self.ready_event = gevent.event.Event()
 
-        self.cmd_set_energy = self.get_command_object("cmdSetEnergy")
-        self.cmd_energy_ctrl_byte = self.get_command_object("cmdEnergyCtrlByte")
-        self.cmd_set_break_bragg = self.get_command_object("cmdSetBreakBragg")
-        self.cmd_release_break_bragg = self.get_command_object("cmdReleaseBreakBragg")
-        self.cmd_reset_perp = self.get_command_object("cmdResetPerp")
+        self.cmd_set_energy = self.getCommandObject("cmdSetEnergy")
+        self.cmd_energy_ctrl_byte = self.getCommandObject("cmdEnergyCtrlByte")
+        self.cmd_set_break_bragg = self.getCommandObject("cmdSetBreakBragg")
+        self.cmd_release_break_bragg = self.getCommandObject("cmdReleaseBreakBragg")
+        self.cmd_reset_perp = self.getCommandObject("cmdResetPerp")
 
-        self.chan_energy = self.get_channel_object("chanEnergy")
+        self.chan_energy = self.getChannelObject("chanEnergy")
         if self.chan_energy is not None:
             self.chan_energy.connectSignal("update", self.energy_position_changed)
 
-        self.chan_limit_low = self.get_channel_object("chanLimitLow", optional=True)
+        self.chan_limit_low = self.getChannelObject("chanLimitLow", optional=True)
         if self.chan_limit_low is not None:
             self.chan_limit_low.connectSignal("update", self.energy_limits_changed)
 
-        self.chan_limit_high = self.get_channel_object("chanLimitHigh", optional=True)
+        self.chan_limit_high = self.getChannelObject("chanLimitHigh", optional=True)
         if self.chan_limit_high is not None:
             self.chan_limit_high.connectSignal("update", self.energy_limits_changed)
 
-        self.chan_status = self.get_channel_object("chanStatus")
+        self.chan_status = self.getChannelObject("chanStatus")
         if self.chan_status is not None:
             self.chan_status.connectSignal("update", self.energy_state_changed)
 
-        self.chan_undulator_gaps = self.get_channel_object(
+        self.chan_undulator_gaps = self.getChannelObject(
             "chanUndulatorGap", optional=True
         )
         if self.chan_undulator_gaps is not None:
@@ -95,25 +99,47 @@ class EMBLEnergy(AbstractEnergy):
                 "update", self.undulator_gaps_changed
             )
 
-        self.chan_status_bragg_break = self.get_channel_object("chanStatusBraggBreak")
+        self.chan_status_bragg_break = self.getChannelObject("chanStatusBraggBreak")
         if self.chan_status_bragg_break is not None:
             self.chan_status_bragg_break.connectSignal(
                 "update", self.bragg_break_status_changed
             )
 
         try:
-            self._default_energy = self.getProperty("defaultEnergy")
+            self.tunable = self.getProperty("tunableEnergy")
+        except BaseException:
+            logging.getLogger("HWR").warning("Energy: will set to fixed energy")
+        try:
+            self.default_en = self.getProperty("defaultEnergy")
         except BaseException:
             logging.getLogger("HWR").warning("Energy: no default energy defined")
 
         try:
-            self._energy_limits = eval(self.getProperty("staticLimits"))
+            self.en_lims = eval(self.getProperty("staticLimits"))
         except BaseException:
-            self._energy_limits = (None, None)
+            self.en_lims = [None, None]
         self.ctrl_bytes = eval(self.getProperty("ctrlBytes"))
 
         if not self.chan_energy:
-            self.energy_position_changed(self._default_energy * 1000)
+            self.energy_position_changed(self.default_en * 1000)
+
+    def can_move_energy(self):
+        """
+        Returns True if possible to change energy
+        """
+        return self.tunable
+
+    def is_connected(self):
+        """
+        Returns True if connected
+        """
+        return True
+
+    def is_ready(self):
+        """
+        In this case device is always ready
+        """
+        return True
 
     def set_do_beam_alignment(self, state):
         """
@@ -123,13 +149,13 @@ class EMBLEnergy(AbstractEnergy):
         """
         self.do_beam_alignment = state
 
-    def get_value(self):
+    def get_current_energy(self):
         """
         Returns current energy in keV
         :return: float
         """
 
-        value = self._default_energy
+        value = self.default_en
         if self.chan_energy is not None:
             try:
                 value = self.chan_energy.getValue()
@@ -141,7 +167,7 @@ class EMBLEnergy(AbstractEnergy):
                 return None
         return value
 
-    def get_wavelength(self):
+    def get_current_wavelength(self):
         """
         Returns current wavelength in A
         :return: float
@@ -153,22 +179,20 @@ class EMBLEnergy(AbstractEnergy):
             current_wav = 12.3984 / current_en
         return current_wav
 
-    def get_limits(self):
+    def get_energy_limits(self):
         """
         Returns energy limits as list of two floats
         :return: (float, float)
         """
         if self.chan_limit_low is not None and self.chan_limit_high is not None:
             try:
-                self._energy_limits = (
-                    self.chan_limit_low.getValue(),
-                    self.chan_limit_high.getValue(),
-                )
+                self.en_lims[0] = self.chan_limit_low.getValue()
+                self.en_lims[1] = self.chan_limit_high.getValue()
             except BaseException:
                 logging.getLogger("HWR").exception(
                     "Energy: could not read energy limits"
                 )
-        return self._energy_limits
+        return self.en_lims
 
     def get_wavelength_limits(self):
         """
@@ -176,9 +200,9 @@ class EMBLEnergy(AbstractEnergy):
         :return: (float, float)
         """
         lims = None
-        self._energy_limits = self.getEnergyLimits()
-        if self._energy_limits is not None:
-            lims = (12.3984 / self._energy_limits[1], 12.3984 / self.en_lims[0])
+        self.en_lims = self.get_energy_limits()
+        if self.en_lims is not None:
+            lims = (12.3984 / self.en_lims[1], 12.3984 / self.en_lims[0])
         return lims
 
     def move_energy_started(self):
@@ -193,7 +217,7 @@ class EMBLEnergy(AbstractEnergy):
         Emits moveEnergyFailedsignal
         :return:
         """
-        self._moving = False
+        self.moving = False
         self.emit("moveEnergyFailed", ())
 
     def move_energy_aborted(self):
@@ -201,7 +225,7 @@ class EMBLEnergy(AbstractEnergy):
         Emits moveEnergyFailed signal
         :return:
         """
-        self._moving = False
+        self.moving = False
         self.emit("moveEnergyFailed", ())
 
     def move_energy_finished(self, result):
@@ -210,7 +234,8 @@ class EMBLEnergy(AbstractEnergy):
         :param result:
         :return:
         """
-        self._moving = False
+        self.moving = False
+        logging.getLogger("GUI").info("Energy change finished")
         self.emit("moveEnergyFinished", ())
 
     def check_limits(self, value):
@@ -220,24 +245,23 @@ class EMBLEnergy(AbstractEnergy):
         logging.getLogger("HWR").info("Checking the move limits")
         result = False
 
-        if self._energy_limits[0] <= value <= self.en_lims[1]:
+        if self.en_lims[0] <= value <= self.en_lims[1]:
             logging.getLogger("HWR").info("Limits ok")
             result = True
         else:
             logging.getLogger("GUI").info("Energy: Requested value is out of limits")
         return result
 
-    #
-    # def start_move_wavelength(self, value, wait=True):
-    #     """
-    #     Starts wavelength change
-    #     :param value: float
-    #     :param wait: boolean
-    #     :return:
-    #     """
-    #     logging.getLogger("HWR").info("Moving wavelength to (%s)" % value)
-    #     return self.move_energy(12.3984 / value, wait)
-    #     # return self.startMoveEnergy(value, wait)
+    def start_move_wavelength(self, value, wait=True):
+        """
+        Starts wavelength change
+        :param value: float
+        :param wait: boolean
+        :return:
+        """
+        logging.getLogger("HWR").info("Moving wavelength to (%s)" % value)
+        return self.move_energy(12.3984 / value, wait)
+        # return self.startMoveEnergy(value, wait)
 
     def cancel_move_energy(self):
         """
@@ -247,7 +271,7 @@ class EMBLEnergy(AbstractEnergy):
         logging.getLogger("user_level_log").info("Energy: Cancel move")
         # self.moveEnergy.abort()
 
-    def set_value(self, energy, wait=True):
+    def move_energy(self, energy, wait=True):
         """
         Sets energy in keV
         """
@@ -260,7 +284,7 @@ class EMBLEnergy(AbstractEnergy):
         :param energy: in keV, float
         :return:
         """
-        current_en = self.get_value()
+        current_en = self.get_current_energy()
         pos = abs(current_en - energy)
         self.delta = pos
         if pos < 0.001:
@@ -277,7 +301,7 @@ class EMBLEnergy(AbstractEnergy):
                 else:
                     self.cmd_energy_ctrl_byte(self.ctrl_bytes[0])
 
-            self._moving = pos
+            self.moving = pos
             self.release_break_bragg()
             gevent.sleep(2)
 
@@ -289,14 +313,14 @@ class EMBLEnergy(AbstractEnergy):
                 # Mockup mode
                 self.energy_position_changed([energy * 1000])
 
-    def set_wavelength(self, value, wait=True):
+    def move_wavelength(self, value, wait=True):
         """
         Changes wavelength (in Angstroms)
         :param value: wavelength in Angstroms (float)
         :param wait: boolean
         :return:
         """
-        self.set_value(12.3984 / value, wait)
+        self.move_energy(12.3984 / value, wait)
 
     def energy_position_changed(self, pos):
         """
@@ -308,12 +332,12 @@ class EMBLEnergy(AbstractEnergy):
         if isinstance(pos, (list, tuple)):
             pos = pos[0]
         energy = pos / 1000
-        if self._energy_value is None or abs(energy - self._energy_value) > 1e-3:
-            self._energy_value = energy
-            self._wavelength_value = 12.3984 / energy
-            if self._wavelength_value is not None:
-                self.emit("energyChanged", (self._energy_value, self._wavelength_value))
-                self.emit("valueChanged", (self._energy_value,))
+        if abs(energy - self.current_energy) > 1e-3:
+            self.current_energy = energy
+            self.current_wav = 12.3984 / energy
+            if self.current_wav is not None:
+                self.emit("energyChanged", (self.current_energy, self.current_wav))
+                self.emit("valueChanged", (self.current_energy,))
 
     def energy_limits_changed(self, limits):
         """
@@ -321,7 +345,7 @@ class EMBLEnergy(AbstractEnergy):
         :param limits: (float, float)
         :return:
         """
-        limits = self.get_limits()
+        limits = self.get_energy_limits()
         self.emit("energyLimitsChanged", (limits,))
 
     def energy_state_changed(self, state):
@@ -334,8 +358,8 @@ class EMBLEnergy(AbstractEnergy):
         self.energy_server_check_for_errors(state)
         state = int(state[0])
         if state == 0:
-            if self._moving:
-                self._moving = False
+            if self.moving:
+                self.moving = False
                 self.set_break_bragg()
                 if self.cmd_reset_perp is not None:
                     logging.getLogger("HWR").info("Energy: Perp reset sent")
@@ -357,7 +381,9 @@ class EMBLEnergy(AbstractEnergy):
         :param timeout: sec in int
         :return:
         """
-        super(EMBLEnergy, self).wait_ready(timeout=20)
+        with gevent.Timeout(timeout, Exception("Energy: Timeout waiting for ready")):
+            while self.chan_status.getValue()[0] != 0:
+                gevent.sleep(0.1)
 
     def energy_server_check_for_errors(self, state):
         """
@@ -385,13 +411,20 @@ class EMBLEnergy(AbstractEnergy):
         """
         self.bragg_break_status = status
 
-    def re_emit_values(self):
+    def get_value(self):
+        """
+        Returns current energy
+        :return:
+        """
+        return self.get_current_energy()
+
+    def update_values(self):
         """
         Reemits signals
         :return:
         """
-        self.emit("energyChanged", (self._energy_value, self._wavelength_value))
-        self.emit("valueChanged", (self._energy_value,))
+        self.emit("energyChanged", (self.current_energy, self.current_wav))
+        self.emit("valueChanged", (self.current_energy,))
 
     def undulator_gaps_changed(self, value):
         """
@@ -400,9 +433,9 @@ class EMBLEnergy(AbstractEnergy):
         :return:
         """
         if isinstance(value, (list, tuple)):
-            self.undulator_gaps = value[0]
+            self.undulator_gaps = [value[0]]
         else:
-            self.undulator_gaps = value
+            self.undulator_gaps = [value]
 
     def get_undulator_gaps(self):
         """

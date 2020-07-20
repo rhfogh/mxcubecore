@@ -109,10 +109,8 @@ def checkType(_strClassName, _strMethodName, _value, _strExpectedType):
 def warnEmptyAttribute(_strName, _strTypeName):
     if _strTypeName not in ["float", "double", "string", "boolean", "integer"]:
         print(
-            (
-                "Warning! Non-optional attribute %s of type %s is None!"
-                % (_strName, _strTypeName)
-            )
+            "Warning! Non-optional attribute %s of type %s is None!"
+            % (_strName, _strTypeName)
         )
 
 

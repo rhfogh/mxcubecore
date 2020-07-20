@@ -107,9 +107,6 @@ class EMBLSlitBox(AbstractSlits):
     def init(self):
         self.decimal_places = 6
         self.gaps_dict = {}
-        # WARNING modifying self.gaps_dict["Hor"] and ["Ver"}
-        # modifies the GLOBAL properties, not just the local copy
-        # Maybe do self["gapH"].getProperties().copy()?
         self.gaps_dict["Hor"] = self["gapH"].getProperties()
         self.gaps_dict["Ver"] = self["gapV"].getProperties()
         self.gaps_dict["Hor"]["value"] = 0.10
@@ -146,14 +143,14 @@ class EMBLSlitBox(AbstractSlits):
                 self.connect(
                     motor_group, "mGroupStatusChanged", self.motors_group_status_changed
                 )
-                motor_group.re_emit_values()
+                motor_group.update_values()
 
         self.beam_focus_hwobj = self.getObjectByRole("focusing")
         if self.beam_focus_hwobj:
             self.connect(
                 self.beam_focus_hwobj, "focusingModeChanged", self.focus_mode_changed
             )
-            self.beam_focus_hwobj.re_emit_values()
+            self.beam_focus_hwobj.update_values()
         else:
             logging.getLogger("HWR").debug("EMBLSlitBox: beamFocus HO not defined")
 
@@ -186,7 +183,7 @@ class EMBLSlitBox(AbstractSlits):
         :type position: float
         """
         for motors_group in self.motors_groups:
-            if self.motors_dict[motor_name]["motorsGroup"] == motors_group.username:
+            if self.motors_dict[motor_name]["motorsGroup"] == motors_group.userName():
                 motors_group.set_motor_position(motor_name, position)
                 return
 
@@ -283,7 +280,7 @@ class EMBLSlitBox(AbstractSlits):
                     for motor_group in self.motors_groups:
                         if (
                             self.motors_dict[motor]["motorsGroup"]
-                            == motor_group.username
+                            == motor_group.userName()
                         ):
                             motor_group.set_motor_position(
                                 motor, new_position, timeout=timeout
@@ -308,7 +305,7 @@ class EMBLSlitBox(AbstractSlits):
         """Stops motors movements"""
         for motor in self.motors_dict:
             for motors_group in self.motors_groups:
-                if motor["motorsGroup"] == motors_group.username:
+                if motor["motorsGroup"] == motors_group.userName():
                     if motor["gap"] == gap_name:
                         motors_group.stop_motor(motor["motorName"])
 
@@ -317,7 +314,7 @@ class EMBLSlitBox(AbstractSlits):
         self.active_focus_mode = focus_mode
         for motor in self.motors_dict:
             for motors_group in self.motors_groups_devices:
-                if self.motors_dict[motor]["motorsGroup"] == motors_group.username:
+                if self.motors_dict[motor]["motorsGroup"] == motors_group.userName():
                     motors_group.set_motor_focus_mode(motor, focus_mode)
 
     def focus_mode_changed(self, new_focus_mode, size):
@@ -349,7 +346,7 @@ class EMBLSlitBox(AbstractSlits):
                 ([self.gaps_dict["Hor"]["maxGap"], self.gaps_dict["Ver"]["maxGap"]],),
             )
 
-    def re_emit_values(self):
+    def update_values(self):
         """Reemits signals"""
         self.emit("focusModeChanged", ((self.hor_gap_enabled, self.ver_gap_enabled),))
         self.emit(

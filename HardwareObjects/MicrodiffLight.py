@@ -1,36 +1,48 @@
-from HardwareRepository.HardwareObjects.ExporterMotor import ExporterMotor
-from HardwareRepository.BaseHardwareObjects import HardwareObjectState
+from HardwareRepository.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
 
-class MicrodiffLight(ExporterMotor):
+class MicrodiffLight(AbstractMotor):
     def __init__(self, name):
-        ExporterMotor.__init__(self, name)
-        self._motor_pos_suffix = "Level"
+        AbstractMotor.__init__(self, name)
 
     def init(self):
-        ExporterMotor.init(self)
         try:
-            _low, _high = self.getProperty("limits").split(",")
-            self._limits = (float(_low), float(_high))
-        except (AttributeError, TypeError, ValueError):
-            self._limits = (0, 10)
-        self.chan_light_is_on = self.get_channel_object("chanLightIsOn")
+            self.set_limits(eval(self.getProperty("limits")))
+        except BaseException:
+            self.set_limits((0, 2))
 
-    def get_state(self):
-        """Get the light state as a motor.
-        Returns:
-            (enum 'HardwareObjectState'): Light state.
-        """
-        return HardwareObjectState.READY
+        self.chan_value = self.getChannelObject("chanLightValue")
+        self.chan_value.connectSignal("update", self.value_changed)
+        self.chan_light_is_on = self.getChannelObject("chanLightIsOn")
 
-    def get_limits(self):
-        return self._limits
+        self.set_state(self.motor_states.READY)
+        self.value_changed(self.chan_value.getValue())
+
+    def connectNotify(self, signal):
+        if self.chan_value.isConnected():
+            if signal == "positionChanged":
+                self.emit("positionChanged", (self.get_position(),))
+            elif signal == "limitsChanged":
+                self.limits_changed()
+
+    def limits_changed(self):
+        self.emit("limitsChanged", (self.get_limits(),))
+
+    def value_changed(self, position, private={}):
+        self.set_position(position)
+        self.emit("positionChanged", (self.get_position(),))
+
+    def move(self, position, wait=False, timeout=None):
+        self.chan_value.setValue(position)
+
+    def stop(self):
+        pass
 
     def light_is_out(self):
-        return self.chan_light_is_on.get_value()
+        return self.chan_light_is_on.getValue()
 
     def move_in(self):
-        self.chan_light_is_on.set_value(True)
+        self.chan_light_is_on.setValue(False)
 
     def move_out(self):
-        self.chan_light_is_on.set_value(False)
+        self.chan_light_is_on.setValue(True)

@@ -1,9 +1,8 @@
 import sys
 import gevent
 import logging
-import PyTango.gevent
 from HardwareRepository import BaseHardwareObjects
-from HardwareRepository import HardwareRepository as HWR
+import PyTango.gevent
 
 """
 Read the state of the hutch from the PSS device server and take actions
@@ -87,12 +86,12 @@ class BlissHutchTrigger(BaseHardwareObjects.HardwareObject):
         ctrl_obj.hutch_actions(entering_hutch, hutch_trigger=True, **kwargs)
 
         # open the flexHCD ports
-        sample_changer = HWR.beamline.sample_changer
-        if sample_changer:
+        sample_changer_hwobj = self.getObjectByRole("sample_changer")
+        if sample_changer_hwobj:
             if entering_hutch:
-                sample_changer.prepare_hutch(robot_port=0)
+                sample_changer_hwobj.prepare_hutch(robot_port=0)
             else:
-                sample_changer.prepare_hutch(user_port=0, robot_port=1)
+                sample_changer_hwobj.prepare_hutch(user_port=0, robot_port=1)
 
     def poll(self):
         a = self.device.GetInterlockState([self.card - 1, 2 * (self.channel - 1)])[0]
@@ -120,7 +119,7 @@ class BlissHutchTrigger(BaseHardwareObjects.HardwareObject):
         if self._enabled:
             self.macro(self.hutch_opened)
 
-    def get_actuator_state(self):
+    def getActuatorState(self):
         if self._enabled:
             return "ENABLED"
         else:

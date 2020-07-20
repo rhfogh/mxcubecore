@@ -86,7 +86,7 @@ class Camera(BaseHardwareObjects.Device):
                     BaseHardwareObjects.Device.__init__(self, name)
 
                 def oprint(self, msg):
-                    print(("Camera.py--tango device-- %s" % msg))
+                    print("Camera.py--tango device-- %s" % msg)
 
                 def _init(self):
                     self.forceUpdate = False
@@ -117,48 +117,48 @@ class Camera(BaseHardwareObjects.Device):
                         # self.oprint ("attribute list:")
                         # self.oprint (_attribute_list)
 
-                        imgChan = self.add_channel(
+                        imgChan = self.addChannel(
                             {"type": "tango", "name": "image", "read_as_str": 1},
                             "RgbImage",
                         )
-                        imgWidth = self.add_channel(
+                        imgWidth = self.addChannel(
                             {"type": "tango", "name": "width"}, "Width"
                         )
-                        imgHeight = self.add_channel(
+                        imgHeight = self.addChannel(
                             {"type": "tango", "name": "height"}, "Height"
                         )
-                        fullWidth = self.add_channel(
+                        fullWidth = self.addChannel(
                             {"type": "tango", "name": "fullwidth"}, "FullWidth"
                         )
-                        fullHeight = self.add_channel(
+                        fullHeight = self.addChannel(
                             {"type": "tango", "name": "fullheight"}, "FullHeight"
                         )
-                        roi = self.add_channel({"type": "tango", "name": "roi"}, "Roi")
-                        exposure = self.add_channel(
+                        roi = self.addChannel({"type": "tango", "name": "roi"}, "Roi")
+                        exposure = self.addChannel(
                             {"type": "tango", "name": "exposure"}, "Exposure"
                         )
 
                         if "Brightness" in _attribute_list:
                             print("add brightness")
-                            brightness = self.add_channel(
+                            brightness = self.addChannel(
                                 {"type": "tango", "name": "brightness"}, "Brightness"
                             )
                             self.__brightnessExists = True
 
                         if "Contrast" in _attribute_list:
-                            contrast = self.add_channel(
+                            contrast = self.addChannel(
                                 {"type": "tango", "name": "contrast"}, "Contrast"
                             )
                             self.__contrastExists = True
 
                         if "Gain" in _attribute_list:
-                            gain = self.add_channel(
+                            gain = self.addChannel(
                                 {"type": "tango", "name": "gain"}, "Gain"
                             )
                             self.__gainExists = True
 
                         if "Gamma" in _attribute_list:
-                            gamma = self.add_channel(
+                            gamma = self.addChannel(
                                 {"type": "tango", "name": "gamma"}, "Gamma"
                             )
                             self.__gammaExists = True
@@ -171,34 +171,34 @@ class Camera(BaseHardwareObjects.Device):
                         if self.getProperty("bpmname"):
                             self.bpmDevice = CommandContainer.CommandContainer()
                             self.bpmDevice.tangoname = self.bpmname
-                            threshold = self.bpmDevice.add_channel(
+                            threshold = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "threshold"}, "Threshold"
                             )
-                            centerx = self.bpmDevice.add_channel(
+                            centerx = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "centerx"}, "X"
                             )
-                            centery = self.bpmDevice.add_channel(
+                            centery = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "centery"}, "Y"
                             )
-                            fwhmx = self.bpmDevice.add_channel(
+                            fwhmx = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "fwhmx"}, "XFwhm"
                             )
-                            fwhmy = self.bpmDevice.add_channel(
+                            fwhmy = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "fwhmy"}, "YFwhm"
                             )
-                            maxpix = self.bpmDevice.add_channel(
+                            maxpix = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "maxpix"}, "MaxPixelValue"
                             )
-                            intensity = self.bpmDevice.add_channel(
+                            intensity = self.bpmDevice.addChannel(
                                 {"type": "tango", "name": "intensity"}, "Intensity"
                             )
-                            onCmd = self.bpmDevice.add_command(
+                            onCmd = self.bpmDevice.addCommand(
                                 {"type": "tango", "name": "on"}, "On"
                             )
-                            offCmd = self.bpmDevice.add_command(
+                            offCmd = self.bpmDevice.addCommand(
                                 {"type": "tango", "name": "off"}, "Off"
                             )
-                            stateCmd = self.bpmDevice.add_command(
+                            stateCmd = self.bpmDevice.addCommand(
                                 {"type": "tango", "name": "state"}, "State"
                             )
                         else:
@@ -211,19 +211,19 @@ class Camera(BaseHardwareObjects.Device):
                     image_type = self.getProperty(property_name) or "Jpeg"
 
                     if image_type.lower() == "jpeg":
-                        streamChan = self.add_channel(
+                        streamChan = self.addChannel(
                             {"type": "tango", "name": "stream", "read_as_str": 1},
                             "JpegImage",
                         )
                         self.imgtype = JpegType()
                     elif image_type.lower().startswith("bayer:"):
-                        streamChan = self.add_channel(
+                        streamChan = self.addChannel(
                             {"type": "tango", "name": "stream", "read_as_str": 1},
                             "BayerImage",
                         )
                         self.imgtype = BayerType(image_type.split(":")[1])
                     elif image_type.lower().startswith("raw"):
-                        streamChan = self.add_channel(
+                        streamChan = self.addChannel(
                             {"type": "tango", "name": "stream", "read_as_str": 1},
                             "Image",
                         )
@@ -236,7 +236,7 @@ class Camera(BaseHardwareObjects.Device):
                     return self.imgtype
 
                 def newImage(self, img_cnt):
-                    streamChan = self.get_channel_object("stream")
+                    streamChan = self.getChannelObject("stream")
                     self.emit(
                         "imageReceived",
                         streamChan.getValue(),
@@ -286,7 +286,7 @@ class Camera(BaseHardwareObjects.Device):
                             )
                         else:
                             try:
-                                imgCnt = self.add_channel(
+                                imgCnt = self.addChannel(
                                     {
                                         "type": "tango",
                                         "name": "img_cnt",
@@ -306,7 +306,7 @@ class Camera(BaseHardwareObjects.Device):
                 def setContrast(self, contrast):
                     """tango"""
                     try:
-                        contrastChan = self.get_channel_object("contrast")
+                        contrastChan = self.getChannelObject("contrast")
                         contrastChan.setValue(str(contrast))
                     except BaseException:
                         self.oprint("setContrast failed")
@@ -317,7 +317,7 @@ class Camera(BaseHardwareObjects.Device):
                 def getContrast(self):
                     """tango"""
                     try:
-                        contrastChan = self.get_channel_object("contrast")
+                        contrastChan = self.getChannelObject("contrast")
                         contrast = contrastChan.getValue()
                         return contrast
                     except BaseException:
@@ -339,7 +339,7 @@ class Camera(BaseHardwareObjects.Device):
                 def setBrightness(self, brightness):
                     """tango"""
                     try:
-                        brightnessChan = self.get_channel_object("brightness")
+                        brightnessChan = self.getChannelObject("brightness")
                         brightnessChan.setValue(brightness)
                     except BaseException:
                         self.oprint("setBrightness failed")
@@ -350,7 +350,7 @@ class Camera(BaseHardwareObjects.Device):
                 def getBrightness(self):
                     """tango"""
                     try:
-                        brightnessChan = self.get_channel_object("brightness")
+                        brightnessChan = self.getChannelObject("brightness")
                         brightness = brightnessChan.getValue()
                         return brightness
                     except BaseException:
@@ -371,7 +371,7 @@ class Camera(BaseHardwareObjects.Device):
                 def setGain(self, gain):
                     """tango"""
                     try:
-                        gainChan = self.get_channel_object("gain")
+                        gainChan = self.getChannelObject("gain")
                         # ???? gainChan.setValue(str(gain))
                         gainChan.setValue(gain)
                     except BaseException:
@@ -383,7 +383,7 @@ class Camera(BaseHardwareObjects.Device):
                 def getGain(self):
                     """tango"""
                     try:
-                        gainChan = self.get_channel_object("gain")
+                        gainChan = self.getChannelObject("gain")
                         gain = gainChan.getValue()
                         return gain
                     except BaseException:
@@ -405,7 +405,7 @@ class Camera(BaseHardwareObjects.Device):
                 def setGamma(self, gamma):
                     """tango"""
                     try:
-                        gammaChan = self.get_channel_object("gamma")
+                        gammaChan = self.getChannelObject("gamma")
                         gammaChan.setValue(gamma)
                     except BaseException:
                         sys.excepthook(
@@ -415,7 +415,7 @@ class Camera(BaseHardwareObjects.Device):
                 def getGamma(self):
                     """tango"""
                     try:
-                        gammaChan = self.get_channel_object("gamma")
+                        gammaChan = self.getChannelObject("gamma")
                         gamma = gammaChan.getValue()
                         return gamma
                     except BaseException:
@@ -432,12 +432,12 @@ class Camera(BaseHardwareObjects.Device):
 
                 def getWidth(self):
                     """tango"""
-                    width = self.get_channel_object("width")
+                    width = self.getChannelObject("width")
                     return width.getValue()
 
                 def getHeight(self):
                     """tango"""
-                    height = self.get_channel_object("height")
+                    height = self.getChannelObject("height")
 
                     return height.getValue()
 
@@ -452,7 +452,7 @@ class Camera(BaseHardwareObjects.Device):
                 def takeSnapshot(self, *args, **kwargs):
                     """tango"""
                     if canTakeSnapshots:
-                        imgChan = self.get_channel_object("image")
+                        imgChan = self.getChannelObject("image")
                         rawimg = imgChan.getValue()
                         w = self.getWidth()
                         h = self.getHeight()
@@ -506,14 +506,14 @@ class Camera(BaseHardwareObjects.Device):
                     """tango"""
                     if self.bpmDevice is not None:
                         if bpmOn:
-                            self.bpmDevice.execute_command("on")
+                            self.bpmDevice.executeCommand("on")
                         else:
-                            self.bpmDevice.execute_command("off")
+                            self.bpmDevice.executeCommand("off")
 
                 def getBpmState(self):
                     """tango"""
                     if self.bpmDevice is not None:
-                        return self.bpmDevice.execute_command("state")
+                        return self.bpmDevice.executeCommand("state")
                     else:
                         return PyTango.DevState.UNKNOWN
 
@@ -522,73 +522,69 @@ class Camera(BaseHardwareObjects.Device):
                     if self.bpmDevice is not None:
                         # self.oprint("bpmDevice name =%s"%self.bpmDevice.tangoname)
                         try:
-                            threshold = self.bpmDevice.get_channel_object(
+                            threshold = self.bpmDevice.getChannelObject(
                                 "threshold"
                             ).getValue()
                         except BaseException:
                             threshold = -1
                         try:
-                            centerx = self.bpmDevice.get_channel_object(
+                            centerx = self.bpmDevice.getChannelObject(
                                 "centerx"
                             ).getValue()
                         except BaseException:
                             centerx = -1
                         try:
-                            centery = self.bpmDevice.get_channel_object(
+                            centery = self.bpmDevice.getChannelObject(
                                 "centery"
                             ).getValue()
                         except BaseException:
                             centery = -1
                         try:
-                            fwhmx = self.bpmDevice.get_channel_object(
-                                "fwhmx"
-                            ).getValue()
+                            fwhmx = self.bpmDevice.getChannelObject("fwhmx").getValue()
                         except BaseException:
                             fwhmx = -1
                         try:
-                            fwhmy = self.bpmDevice.get_channel_object(
-                                "fwhmy"
-                            ).getValue()
+                            fwhmy = self.bpmDevice.getChannelObject("fwhmy").getValue()
                         except BaseException:
                             fwhmy = -1
                         try:
-                            maxpix = self.bpmDevice.get_channel_object(
+                            maxpix = self.bpmDevice.getChannelObject(
                                 "maxpix"
                             ).getValue()
                         except BaseException:
                             maxpix = -1
                         try:
-                            intensity = self.bpmDevice.get_channel_object(
+                            intensity = self.bpmDevice.getChannelObject(
                                 "intensity"
                             ).getValue()
                         except BaseException:
                             intensity = -1
                         # self.oprint("Device name =%s"%self.device.name())
                         try:
-                            exposure = self.get_channel_object("exposure").getValue()
+                            exposure = self.getChannelObject("exposure").getValue()
                         except BaseException:
                             exposure = -1
 
                         # SIZES
                         try:
-                            width = self.get_channel_object("fullwidth").getValue()
+                            width = self.getChannelObject("fullwidth").getValue()
                         except BaseException:
                             width = -1
                         try:
-                            height = self.get_channel_object("fullheight").getValue()
+                            height = self.getChannelObject("fullheight").getValue()
                         except BaseException:
                             height = -1
 
                         # FLIPS
                         try:
-                            fliphorizontal = self.get_channel_object(
+                            fliphorizontal = self.getChannelObject(
                                 "fliphorizontal"
                             ).getValue()
                         except BaseException:
                             fliphorizontal = 0
 
                         try:
-                            flipvertical = self.get_channel_object(
+                            flipvertical = self.getChannelObject(
                                 "flipvertical"
                             ).getValue()
                         except BaseException:
@@ -596,13 +592,13 @@ class Camera(BaseHardwareObjects.Device):
 
                         # GAIN
                         try:
-                            gain = self.get_channel_object("gain").getValue()
+                            gain = self.getChannelObject("gain").getValue()
                         except BaseException:
                             gain = 0
 
                         # GAMMA
                         try:
-                            gamma = self.get_channel_object("gamma").getValue()
+                            gamma = self.getChannelObject("gamma").getValue()
                         except BaseException:
                             gamma = 0
 
@@ -621,7 +617,7 @@ class Camera(BaseHardwareObjects.Device):
                         except BaseException:
                             bpm = False
                         try:
-                            # ?????????? #  (startx, starty, endx, endy, d1, d2, d3, d4) = self.get_channel_object("roi").getValue()
+                            # ?????????? #  (startx, starty, endx, endy, d1, d2, d3, d4) = self.getChannelObject("roi").getValue()
                             (
                                 startx,
                                 endx,
@@ -631,9 +627,9 @@ class Camera(BaseHardwareObjects.Device):
                                 d2,
                                 d3,
                                 d4,
-                            ) = self.get_channel_object("roi").getValue()
+                            ) = self.getChannelObject("roi").getValue()
                             # print "Camera.py -- startx=", startx
-                            # print self.get_channel_object("roi").getValue()
+                            # print self.getChannelObject("roi").getValue()
                         except BaseException:
                             (startx, starty, endx, endy, d1, d2, d3, d4) = (
                                 -1,
@@ -708,9 +704,9 @@ class Camera(BaseHardwareObjects.Device):
                     """tango"""
                     if self.bpmDevice is not None:
                         if bpmOn:
-                            self.bpmDevice.execute_command("on")
+                            self.bpmDevice.executeCommand("on")
                         else:
-                            self.bpmDevice.execute_command("off")
+                            self.bpmDevice.executeCommand("off")
 
                 def resetROI(self):
                     """tango"""
@@ -718,19 +714,15 @@ class Camera(BaseHardwareObjects.Device):
 
                 def setROI(self, startx, endx, starty, endy):
                     """tango"""
-                    # ?????# self.get_channel_object("roi").setValue([startx, starty, endx, endy])
-                    self.get_channel_object("roi").setValue(
-                        [startx, endx, starty, endy]
-                    )
+                    # ?????# self.getChannelObject("roi").setValue([startx, starty, endx, endy])
+                    self.getChannelObject("roi").setValue([startx, endx, starty, endy])
 
                 def setExposure(self, exposure):
-                    self.get_channel_object("exposure").setValue(exposure)
+                    self.getChannelObject("exposure").setValue(exposure)
 
                 def setThreshold(self, threshold):
                     if self.bpmDevice is not None:
-                        self.bpmDevice.get_channel_object("threshold").setValue(
-                            threshold
-                        )
+                        self.bpmDevice.getChannelObject("threshold").setValue(threshold)
 
             self.__class__ = TangoCamera
             self._init()
@@ -752,7 +744,7 @@ class Camera(BaseHardwareObjects.Device):
                         self.setIsReady(True)
 
                 def oprint(self, msg):
-                    print(("Camera.py--taco device--%s" % msg))
+                    print("Camera.py--taco device--%s" % msg)
 
                 def imageType(self):
                     """Returns a 'jpeg' or 'bayer' type object depending on the image type"""
@@ -802,17 +794,17 @@ class Camera(BaseHardwareObjects.Device):
 
                 def getWidth(self):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
                         return self.device.DevCcdXSize()
 
                 def getHeight(self):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
                         return self.device.DevCcdYSize()
 
                 def setSize(self, width, height):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
                         return self.device.DevCcdOutputSize(width, height)
 
                 def takeSnapshot(self, *args):
@@ -851,7 +843,7 @@ class Camera(BaseHardwareObjects.Device):
 
                 def getBpmValues(self):
                     """Taco"""
-                    if self.is_ready():
+                    if self.isReady():
                         values = self.device.DevReadSigValues()
                         gain = self.device.DevCcdGetGain()
 
@@ -916,7 +908,7 @@ class Camera(BaseHardwareObjects.Device):
 
                 def setROI(self, startx, endx, starty, endy):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
 
                         self.getBpmValues()
                         if self.res["live"]:
@@ -931,7 +923,7 @@ class Camera(BaseHardwareObjects.Device):
 
                 def setExposure(self, exposure):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
 
                         self.getBpmValues()
                         if self.res["live"]:
@@ -946,7 +938,7 @@ class Camera(BaseHardwareObjects.Device):
 
                 def setGain(self, gain):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
 
                         self.getBpmValues()
                         if self.res["live"]:
@@ -961,7 +953,7 @@ class Camera(BaseHardwareObjects.Device):
 
                 def setThreshold(self, threshold):
                     """taco"""
-                    if self.is_ready():
+                    if self.isReady():
 
                         self.getBpmValues()
                         if self.res["live"]:

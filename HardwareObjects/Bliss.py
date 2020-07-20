@@ -1,26 +1,17 @@
-"""Bliss session and tools for sending the scan data for plotting.
-Emits new_plot, plot_data and plot_end.
-"""
-
-import itertools
-import gevent
-import numpy
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from bliss.config import static
 from bliss.data.node import DataNodeIterator, _get_or_create_node
-
-__copyright__ = """ Copyright © 2019 by the MXCuBE collaboration """
-__license__ = "LGPLv3+"
+import gevent
+import itertools
+import numpy
 
 
 def all_equal(iterable):
-    """ Check for same number of points on each line"""
-    grp = itertools.groupby(iterable)
-    return next(grp, True) and not next(grp, False)
+    g = itertools.groupby(iterable)
+    return next(g, True) and not next(g, False)
 
 
 def watch_data(scan_node, scan_new_callback, scan_data_callback, scan_end_callback):
-    """Watch for data coming from the bliss scans. Exclude the simple count"""
     scan_info = scan_node._info.get_all()
     if scan_info["type"] == "ct":
         return
@@ -47,7 +38,7 @@ def watch_data(scan_node, scan_new_callback, scan_data_callback, scan_end_callba
             data = data_channel.get(data_indexes.setdefault(channel_name, 0), -1)
             data_indexes[channel_name] += len(data)
             scan_data.setdefault(channel_name, []).extend(data)
-            if len(scan_data) == ndata and all_equal(data_indexes.values()):
+            if len(scan_data) == ndata and all_equal(data_indexes.itervalues()):
                 scan_data_callback(scan_info, scan_data)
                 if data_indexes[channel_name] == scan_info["npoints"]:
                     scan_end_callback(scan_info)
@@ -57,7 +48,6 @@ def watch_data(scan_node, scan_new_callback, scan_data_callback, scan_end_callba
 def watch_session(
     session_name, scan_new_callback, scan_data_callback, scan_end_callback
 ):
-    """Watch the bliss session for new data"""
     session_node = _get_or_create_node(session_name, node_type="session")
     if session_node is not None:
         data_iterator = DataNodeIterator(session_node)
@@ -81,14 +71,10 @@ def watch_session(
 
 
 class Bliss(HardwareObject):
-    """Bliss class"""
-
     def __init__(self, *args):
         HardwareObject.__init__(self, *args)
-        self.__scan_data = {}
 
     def init(self, *args):
-        """Initialis the bliss session"""
         cfg = static.get_config()
         session = cfg.get(self.getProperty("session"))
 
@@ -104,10 +90,6 @@ class Bliss(HardwareObject):
         self.__scan_data = dict()
 
     def __on_scan_new(self, scan_info):
-        """New scan. Emit new_plot.
-        Args:
-            scan_info(dict): Contains SCAN_INFO dictionary from bliss
-        """
         scan_id = scan_info["scan_nb"]
         self.__scan_data[scan_id] = list()
 
@@ -124,12 +106,6 @@ class Bliss(HardwareObject):
         )
 
     def __on_scan_data(self, scan_info, data):
-        """ Retrieve the scan data. Emit plot_data.
-        Args:
-            scan_info (dict): SCAN_INFO dictionary from bliss
-            data (numpy array): data from bliss
-        """
-
         scan_id = scan_info["scan_nb"]
         new_data = numpy.column_stack([data[name] for name in scan_info["labels"]])
         self.__scan_data[scan_id].append(new_data)
@@ -142,10 +118,6 @@ class Bliss(HardwareObject):
         )
 
     def __on_scan_end(self, scan_info):
-        """Retrieve remaining data at the end of the scan. Emit plot_end.
-        Args:
-            scan_info (int): ID of the scan
-        """
         scan_id = scan_info["scan_nb"]
         self.emit(
             "plot_end",

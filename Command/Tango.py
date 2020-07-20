@@ -1,15 +1,15 @@
 import logging
+import Queue
+import weakref
+import new
+import time
 import types
 import gevent
 import gevent.event
-from gevent.queue import Queue
-from HardwareRepository.CommandContainer import (
-    CommandObject,
-    ChannelObject,
-    ConnectionError,
-)
-from HardwareRepository import Poller
-from HardwareRepository import saferef
+
+from HardwareRepository.CommandContainer import CommandObject, ChannelObject, ConnectionError
+from .. import Poller
+from .. import saferef
 
 try:
     import PyTango
@@ -108,9 +108,9 @@ class E:
 
 
 class TangoChannel(ChannelObject):
-    _tangoEventsQueue = Queue()
+    _tangoEventsQueue = Queue.Queue()
     _eventReceivers = {}
-    _tangoEventsProcessingTimer = gevent.get_hub().loop.async_()
+    _tangoEventsProcessingTimer = gevent.get_hub().loop.async()
 
     # start Tango events processing timer
     _tangoEventsProcessingTimer.start(processTangoEvents)
@@ -167,7 +167,7 @@ class TangoChannel(ChannelObject):
     def continue_init(self, _):
         # self.init_poller.stop()
 
-        if isinstance(self.polling, int):
+        if isinstance(self.polling, types.IntType):
             self.raw_device = RawDeviceProxy(self.deviceName)
             Poller.poll(
                 self.poll,

@@ -46,7 +46,7 @@ import numpy as np
 import PyTango
 
 from HardwareRepository.HardwareObjects.abstract.AbstractVideoDevice import (
-    AbstractVideoDevice,
+    AbstractVideoDevice
 )
 
 
@@ -89,8 +89,7 @@ class QtTangoLimaVideo(AbstractVideoDevice):
             self.device.video_mode = "YUV422"
         elif cam_encoding == "y8":
             self.device.video_mode = "Y8"
-        elif cam_encoding.lower() == "bayer_rg16":
-            self.device.video_mode = "BAYER_RG16"
+
         AbstractVideoDevice.set_cam_encoding(self, cam_encoding)
 
     """ Overloading of AbstractVideoDevice methods """
@@ -154,5 +153,5 @@ class QtTangoLimaVideo(AbstractVideoDevice):
 
 
 def test_hwo(hwo):
-    print(("Image dimensions: %s" % hwo.get_image_dimensions()))
-    print(("Live Mode: %s" % hwo.get_video_live()))
+    print ("Image dimensions: %s" % hwo.get_image_dimensions())
+    print ("Live Mode: %s" % hwo.get_video_live())

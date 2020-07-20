@@ -18,10 +18,9 @@ import gevent
 import gevent.event
 import numpy
 import abc
+from HardwareRepository.TaskUtils import cleanup
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from HardwareRepository.TaskUtils import cleanup
-from HardwareRepository import HardwareRepository as HWR
 
 
 class AbstractXRFSpectrum(object):
@@ -38,10 +37,15 @@ class AbstractXRFSpectrum(object):
         self.ready_event = None
         self.spectrum_info = None
         self.spectrum_data = None
-        self.mca_calib = (10, 20, 0)
+        self.mca_calib = (0, 1, 0)
         self.spectrum_running = None
         self.config_filename = ""
         self.write_in_raw_data = True
+
+        self.energy_hwobj = None
+        self.transmission_hwobj = None
+        self.db_connection_hwobj = None
+        self.beam_info_hwobj = None
 
         self.ready_event = gevent.event.Event()
         self.startXrfSpectrum = self.start_spectrum
@@ -80,7 +84,7 @@ class AbstractXRFSpectrum(object):
                 self.spectrum_command_aborted()
                 return False
 
-        if not os.path.isdir(archive_directory):
+        if not os.path.isdir(archive_directory): 
             try:
                 if not os.path.exists(archive_directory):
                     os.makedirs(archive_directory)
@@ -222,17 +226,20 @@ class AbstractXRFSpectrum(object):
 
             for n, value in enumerate(self.spectrum_data):
                 energy = (
-                    self.mca_calib[2]
+                    self.mca_calib[0]
                     + self.mca_calib[1] * n
-                    + self.mca_calib[0] * n * n
-                ) / 1000
+                    + self.mca_calib[2] * n * n
+                )
+                
                 if energy < 20:
-                    # if energy > xmax:
+                    #if energy > xmax:
                     #    xmax = value
-                    # if energy < xmin:
+                    #if energy < xmin:
                     #    xmin = value
                     calibrated_data.append([energy, value])
-                    mca_data.append((n / 1000.0, value))
+                    #mca_data.append((n / 1000.0, value))
+                    mca_data.append((n / 1.0, value))      
+               
                     if spectrum_file_raw:
                         spectrum_file_raw.write("%f,%f\r\n" % (energy, value))
                     if archive_file_raw:
@@ -243,26 +250,31 @@ class AbstractXRFSpectrum(object):
                 archive_file_raw.close()
             calibrated_array = numpy.array(calibrated_data)
 
-            if HWR.beamline.transmission is not None:
+            if self.transmission_hwobj is not None:
                 self.spectrum_info[
                     "beamTransmission"
-                ] = HWR.beamline.transmission.get_value()
+                ] = self.transmission_hwobj.getAttFactor()
             self.spectrum_info["energy"] = self.get_current_energy()
-            if HWR.beamline.beam is not None:
-                beam_size_hor, beam_size_ver = HWR.beamline.beam.get_beam_size()
-                self.spectrum_info["beamSizeHorizontal"] = int(beam_size_hor * 1000)
-                self.spectrum_info["beamSizeVertical"] = int(beam_size_ver * 1000)
+            if self.beam_info_hwobj is not None:
+                beam_size = self.beam_info_hwobj.get_beam_size()
+                self.spectrum_info["beamSizeHorizontal"] = int(beam_size[0] * 1000)
+                self.spectrum_info["beamSizeVertical"] = int(beam_size[1] * 1000)
 
             mca_config = {}
             mca_config["legend"] = self.spectrum_info["filename"]
             mca_config["file"] = self.config_filename
             mca_config["min"] = xmin
             mca_config["max"] = xmax
+
+            mca_config["min"] = 0
+            mca_config["max"] = 20000 #self.mca_calib[1] * 1023 + self.mca_calib[0] 
+
             mca_config["htmldir"] = self.spectrum_info["htmldir"]
-            self.spectrum_info.pop("htmldir")
-            self.spectrum_info.pop("scanFilePath")
+            #self.spectrum_info.pop("htmldir")
+            #self.spectrum_info.pop("scanFilePath")
 
             self.emit("xrfSpectrumFinished", (mca_data, self.mca_calib, mca_config))
+            #self.emit("xrfSpectrumFinished", (mca_data, [0.,1.,0], mca_config))
 
             fig = Figure(figsize=(15, 11))
             ax = fig.add_subplot(111)
@@ -282,33 +294,25 @@ class AbstractXRFSpectrum(object):
             # tmpname=filename.split(".")
             # logging.getLogger().debug("finished %r", self.spectrum_info)
             self.store_xrf_spectrum()
-            # self.emit("xrfSpectrumFinished", (mca_data, self.mca_calib, mca_config))
+            #self.emit("xrfSpectrumFinished", (mca_data, self.mca_calib, mca_config))
 
     def spectrum_status_changed(self, status):
-        """
-        Descript. :
-        """
         self.emit("xrfSpectrumtatusChanged", (status,))
 
     def store_xrf_spectrum(self):
-        """
-        Descript. :
-        """
-        logging.getLogger().debug("XRFSpectrum info %r", self.spectrum_info)
-        if HWR.beamline.lims:
-            try:
-                session_id = int(self.spectrum_info["sessionId"])
-            except BaseException:
-                return
+        try:
+            session_id = int(self.spectrum_info["sessionId"])
             blsampleid = self.spectrum_info["blSampleId"]
-            HWR.beamline.lims.storeXfeSpectrum(self.spectrum_info)
+            self.spectrum_info.pop("htmldir")
+            self.spectrum_info.pop("scanFilePath")
+            self.db_connection_hwobj.storeXfeSpectrum(self.spectrum_info)
+            logging.getLogger("HWR").debug("XRFSpectrum: XRF spectrum info stored in ISPyB")
+        except:
+            logging.getLogger("HWR").error("XRFSpectrum: Unable to store info in ISPyB")
 
     def get_current_energy(self):
-        """
-        Descript. :
-        """
-        if HWR.beamline.energy is not None:
+        if self.energy_hwobj is not None:
             try:
-                return HWR.beamline.energy.get_value()
+                return self.energy_hwobj.get_current_energy()
             except BaseException:
                 logging.getLogger("HWR").exception("XRFSpectrum: couldn't read energy")

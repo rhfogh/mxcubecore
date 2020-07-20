@@ -15,7 +15,7 @@
           <updateTolerance>0.010</updateTolerance>
 	  <evalTolerance>0.10</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.15000, 'Double': 0.9280, 'Imaging': 0.15000}</focusingModes>
+          <focusingModes>{'Collimated': -0.8, 'Double': 1.000, 'Imaging': -0.8000, 'TREXX': -0.80 }</focusingModes>
         </motor>
         <motor>
           <motorName>HFM_HorTrans</motorName>
@@ -27,7 +27,7 @@
           <updateTolerance>0.010</updateTolerance>
 	  <evalTolerance>0.100</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 1.500, 'Double': 0.1163, 'Imaging': 1.500}</focusingModes>
+          <focusingModes>{'Collimated': -1.500, 'Double': -3.100, 'Imaging': 0.000, 'TREXX': 0.00}</focusingModes>
         </motor>
     </motors>
 </device>

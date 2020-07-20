@@ -24,7 +24,6 @@ import logging
 import gevent
 
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["EMBL Hamburg"]
@@ -52,6 +51,7 @@ class EMBLCRL(HardwareObject):
         self.cmd_set_crl_value = None
         self.cmd_set_trans_value = None
 
+        self.energy_hwobj = None
         self.beam_focusing_hwobj = None
 
         self.at_startup = None
@@ -62,15 +62,16 @@ class EMBLCRL(HardwareObject):
         self.focal_length = self.getProperty("focal_length")
         self.lens_count = 6
 
-        self.chan_crl_value = self.get_channel_object("chanCrlValue")
+        self.chan_crl_value = self.getChannelObject("chanCrlValue")
         if self.chan_crl_value:
             self.chan_crl_value.connectSignal("update", self.crl_value_changed)
 
-        self.cmd_set_crl_value = self.get_command_object("cmdSetLenses")
-        self.cmd_set_trans_value = self.get_command_object("cmdSetTrans")
+        self.cmd_set_crl_value = self.getCommandObject("cmdSetLenses")
+        self.cmd_set_trans_value = self.getCommandObject("cmdSetTrans")
 
-        self.energy_value = HWR.beamline.energy.get_value()
-        self.connect(HWR.beamline.energy, "stateChanged", self.energy_state_changed)
+        self.energy_hwobj = self.getObjectByRole("energy")
+        self.energy_value = self.energy_hwobj.get_current_energy()
+        self.connect(self.energy_hwobj, "stateChanged", self.energy_state_changed)
 
         self.beam_focusing_hwobj = self.getObjectByRole("beam_focusing")
         if self.beam_focusing_hwobj is not None:
@@ -135,7 +136,7 @@ class EMBLCRL(HardwareObject):
             and state != self.energy_state
             and self.current_mode == "Automatic"
         ):
-            self.energy_value = HWR.beamline.energy.get_value()
+            self.energy_value = self.energy_hwobj.get_current_energy()
             self.set_according_to_energy()
         self.energy_state = state
 
@@ -145,7 +146,7 @@ class EMBLCRL(HardwareObject):
         selected_combination = None
         # crl_value = [0, 0, 0, 0, 0, 0]
 
-        self.energy_value = HWR.beamline.energy.get_value()
+        self.energy_value = self.energy_hwobj.get_current_energy()
         for combination_index in range(1, 65):
             current_abs = abs(
                 self.energy_value
@@ -175,9 +176,8 @@ class EMBLCRL(HardwareObject):
     def focusing_mode_requested(self, focusing_mode):
         """Sets CRL combination based on the focusing mode"""
         if focusing_mode is not None:
-            self.modes = self.beam_focusing_hwobj.get_available_lens_modes(
-                focusing_mode
-            )
+            self.modes = self.beam_focusing_hwobj.get_available_lens_modes(focusing_mode)
+
             self.set_mode(self.modes[0])
             self.set_crl_value(
                 self.beam_focusing_hwobj.get_lens_combination(focusing_mode)
@@ -213,7 +213,7 @@ class EMBLCRL(HardwareObject):
         """Return crl combination"""
         return self.crl_value
 
-    def re_emit_values(self):
+    def update_values(self):
         """Reemits signals"""
         self.emit("crlModeChanged", self.current_mode)
         self.emit("crlValueChanged", self.crl_value)

@@ -1,150 +1,122 @@
-# encoding: utf-8
-#
-#  Project: MXCuBE
-#  https://github.com/mxcube.
-#
-#  This file is part of MXCuBE software.
-#
-#  MXCuBE is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Lesser General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  MXCuBE is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Lesser General Public License for more details.
-#
-#  You should have received a copy of the GNU General Lesser Public License
-#  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
-"""
-MicrodiffAperture. Move the aperture in the beam to a specified value or
-out of the beam.
-
-Example xml file:
-<object class="MicrodiffAperture">
-  <username>aperture</username>
-  <exporter_address>wid30bmd2s:9001</exporter_address>
-  <value_channel_name>CurrentApertureDiameterIndex</value_channel_name>
-  <state_channel_name>State</state_channel_name>
-  <-- either only factor -->
-  <factor>(0.15, 0.3, 0.63, 0.9, 0.96)</factor>
-  <!-- or complete, corresponding to label: (index, size[um], factor) -->
-  <values>{"A10": (0, 10, 0.15), "A20": (1, 20, 0.3), "A30": (2, 30, 0.63), "A50": (3, 50, 0.9), "A75": (4, 75, 0.96)}</values>
-  <object role="inout" href="/udiff_apertureinout"/>
-</object>
-"""
-from ast import literal_eval
-from enum import Enum
-from HardwareRepository.HardwareObjects.abstract.AbstractNState import BaseValueEnum
-from HardwareRepository.HardwareObjects.ExporterNState import ExporterNState
-
-__copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
-__license__ = "LGPLv3+"
+from HardwareRepository.HardwareObjects.MicrodiffMotor import MicrodiffMotor
+import logging
+import math
 
 
-class MicrodiffAperture(ExporterNState):
-    """MicrodiffAperture class"""
-
-    unit = "um"
-
+class MicrodiffAperture(MicrodiffMotor):
     def __init__(self, name):
-        super(MicrodiffAperture, self).__init__(name)
-        self.inout_obj = None
+        MicrodiffMotor.__init__(self, name)
 
     def init(self):
-        """Initialize the aperture"""
-        super(MicrodiffAperture, self).init()
+        self.motor_name = "CurrentApertureDiameter"
+        self.motor_pos_attr_suffix = "Index"
 
-        # check if we have values other that UKNOWN (no values in config)
-        if len(self.VALUES) == 1:
-            self._initialise_values()
+        self.aperture_inout = self.getObjectByRole("inout")
+        self.predefinedPositions = {}
+        self.labels = self.addChannel(
+            {"type": "exporter", "name": "ap_labels"}, "ApertureDiameters"
+        )
+        self.filters = self.labels.getValue()
+        self.nb = len(self.filters)
+        j = 0
+        while j < self.nb:
+            for i in self.filters:
+                if int(i) >= 300:
+                    i = "Outbeam"
+                self.predefinedPositions[str(i)] = j
+                j = j + 1
+        if "Outbeam" not in self.predefinedPositions:
+            self.predefinedPositions["Outbeam"] = self.predefinedPositions.__len__()
+        self.predefinedPositions.pop("Outbeam")
+        self.sortPredefinedPositionsList()
+        MicrodiffMotor.init(self)
 
-        # now get the IN/OUT object
-        self.inout_obj = self.getObjectByRole("inout")
-        if self.inout_obj:
-            self._initialise_inout()
-
-    def _set_value(self, value):
-        """Set device to value
-        Args:
-            value (str, int, float or enum): Value to be set.
-        """
-        if value.name in ("IN", "OUT"):
-            self.inout_obj.set_value(value, timeout=60)
-        else:
-            super(MicrodiffAperture, self)._set_value(value)
-
-    def _initialise_inout(self):
-        """Add IN and OUT to the values Enum"""
-        values_dict = {item.name: item.value for item in self.inout_obj.VALUES}
-        values_dict.update({item.name: item.value for item in self.VALUES})
-        self.VALUES = Enum("ValueEnum", values_dict)
-
-    def _initialise_values(self):
-        """Initialise the ValueEnum from the hardware
-        Raises:
-            RuntimeError: No aperture diameters defined.
-                          Factor and aperture diameter not the same number.
-                          Invalid factor values.
-        """
-        predefined_postions = self._exporter.read_property("ApertureDiameters")
-        if not predefined_postions:
-            raise RuntimeError("No aperture diameters defined")
-
-        values = {}
-        try:
-            # get the factors
-            factor = literal_eval(self.getProperty("factor"))
-            if len(predefined_postions) == len(factor):
-                for _pos, _fac in zip(predefined_postions, factor):
-                    values["A{0}".format(_pos)] = (
-                        predefined_postions.index(_pos),
-                        _pos,
-                        _fac,
-                    )
-            else:
-                raise RuntimeError("Factor and aperture diameter not the same number")
-        except (ValueError, TypeError):
-            raise RuntimeError("Invalid factor values")
-
-        self.VALUES = Enum(
-            "ValueEnum",
-            dict(values, **{item.name: item.value for item in BaseValueEnum}),
+    def sortPredefinedPositionsList(self):
+        self.predefinedPositionsNamesList = self.predefinedPositions.keys()
+        self.predefinedPositionsNamesList.sort(
+            lambda x, y: int(
+                round(self.predefinedPositions[x] - self.predefinedPositions[y])
+            )
         )
 
-    def get_factor(self, label):
-        """ Get the factor associated to a label.
-        Args:
-            (enum, str): label enum or name
-        Returns:
-            (float): Factor value
-        """
-        if isinstance(label, str):
+    def connectNotify(self, signal):
+        if signal == "predefinedPositionChanged":
+            positionName = self.getCurrentPositionName()
             try:
-                return float(self.VALUES[label].value[2])
-            except (KeyError, ValueError, IndexError):
-                return 1.0
-        try:
-            return float(label.value[2])
-        except (ValueError, IndexError):
-            return 1.0
+                pos = self.predefinedPositions[positionName]
+            except KeyError:
+                self.emit(signal, ("", None))
+            else:
+                self.emit(signal, (positionName, pos))
+        elif signal == "apertureChanged":
+            self.emit("apertureChanged", (self.getApertureSize(),))
+        else:
+            return MicrodiffMotor.connectNotify.im_func(self, signal)
 
-    def get_size(self, label):
-        """ Get the aperture size associated to a label.
-        Args:
-            (enum, str): label enum or name
-        Returns:
-            (float): Factor value
-        Raises:
-            RuntimeError: Unknown aperture size.
-        """
-        if isinstance(label, str):
-            try:
-                return float(self.VALUES[label].value[1])
-            except (KeyError, ValueError, IndexError):
-                raise RuntimeError("Unknown aperture size")
+    def getLimits(self):
+        return (1, self.nb)
+
+    def getPredefinedPositionsList(self):
+        return self.predefinedPositionsNamesList
+
+    def motorPositionChanged(self, absolutePosition, private={}):
+        MicrodiffMotor.motorPositionChanged.im_func(self, absolutePosition, private)
+
+        positionName = self.getCurrentPositionName(absolutePosition)
+        self.emit(
+            "predefinedPositionChanged",
+            (positionName, positionName and absolutePosition or None),
+        )
+        self.emit("apertureChanged", (self.getApertureSize(),))
+
+    def getCurrentPositionName(self, pos=None):
+        if self.getPosition() is not None:
+            pos = pos or self.getPosition()
+        else:
+            pos = pos
+
         try:
-            return float(label.value[1])
-        except (ValueError, IndexError):
-            raise RuntimeError("Unknown aperture size")
+            for positionName in self.predefinedPositions:
+                if math.fabs(self.predefinedPositions[positionName] - pos) <= 1E-3:
+                    return positionName
+        except BaseException:
+            return ""
+
+    def moveToPosition(self, positionName):
+        logging.getLogger().debug(
+            "%s: trying to move %s to %s:%f",
+            self.name(),
+            self.motor_name,
+            positionName,
+            self.predefinedPositions[positionName],
+        )
+
+        if positionName == "Outbeam":
+            self.aperture_inout.actuatorOut()
+        else:
+            try:
+                self.move(self.predefinedPositions[positionName], wait=True, timeout=10)
+            except BaseException:
+                logging.getLogger("HWR").exception(
+                    "Cannot move motor %s: invalid position name.", str(self.userName())
+                )
+            if self.aperture_inout.getActuatorState() != "in":
+                self.aperture_inout.actuatorIn()
+
+    def setNewPredefinedPosition(self, positionName, positionOffset):
+        raise NotImplementedError
+
+    def getApertureSize(self):
+        diameter_name = self.getCurrentPositionName()
+        for diameter in self["diameter"]:
+            if str(diameter.getProperty("name")) == str(diameter_name):
+                return (diameter.getProperty("size"),) * 2
+        return (9999, 9999)
+
+    def getApertureCoef(self):
+        diameter_name = self.getCurrentPositionName()
+        for diameter in self["diameter"]:
+            if str(diameter.getProperty("name")) == str(diameter_name):
+                aperture_coef = diameter.getProperty("aperture_coef")
+                return float(aperture_coef)
+        return 1

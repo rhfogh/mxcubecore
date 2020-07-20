@@ -43,10 +43,10 @@ except:
 
 # Conversion from kEv to A, wavelength = H_OVER_E/energy
 H_OVER_E = 12.3984
+h_over_e = H_OVER_E
 
 
 # Utility functions:
-
 
 def java_property(keyword, value, quote_value=False):
     """Return argument list for command line invocation setting java property
@@ -80,7 +80,7 @@ def quoted_string(text):
     Somewhat fragile, will definitely break for multiline strings
     or strings containing both single and double quotes
     """
-    result = ensure_text(text)
+    result = ensure_text(str(text))
     if not '"' in result:
         result = "".join(('"', result, '"'))
     elif not "'" in result:
@@ -122,36 +122,3 @@ def ensure_text(chars, encoding="utf-8", errors="strict"):
         return chars
     else:
         raise TypeError("not expecting type '%s'" % type(chars))
-
-
-def make_table(column_names, rows):
-    """Generate string with pretty-printed table
-
-    Args:
-        column_names (Sequence[str]) : Column names
-        rows (Sequence[Sequence[str]]) : List of row data
-
-    Returns:
-
-    """
-    lines = []
-    longest_cols = [
-        (max([len(str(row[i])) for row in rows]) + 3) for i in range(len(rows[0]))
-    ]
-    longest_cols = list(
-        max(longest_cols[ind], len(txt)) for ind, txt in enumerate(column_names)
-    )
-    ruler = "+" + "=" * sum(longest_cols) + "+"
-    row_format = "| ".join(
-        ["{:<" + str(longest_col) + "}" for longest_col in longest_cols]
-    )
-
-    lines.append(ruler)
-    lines.append("| %s" % row_format.format(*column_names))
-    lines.append(ruler)
-
-    for row in rows:
-        lines.append("| %s" % row_format.format(*row))
-    lines.append(ruler)
-    #
-    return "\n".join(lines)

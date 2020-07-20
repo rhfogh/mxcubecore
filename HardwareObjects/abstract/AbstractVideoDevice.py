@@ -78,6 +78,7 @@ class AbstractVideoDevice(Device):
         self.cam_type = None
         self.cam_scale_factor = None
         self.cam_name = None
+        self.cam_is_alive = None
 
         self.raw_image_dimensions = [None, None]
         self.image_dimensions = [None, None]
@@ -85,8 +86,6 @@ class AbstractVideoDevice(Device):
         self.image_format = None  # not used
         self.default_cam_encoding = None
         self.default_poll_interval = None
-
-        self.decoder = None
 
     def init(self):
         self.cam_name = self.getProperty("name", "camera")
@@ -138,7 +137,7 @@ class AbstractVideoDevice(Device):
 
         # Apply defaults if necessary
         if self.cam_encoding is None:
-            self.cam_encoding = AbstractVideoDevice.default_cam_encoding
+            self.cam_encoding = self.default_cam_encoding
 
         if self.poll_interval is None:
             self.poll_interval = self.default_poll_interval
@@ -193,12 +192,11 @@ class AbstractVideoDevice(Device):
         raw_buffer, width, height = self.get_image()
 
         if raw_buffer is not None and raw_buffer.any():
-            if self.decoder:
+            if self.cam_type == "basler":
                 raw_buffer = self.decoder(raw_buffer)
                 qimage = QImage(
                     raw_buffer, width, height, width * 3, QImage.Format_RGB888
                 )
-            
             else:
                 qimage = QImage(raw_buffer, width, height, QImage.Format_RGB888)
 
@@ -242,27 +240,11 @@ class AbstractVideoDevice(Device):
         image.resize(raw_dims[1], raw_dims[0], 1)
         return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
 
-    def y16_2_rgb(self, raw_buffer):
-        image = np.fromstring(raw_buffer, dtype=np.uint8)
-        raw_dims = self.get_raw_image_size()
-        np.resize(image, (raw_dims[1], raw_dims[0], 2))
-        return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-
     def yuv_2_rgb(self, raw_buffer):
         image = np.fromstring(raw_buffer, dtype=np.uint8)
         raw_dims = self.get_raw_image_size()
         image.resize(raw_dims[1], raw_dims[0], 2)
         return cv2.cvtColor(image, cv2.COLOR_YUV2RGB_UYVY)
-
-    def bayer_rg16_2_rgb(self, raw_buffer):
-        image = np.fromstring(raw_buffer, dtype=np.uint16)
-        raw_dims = self.get_raw_image_size()
-        image.resize(raw_dims[1], raw_dims[0])
-        out_buffer =  cv2.cvtColor(image, cv2.COLOR_BayerRG2BGR)
-        if out_buffer.ndim == 3 and out_buffer.itemsize > 1:
-            # decoding bayer16 gives 12 bit values => scale to 8 bit
-            out_buffer = np.right_shift(out_buffer, 4).astype(np.uint8)
-        return out_buffer
 
     def save_snapshot(self, filename, image_type="PNG"):
         if USEQT:
@@ -311,17 +293,6 @@ class AbstractVideoDevice(Device):
 
     def start_camera(self):
         return
-
-    def setLive(self, mode):
-        """
-        Descript. :
-        """
-        return
-        if mode:
-            self.set_video_live(True)
-            self.change_owner()
-        else:
-            self.set_video_live(False)
 
     def change_owner(self):
         """LIMA specific, because it has to be root at startup
@@ -380,12 +351,7 @@ class AbstractVideoDevice(Device):
             self.decoder = self.yuv_2_rgb
         elif cam_encoding == "y8":
             self.decoder = self.y8_2_rgb
-        elif cam_encoding == "y16":
-            self.decoder = self.y16_2_rgb
-        elif cam_encoding.lower() == "bayer_rg16":
-            self.decoder = self.bayer_rg16_2_rgb
-        self.cam_encoding = cam_encoding
-        
+
     def get_image_dimensions(self):
         raw_width, raw_height = self.get_raw_image_size()
         width = raw_width * self.scale
@@ -420,13 +386,11 @@ class AbstractVideoDevice(Device):
     def set_exposure_time(self, exposure_time_value):
         pass
 
-    @abc.abstractmethod
     def get_video_live(self):
-        pass
+        return self.cam_is_alive
 
-    @abc.abstractmethod
     def set_video_live(self, flag):
-        pass
+        self.cam_is_alive = flag
 
     # Other (no implementation for now. Can be overloaded, otherwise dummy)
     def get_gamma(self):

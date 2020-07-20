@@ -1,10 +1,9 @@
 from HardwareRepository.BaseHardwareObjects import Device
-from HardwareRepository.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 import math
 import gevent
 
 
-class GrobMotor(Device, AbstractMotor):
+class GrobMotor(Device):
     (NOTINITIALIZED, UNUSABLE, READY, MOVESTARTED, MOVING, ONLIMIT) = (0, 1, 2, 3, 4, 5)
 
     def __init__(self, name):
@@ -23,8 +22,8 @@ class GrobMotor(Device, AbstractMotor):
         self.connect(self.motor, "state", self.updateState)
 
     def connectNotify(self, signal):
-        if signal == "valueChanged":
-            self.emit("valueChanged", (self.get_value(),))
+        if signal == "positionChanged":
+            self.emit("positionChanged", (self.getPosition(),))
         elif signal == "stateChanged":
             self.updateState()
         elif signal == "limitsChanged":
@@ -58,14 +57,14 @@ class GrobMotor(Device, AbstractMotor):
             self.motorState = state
             self.emit("stateChanged", (self.motorState,))
 
-    def get_state(self):
+    def getState(self):
         self.updateState()
         return self.motorState
 
     def motorLimitsChanged(self):
-        self.emit("limitsChanged", (self.get_limits(),))
+        self.emit("limitsChanged", (self.getLimits(),))
 
-    def get_limits(self):
+    def getLimits(self):
         return self.motor.get_limits()
 
     def positionChanged(self, absolutePosition, private={}):
@@ -73,24 +72,40 @@ class GrobMotor(Device, AbstractMotor):
             return
         private["old_pos"] = absolutePosition
 
-        self.emit("valueChanged", (absolutePosition,))
+        self.emit("positionChanged", (absolutePosition,))
 
-    def get_value(self):
+    def getPosition(self):
         return self.motor.read_dial()
 
-    def _set_value(self, value):
+    def getDialPosition(self):
+        return self.getPosition()
+
+    def move(self, position):
         if isinstance(self.motor, self.grob.SampleMotor):
             # position has to be relative
-            self.motor.set_value_relative(value - self.get_value())
+            self.motor.move_relative(position - self.getPosition())
         else:
-            self.motor.start_one(value)
+            self.motor.start_one(position)
+
+    def moveRelative(self, relativePosition):
+        self.move(self.getPosition() + relativePosition)
+
+    def syncMoveRelative(self, relative_position, timeout=None):
+        return self.syncMove(self.getPosition() + relative_position)
 
     def waitEndOfMove(self, timeout=None):
         with gevent.Timeout(timeout):
             self.motor.wait_for_move()
 
+    def syncMove(self, position, timeout=None):
+        self.move(position)
+        try:
+            self.waitEndOfMove(timeout)
+        except BaseException:
+            raise MD2TimeoutError
+
     def motorIsMoving(self):
-        return self.is_ready() and self.motor.is_moving()
+        return self.isReady() and self.motor.is_moving()
 
     def getMotorMnemonic(self):
         return self.motor_name

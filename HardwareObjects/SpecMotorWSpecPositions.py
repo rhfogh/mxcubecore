@@ -24,7 +24,7 @@ class SpecMotorWSpecPositions(SpecMotor.SpecMotor):
         self.predefinedPositionsNamesList = []
 
     def init(self):
-        chanPositionsArray = self.get_channel_object("positions")
+        chanPositionsArray = self.getChannelObject("positions")
         chanPositionsArray.connectSignal("update", self.positionsArrayChanged)
         self.delta = self.getProperty("delta") or 0
 
@@ -71,22 +71,22 @@ class SpecMotorWSpecPositions(SpecMotor.SpecMotor):
             self.move(self.predefinedPositions[positionName])
         except BaseException:
             logging.getLogger("HWR").exception(
-                "Cannot move motor %s: invalid position name.", str(self.username)
+                "Cannot move motor %s: invalid position name.", str(self.userName())
             )
 
-    def get_current_position_name(self):
-        if self.is_ready() and self.get_state() == self.READY:
+    def getCurrentPositionName(self):
+        if self.isReady() and self.getState() == self.READY:
             for positionName in self.predefinedPositions:
                 if (
                     self.predefinedPositions[positionName]
-                    >= self.get_value() - self.delta
+                    >= self.getPosition() - self.delta
                     and self.predefinedPositions[positionName]
-                    <= self.get_value() + self.delta
+                    <= self.getPosition() + self.delta
                 ):
                     return positionName
 
     def setNewPredefinedPosition(self, positionName, positionOffset):
         try:
-            self.execute_command("setNewPosition", positionName, positionOffset)
+            self.executeCommand("setNewPosition", positionName, positionOffset)
         except AttributeError:
             logging.getLogger("HWR").exception("Cannot set new predefined position")

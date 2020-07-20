@@ -8,20 +8,15 @@ Example xml file:
 </device>
 """
 import logging
-from warnings import warn
 
 from HardwareRepository.HardwareObjects.abstract.AbstractActuator import (
-    AbstractActuator,
+    AbstractActuator
 )
 from HardwareRepository.TaskUtils import task
 
 
 class BlissActuator(AbstractActuator):
     def __init__(self, name):
-        warn(
-            "BlissActuator class is deprecated. Use BlissNState instead",
-            DeprecationWarning,
-        )
         AbstractActuator.__init__(self, name)
 
     def init(self):
@@ -52,5 +47,6 @@ class BlissActuator(AbstractActuator):
         self.value_changed(self._actuator.state())
 
     # Compatability with camelcase API
+    getActuatorState = get_actuator_state
     actuatorIn = actuator_in
     actuatorOut = actuator_out

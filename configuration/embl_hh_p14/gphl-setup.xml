@@ -4,8 +4,8 @@
     - file names below are set as file_name.format(directory_locations) -->
     <directory_locations>
         <!-- Wrapper scripts for GPhL programs - must be reachable from workflow and procesing -->
-        <GPHL_SETUP>/data/users/p3l-gleb1/gphl</GPHL_SETUP>
-        <GPHL_RELEASE>/data/users/p3l-gleb1/gphl/GPhL-EMBLHH-20190430/latest/</GPHL_RELEASE>
+	<GPHL_SETUP>/data/users/p3l-gleb1/gphl/</GPHL_SETUP>
+	<GPHL_RELEASE>/data/users/p3l-gleb1/gphl/GPhL-EMBLHH-20200211/20200206/</GPHL_RELEASE>
         <!--<GPHL_SETUP>/mnt/scratch/rhfogh/mxcube_setup/</GPHL_SETUP>-->
         <!--<GPHL_RELEASE>/mnt/scratch/rhfogh/gphl_release/latest</GPHL_RELEASE>-->
     </directory_locations>
@@ -26,7 +26,7 @@
 
     <software_paths>
         <!-- Location of Java binary to execute for workflow application -->
-        <java_binary>java</java_binary>
+        <java_binary>/usr/bin/java</java_binary>
         <!-- Debug mode:  -->
         <!--<java_binary>ssh -i /home/rhfogh/.ssh/wf_test_id -o StrictHostKeyChecking=no lonsdale java</java_binary>-->
 
@@ -38,7 +38,7 @@
         <gphl_java_classpath>{GPHL_SETUP}/workflow/gphl_java_classes/wfjars/*</gphl_java_classpath>
 
         <!-- Directory with workflow config input, e.g. instrumentation.nml -->
-        <gphl_beamline_config>{GPHL_SETUP}beamline_config_embl_hh_p14</gphl_beamline_config>
+	<gphl_beamline_config>{GPHL_SETUP}/beamline_config_embl_hh_p14_202002</gphl_beamline_config>
 
         <!-- Directory with workflow config input, e.g. instrumentation.nml -->
         <!--<gphl_test_samples>{GPHL_SETUP}/gphl_test_samples</gphl_test_samples>-->

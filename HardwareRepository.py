@@ -8,14 +8,13 @@ connections to the Control Software (Spec or Taco Device Servers).
 from __future__ import print_function, absolute_import
 
 import logging
+import gevent
 import weakref
 import sys
 import os
 import time
-import importlib
+import gevent.monkey
 from datetime import datetime
-import gevent
-from ruamel.yaml import YAML
 
 try:
     from SpecClient_gevent import SpecEventsDispatcher
@@ -25,200 +24,16 @@ try:
 except ImportError:
     pass
 
-from HardwareRepository.ConvertUtils import string_types, make_table
-from HardwareRepository.dispatcher import dispatcher
 from . import BaseHardwareObjects
 from . import HardwareObjectFileParser
-
-
-# If you want to write out copies of the file, use typ="rt" instead
-# pure=True uses yaml version 1.2, with fewere gotchas for strange type conversions
-yaml = YAML(typ="safe", pure=True)
-# The following are not needed for load, but define the default style.
-yaml.default_flow_style = False
-yaml.indent(mapping=4, sequence=4, offset=2)
+from HardwareRepository.dispatcher import dispatcher
 
 __author__ = "Matias Guijarro"
 __version__ = 1.3
 
 _instance = None
+_hwrserver = None
 _timers = []
-
-beamline = None
-BEAMLINE_CONFIG_FILE = "beamline_config.yml"
-
-
-def load_from_yaml(configuration_file, role, _container=None, _table=None):
-    """
-
-    Args:
-        configuration_file (str):
-        role (str): Role name of configured object, used as its name
-        _container (ConfiguredObject): Container object for recursive loading
-        _table Optional[List]: Internal, collecting summary output
-
-    Returns:
-
-    """
-    global beamline
-
-    column_names = ("role", "Class", "file", "Time (ms)", "Comment")
-    if _table is None:
-        # This is the topmopst call
-        _table = []
-
-    start_time = time.time()
-    msg0 = ""
-    result = None
-    class_name = None
-
-    # Get full path for configuration file
-    if _instance is None:
-        raise RuntimeError("HardwareRepository has not been initialised")
-    configuration_path = _instance.findInRepository(configuration_file)
-    if configuration_path is None:
-        msg0 = "File not found"
-
-    if not msg0:
-        # Load the configuration file
-        with open(configuration_path, "r") as fp0:
-            configuration = yaml.load(fp0)
-
-        # Get actual class
-        initialise_class = configuration.pop("_initialise_class", None)
-        if not initialise_class:
-            if _container:
-                msg0 = "No '_initialise_class' tag"
-            else:
-                # at top lavel we want to get the actual error
-                raise ValueError(
-                    "%s file lacks  '_initialise_class' tag" % configuration_file
-                )
-
-    if not msg0:
-        class_import = initialise_class.pop("class", None)
-        if not class_import:
-            if _container:
-                msg0 = "No 'class' tag"
-            else:
-                # at top lavel we want to get the actual error
-                raise ValueError("%s file lacks  'class' tag" % configuration_file)
-
-    if not msg0:
-        module_name, class_name = class_import.rsplit(".", 1)
-        # For "a.b.c" equivalent to absolute import of "from a.b import c"
-        try:
-            cls = getattr(importlib.import_module(module_name), class_name)
-        except BaseException as ex:
-            print(str(ex))
-            if _container:
-                msg0 = "Error importing class"
-                class_name = class_import
-            else:
-                # at top lavel we want to get the actual error
-                raise
-
-    if not msg0:
-        try:
-            # instantiate object
-            result = cls(name=role, **initialise_class)
-        except:
-            if _container:
-                msg0 = "Error instantiating %s" % cls.__name__
-            else:
-                # at top lavel we want to get the actual error
-                raise
-
-    if _container is None:
-        # We are loading the beamline object into HardwarePepository
-        # and want the link to be set before _init or content loading
-        beamline = result
-
-    if not msg0:
-        try:
-            # Initialise object
-            result._init()
-        except:
-            if _container:
-                msg0 = "Error in %s._init()" % cls.__name__
-            else:
-                # at top lavel we want to get the actual error
-                raise
-
-    if not msg0:
-        # Recursively load contained objects (of any type that the system can supprt)
-        _objects = configuration.pop("_objects", {})
-        if _objects:
-            load_time = 1000 * (time.time() - start_time)
-            msg1 = "Start loading contents:"
-            _table.append(
-                (role, class_name, configuration_file, "%.1d" % load_time, msg1)
-            )
-            msg0 = "Done loading contents"
-        for role1, config_file in _objects.items():
-            fname, fext = os.path.splitext(config_file)
-            if fext == ".yml":
-                load_from_yaml(
-                    config_file, role=role1, _container=result, _table=_table
-                )
-            elif fext == ".xml":
-                msg1 = ""
-                time0 = time.time()
-                try:
-                    hwobj = _instance.getHardwareObject(fname)
-                    if hwobj is None:
-                        msg1 = "No object loaded"
-                        class_name1 = "None"
-                    else:
-                        class_name1 = hwobj.__class__.__name__
-                        if hasattr(result, role1):
-                            result.replace_object(role1, hwobj)
-                        else:
-                            msg1 = "No such role: %s.%s" % (class_name, role1)
-                except BaseException as ex:
-                    msg1 = "Loading error (%s)" % str(ex)
-                    class_name = ""
-                load_time = 1000 * (time.time() - time0)
-                _table.append(
-                    (role1, class_name1, config_file, "%.1d" % load_time, msg1)
-                )
-
-        # Set simple, miscellaneous properties.
-        # NB the attribute must have been initialied in the class __init__ first.
-        # If you need data for further processing during init
-        # that should not remain as attributes
-        # load them into a pre-defined attribute called '_tmp'
-        for key, val in configuration.items():
-            if hasattr(result, key):
-                setattr(result, key, val)
-            else:
-                logging.getLogger("HWR").error(
-                    "%s has no attribute '%s'", class_name, key
-                )
-
-    if not msg0:
-        if _container:
-            if hasattr(_container, role):
-                _container.replace_object(role, result)
-            else:
-                msg0 = "No such role: %s.%s" % (_container.__class__.__name__, role)
-        try:
-            # Initialise object
-            result.init()
-        except:
-            if _container:
-                msg0 = "Error in %s.init()" % cls.__name__
-            else:
-                # at top lavel we want to get the actual error
-                raise
-
-    load_time = 1000 * (time.time() - start_time)
-    _table.append((role, class_name, configuration_file, "%.1d" % load_time, msg0))
-
-    if _container is None:
-        print(make_table(column_names, _table))
-    #
-    return result
 
 
 def addHardwareObjectsDirs(hoDirs):
@@ -234,49 +49,40 @@ def setUserFileDirectory(user_file_directory):
     BaseHardwareObjects.HardwareObjectNode.setUserFileDirectory(user_file_directory)
 
 
-def init_hardware_repository(configuration_path):
-    """Initialise hardweare repository - must be run at program start
+def setHardwareRepositoryServer(hwrserver):
+    global _hwrserver
+
+    xml_dirs_list = [os.path.abspath(x) for x in hwrserver.split(os.path.pathsep)]
+    xml_dirs_list = [x for x in xml_dirs_list if os.path.exists(x)]
+
+    if xml_dirs_list:
+        _hwrserver = xml_dirs_list
+    else:
+        _hwrserver = hwrserver
+
+
+def getHardwareRepository(xml_dir=None):
+    """
+    Get the HardwareRepository (singleton) instance, instantiates it if necessary.
 
     Args:
-        configuration_path (str): PATHSEP-separated string of directories
-        giving configuration file lookup path
-
-    Returns:
-
-    """
-    global _instance
-    global beamline
-
-    if _instance is not None or beamline is not None:
-        raise RuntimeError(
-            "init_hardware_repository called on already initialised repository"
-        )
-
-    # If configuration_path is a string of combined paths, split it up
-    lookup_path = [
-        os.path.abspath(x) for x in configuration_path.split(os.path.pathsep)
-    ]
-    lookup_path = [x for x in lookup_path if os.path.exists(x)]
-    if lookup_path:
-        configuration_path = lookup_path
-
-    logging.getLogger("HWR").info("Hardware repository: %s", configuration_path)
-    _instance = __HardwareRepositoryClient(configuration_path)
-    _instance.connect()
-    beamline = load_from_yaml(BEAMLINE_CONFIG_FILE, role="beamline")
-
-
-def getHardwareRepository():
-    """
-    Get the HardwareRepository (singleton) instance,
+        xml_dir (str): Path to XML configuration files for HardwareObject's
 
     Returns:
         HardwareRepository: The Singleton instance of HardwareRepository
                             (in reality __HardwareRepositoryClient)
     """
+    global _instance
 
     if _instance is None:
-        raise RuntimeError("The HardwareRepository has not been initialised")
+        if _hwrserver is None:
+            if xml_dir is None:
+                # Default to environment variable
+                xml_dir = os.path.abspath(os.environ["XML_FILES_PATH"])
+
+            setHardwareRepositoryServer(xml_dir)
+
+        _instance = __HardwareRepositoryClient(_hwrserver)
 
     return _instance
 
@@ -284,8 +90,7 @@ def getHardwareRepository():
 class __HardwareRepositoryClient:
     """Hardware Repository class
 
-    Warning -- should not be instanciated directly ;
-    call the module's level getHardwareRepository() function instead
+    Warning -- should not be instanciated directly ; call the module's level getHardwareRepository() function instead
     """
 
     def __init__(self, serverAddress):
@@ -300,8 +105,6 @@ class __HardwareRepositoryClient:
         self.__connected = False
         self.server = None
         self.hwobj_info_list = []
-        self.invalidHardwareObjects = None
-        self.hardwareObjects = None
 
     def connect(self):
         if self.__connected:
@@ -310,7 +113,7 @@ class __HardwareRepositoryClient:
             self.invalidHardwareObjects = set()
             self.hardwareObjects = weakref.WeakValueDictionary()
 
-            if isinstance(self.serverAddress, string_types):
+            if isinstance(self.serverAddress, bytes):
                 mngr = SpecConnectionsManager.SpecConnectionsManager()
                 self.server = mngr.getConnection(self.serverAddress)
 
@@ -381,12 +184,11 @@ class __HardwareRepositoryClient:
                 "Could not execute 'require' on Hardware Repository server"
             )
 
-    def _loadHardwareObject(self, hwobj_name=""):
+    def loadHardwareObject(self, hwobj_name=""):
         """
-        Load a Hardware Object. Do NOT use externally,
-        as this will mess up object tracking, signals, etc.
+        Load a Hardware Object
 
-        :param hwobj_name:  string name of the Hardware Object to load, e.g. /motors/m0
+        :param hwobj_name:  string name of the Hardware Object to load, for example '/motors/m0'
         :return: the loaded Hardware Object, or None if it fails
         """
 
@@ -408,7 +210,7 @@ class __HardwareRepositoryClient:
                         )
                 except BaseException:
                     logging.getLogger("HWR").exception(
-                        'Could not load Hardware Object "%s"', hwobj_name
+                        'Could not load Hardware Object "%s"' % hwobj_name
                     )
                 else:
                     try:
@@ -417,14 +219,14 @@ class __HardwareRepositoryClient:
                         mtime = int(reply_dict["mtime"])
                     except KeyError:
                         logging.getLogger("HWR").error(
-                            "Cannot load Hardware Object %s: file does not exist.",
-                            hwobj_name,
+                            "Cannot load Hardware Object %s: file does not exist."
+                            % hwobj_name
                         )
                         return
             else:
                 logging.getLogger("HWR").error(
-                    'Cannot load Hardware Object "%s" : not connected to server.',
-                    hwobj_name,
+                    'Cannot load Hardware Object "%s" : not connected to server.'
+                    % hwobj_name
                 )
         else:
             xml_data = ""
@@ -444,17 +246,11 @@ class __HardwareRepositoryClient:
 
         start_time = datetime.now()
 
-        if xml_data:
+        if len(xml_data) > 0:
             try:
                 hwobj_instance = self.parseXML(xml_data, hwobj_name)
-                if isinstance(hwobj_instance, string_types):
-                    # We have redirection to another file
-                    # Enter in dictionaries also under original names
-                    result = self._loadHardwareObject(hwobj_instance)
-                    if hwobj_name in self.invalidHardwareObjects:
-                        self.invalidHardwareObjects.remove(hwobj_name)
-                    self.hardwareObjects[hwobj_name] = result
-                    return result
+                if isinstance(hwobj_instance, str):
+                    return self.loadHardwareObject(hwobj_instance)
             except BaseException:
                 comment = "Cannot parse xml"
                 logging.getLogger("HWR").exception(
@@ -475,7 +271,7 @@ class __HardwareRepositoryClient:
                     hwobj_instance.resolveReferences()
 
                     try:
-                        hwobj_instance._add_channels_and_commands()
+                        hwobj_instance._addChannelsAndCommands()
                     except BaseException:
                         logging.getLogger("HWR").exception(
                             "Error while adding commands and/or channels to Hardware Object %s",
@@ -520,6 +316,13 @@ class __HardwareRepositoryClient:
                 comment,
             )
         )
+
+        # # Temporary help to get hold of superclasses
+        # import inspect
+        # for cls in inspect.getmro(hwobj_instance.__class__)[1:]:
+        #     tt = ('super', cls.__name__, "0 ms", '@~@~')
+        #     if tt not in  self.hwobj_info_list:
+        #         self.hwobj_info_list.append(tt)
 
         return hwobj_instance
 
@@ -644,23 +447,23 @@ class __HardwareRepositoryClient:
 
     def getProcedures(self):
         """Return the list of the currently loaded Procedures Hardware Objects"""
-        result = []
+        list = []
 
         for hoName in self.hardwareObjects:
             if self.isProcedure(hoName):
-                result.append(self.hardwareObjects[hoName])
+                list.append(self.hardwareObjects[hoName])
 
-        return result
+        return list
 
     def getDevices(self):
         """Return the list of the currently loaded Devices Hardware Objects"""
-        result = []
+        list = []
 
         for hoName in self.hardwareObjects:
             if self.isDevice(hoName):
-                result.append(self.hardwareObjects[hoName])
+                list.append(self.hardwareObjects[hoName])
 
-        return result
+        return list
 
     def getHardwareObject(self, objectName):
         """Return a Hardware Object given its name
@@ -688,7 +491,7 @@ class __HardwareRepositoryClient:
                 if objectName in self.hardwareObjects:
                     ho = self.hardwareObjects[objectName]
                 else:
-                    ho = self._loadHardwareObject(objectName)
+                    ho = self.loadHardwareObject(objectName)
                 return ho
         except TypeError as err:
             logging.getLogger("HWR").exception(
@@ -769,7 +572,7 @@ class __HardwareRepositoryClient:
           name -- name of the Hardware Object
 
         Return :
-          True if HardwareObject is loaded in the Hardware Repository, False otherwise
+          True if the Hardware Object is loaded in the Hardware Repository, False otherwise
         """
         return name in self.hardwareObjects
 
@@ -794,14 +597,14 @@ class __HardwareRepositoryClient:
                 "python module": sys.modules[ho.__module__].__file__,
             }
 
-            if hasattr(ho, "is_ready"):
-                d["is ready ?"] = str(ho.is_ready())
+            if hasattr(ho, "isReady"):
+                d["is ready ?"] = str(ho.isReady())
 
-            if hasattr(ho, "get_commands"):
+            if hasattr(ho, "getCommands"):
                 # hardware object is a command container
                 d["commands"] = {}
 
-                for cmd in ho.get_commands():
+                for cmd in ho.getCommands():
                     if cmd.__class__.__name__ == "SpecCommand":
                         d["commands"][cmd.userName()] = {
                             "type": "spec",
@@ -817,7 +620,7 @@ class __HardwareRepositoryClient:
                         dd = {"type": "taco", "device": cmd.deviceName}
 
                         try:
-                            dd["imported ?"] = "yes" if cmd.device.imported else "no"
+                            dd["imported ?"] = cmd.device.imported and "yes" or "no"
                         except BaseException:
                             dd["imported ?"] = "no, invalid Taco device"
 
@@ -828,17 +631,15 @@ class __HardwareRepositoryClient:
                         d["commands"][cmd.userName()] = {
                             "type": "tango",
                             "device": cmd.deviceName,
-                            "imported ?": (
-                                "no, invalid Tango device"
-                                if cmd.device is None
-                                else "yes"
-                            ),
+                            "imported ?": cmd.device is not None
+                            and "yes"
+                            or "no, invalid Tango device",
                             "device method": str(cmd.command),
                         }
 
                 d["channels"] = {}
 
-                for chan in ho.get_channels():
+                for chan in ho.getChannels():
                     if chan.__class__.__name__ == "SpecChannel":
                         d["channels"][chan.userName()] = {
                             "type": "spec",
@@ -864,9 +665,7 @@ class __HardwareRepositoryClient:
                 d["spec version"] = ho.specVersion
                 d["motor mnemonic"] = ho.specName
                 try:
-                    d["connected ?"] = (
-                        "yes" if ho.connection.isSpecConnected() else "no"
-                    )
+                    d["connected ?"] = ho.connection.isSpecConnected() and "yes" or "no"
                 except BaseException:
                     d["connected ?"] = "no"
 
@@ -905,7 +704,7 @@ class __HardwareRepositoryClient:
             func = func_ref()
 
             if func is None:
-                # self.killTimer(t_ev.timerId())
+                #self.killTimer(t_ev.timerId())
                 del _timers[t_ev.timerId()]
             else:
                 try:
@@ -927,7 +726,7 @@ class __HardwareRepositoryClient:
         )
 
         print("+", "=" * sum(longest_cols), "+")
-        print("| %s" % row_format.format(*("xml", "Class", "Load time", "Comment")))
+        print("| %s" % row_format.format(*("xml", "Class", "Load time", "")))
         print("+", "=" * sum(longest_cols), "+")
 
         for row in sorted(self.hwobj_info_list):
@@ -948,9 +747,6 @@ class __HardwareRepositoryClient:
         # if needed a similar package for 3x could be used. In this case
         # code depends on a platform: platform.python_version()[0] > 2 ...
 
-        # NB reloadHardwareObjects does NOT work with beamline_opbject
-        # and other yaml configs
-
         import reimport
 
         modified_modules = reimport.modified()
@@ -966,12 +762,12 @@ class __HardwareRepositoryClient:
                                 connections[sender]["slot"],
                             )
                         logging.getLogger("HWR").debug(
-                            "HardwareRepository: %s disconnected from GUI", item
+                            "HardwareRepository: %s disconnected from GUI" % item
                         )
                         self.hardwareObjects[hwr_obj].clear_gevent()
                     except BaseException:
                         logging.getLogger("HWR").exception(
-                            "HardwareRepository: Unable to disconnect hwobj %s", item
+                            "HardwareRepository: Unable to disconnect hwobj %s" % item
                         )
                         continue
 
@@ -979,11 +775,11 @@ class __HardwareRepositoryClient:
                         __import__(item, globals(), locals(), [], -1)
                         reimport.reimport(item)
                         logging.getLogger("HWR").debug(
-                            "HardwareRepository: %s reloaded", item
+                            "HardwareRepository: %s reloaded" % item
                         )
                     except BaseException:
                         logging.getLogger("HWR").exception(
-                            "HardwareRepository: Unable to reload module %s", item
+                            "HardwareRepository: Unable to reload module %s" % item
                         )
 
                     try:
@@ -994,19 +790,19 @@ class __HardwareRepositoryClient:
                                 connections[sender]["slot"],
                             )
                         logging.getLogger("HWR").debug(
-                            "HardwareRepository: %s connected to GUI", item
+                            "HardwareRepository: %s connected to GUI" % item
                         )
                     except BaseException:
                         logging.getLogger("HWR").exception(
-                            "HardwareRepository: Unable to connect hwobj %s", item
+                            "HardwareRepository: Unable to connect hwobj %s" % item
                         )
                     try:
                         self.hardwareObjects[hwr_obj].init()
-                        self.hardwareObjects[hwr_obj].re_emit_values()
+                        self.hardwareObjects[hwr_obj].update_values()
                         logging.getLogger("HWR").debug(
-                            "HardwareRepository: %s initialized and updated", item
+                            "HardwareRepository: %s initialized and updated" % item
                         )
                     except BaseException:
                         logging.getLogger("HWR").exception(
-                            "HardwareRepository: Unable to initialize hwobj %s", item
+                            "HardwareRepository: Unable to initialize hwobj %s" % item
                         )

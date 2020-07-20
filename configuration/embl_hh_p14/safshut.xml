@@ -9,5 +9,6 @@
   
   <command type="tine" name="cmdClose" tinename="/P14/ics/shutter-secondary" timeout="2000">close</command>
   <command type="tine" name="cmdOpen" tinename="/P14/ics/shutter-secondary" timeout="2000">open</command>
-  <useShutter>True</useShutter>
+
+  <useShutter>False</useShutter>
 </device>

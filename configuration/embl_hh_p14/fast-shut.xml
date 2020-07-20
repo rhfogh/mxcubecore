@@ -4,3 +4,4 @@
   <channel type="exporter" name="chanShutterState">FastShutterIsOpen</channel>
   <channel type="exporter" name="chanCurrentPhase">CurrentPhase</channel>
 </device>
+

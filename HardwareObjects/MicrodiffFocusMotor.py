@@ -1,15 +1,18 @@
-from HardwareRepository.HardwareObjects.ExpMotor import ExpMotor
-from HardwareRepository import HardwareRepository as HWR
+from HardwareRepository.HardwareObjects.MD2Motor import MD2Motor
 
 
-class MicrodiffFocusMotor(ExpMotor):
+class MicrodiffFocusMotor(MD2Motor):
     def __init__(self, name):
-        ExpMotor.__init__(self, name)
+        MD2Motor.__init__(self, name)
 
     def init(self):
 
-        if HWR.beamline.diffractometer.in_plate_mode():
-            self.actuator_name = self.getProperty("centring_focus")
+        diffractometer_hwobj = self.getObjectByRole("controller")
+        if diffractometer_hwobj.in_plate_mode():
+            self.motor_name = self.getProperty("centring_focus")
         else:
-            self.actuator_name = self.getProperty("alignment_focus")
-        ExpMotor.init(self)
+            self.motor_name = self.getProperty("alignment_focus")
+        MD2Motor.init(self)
+
+    def motorPositionChanged(self, absolutePosition, private={}):
+        MD2Motor.motorPositionChanged(self, absolutePosition, private)

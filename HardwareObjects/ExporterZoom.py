@@ -7,11 +7,11 @@ class ExporterZoom(ExporterMotor):
         ExporterMotor.__init__(self, name)
 
     def init(self):
-        self.actuator_name = "Zoom"
+        self.motor_name = "Zoom"
         self.motor_pos_attr_suffix = "Position"
         self._last_position_name = None
 
-        self.chan_predefined_position = self.add_channel(
+        self.chan_predefined_position = self.addChannel(
             {"type": "exporter", "name": "predefined_position"},
             "CoaxialCameraZoomValue",
         )
@@ -30,7 +30,7 @@ class ExporterZoom(ExporterMotor):
         }
         self.sort_predefined_positions_list()
         self.set_limits((0, 10))
-        self.update_state(self.motor_states.READY)
+        self.set_state(self.motor_states.READY)
 
         ExporterMotor.init(self)
 
@@ -55,6 +55,9 @@ class ExporterZoom(ExporterMotor):
         else:
             return ExporterMotor.connectNotify.im_func(self, signal)
 
+    def getPredefinedPositionsList(self):
+        return self.predefined_positions_names_list
+
     def get_predefined_positions_list(self):
         return self.predefined_positions_names_list
 
@@ -76,6 +79,9 @@ class ExporterZoom(ExporterMotor):
             if math.fabs(self.predefined_positions[position_name] - position) <= 1e-3:
                 return position_name
         return ""
+
+    def moveToPosition(self, position_name):
+        self.move_to_position(position_name)
 
     def move_to_position(self, position_name):
         self.chan_predefined_position.setValue(self.predefined_positions[position_name])

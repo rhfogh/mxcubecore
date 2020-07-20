@@ -65,14 +65,9 @@ class InstanceServer(Procedure):
 
     def initialize_instance(self):
         for widget in QtImport.QApplication.allWidgets():
-            try:
-                if hasattr(widget, "configuration"):
-                    self.guiConfiguration = widget.configuration
-                    break
-            except NameError:
-                logging.getLogger().warning(
-                    "Widget {} has no attribute {}".format(widget, "configuration")
-                )
+            if hasattr(widget, "configuration"):
+                self.guiConfiguration = widget.configuration
+                break
 
         self.emit("instanceInitializing", ())
         if self.isLocal():
@@ -601,7 +596,7 @@ class InstanceServer(Procedure):
                 widget_name = m.getWidgetName()
                 widget_method = m.getWidgetMethod()
                 widget_method_args = m.getWidgetMethodArgs()
-                brick = self.guiConfiguration.findItem(brick_name).brick
+                brick = self.guiConfiguration.find_item(brick_name).brick
 
                 if widget_name == "":
                     exec("method=brick.%s" % widget_method)
@@ -623,7 +618,7 @@ class InstanceServer(Procedure):
                 masterSync = m.getMasterSync()
 
                 # if necessary check this with Qt3 version
-                brick = self.guiConfiguration.findItem(brick_name).get("brick")
+                brick = self.guiConfiguration.find_item(brick_name).brick
 
                 if widget_name == "":
                     exec("method=brick.%s" % widget_method)
@@ -642,7 +637,7 @@ class InstanceServer(Procedure):
                 timestamp = m.getTimestamp()
                 tab_name = m.getTabName()
                 tab_index = m.getTabIndex()
-                tab = self.guiConfiguration.findItem(tab_name).widget
+                tab = self.guiConfiguration.find_item(tab_name).widget
 
                 method = tab.setCurrentPage
                 method_args = (tab_index,)
@@ -850,7 +845,7 @@ class InstanceServer(Procedure):
                 widget_name = m.getWidgetName()
                 widget_method = m.getWidgetMethod()
                 widget_method_args = m.getWidgetMethodArgs()
-                brick = self.guiConfiguration.findItem(brick_name).brick
+                brick = self.guiConfiguration.find_item(brick_name).brick
 
                 if widget_name == "":
                     exec("method=brick.%s" % widget_method)
@@ -871,7 +866,7 @@ class InstanceServer(Procedure):
                 widget_name = m.getWidgetName()
                 widget_method = m.getWidgetMethod()
                 widget_method_args = m.getWidgetMethodArgs()
-                brick = self.guiConfiguration.findItem(brick_name).brick
+                brick = self.guiConfiguration.find_item(brick_name).brick
                 masterSync = m.getMasterSync()
                 if widget_name == "":
                     exec("method=brick.%s" % widget_method)
@@ -892,7 +887,7 @@ class InstanceServer(Procedure):
                 timestamp = m.getTimestamp()
                 tab_name = m.getTabName()
                 tab_index = m.getTabIndex()
-                tab = self.guiConfiguration.findItem(tab_name).widget
+                tab = self.guiConfiguration.find_item(tab_name).widget
 
                 method = tab.setCurrentPage
                 method_args = (tab_index,)

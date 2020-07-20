@@ -176,7 +176,6 @@ class HardwareObjectHandler(ContentHandler):
                 self.objects[i], BaseHardwareObjects.DeviceContainer
             ):
                 # newClass = new.classobj("toto", (self.objects[i].__class__,) + self.objects[i].__class__.__bases__ + (BaseHardwareObjects.DeviceContainer, ), {})
-                # TODO replace deprecated DeviceContainerNode with a different class
                 self.objects[i].__class__ = BaseHardwareObjects.DeviceContainerNode
                 i -= 1
 
@@ -270,7 +269,7 @@ class HardwareObjectHandler(ContentHandler):
 
         if self.elementIsAReference:
             if len(self.objects) > 0:
-                self.objects[0].addReference(
+                self.objects[-1].addReference(
                     name, self.reference, role=self.elementRole
                 )
         else:
@@ -278,18 +277,18 @@ class HardwareObjectHandler(ContentHandler):
                 if name == "command":
                     if len(self.command) > 0:
                         if len(self.objects) > 0:
-                            self.objects[-1].add_command(
+                            self.objects[-1].addCommand(
                                 self.command, self.buffer, addNow=False
                             )
                     else:
                         if len(self.objects) > 1:
-                            self.objects[-2].add_command(
+                            self.objects[-2].addCommand(
                                 self.objects.pop(), addNow=False
                             )
                 elif name == "channel":
                     if len(self.channel) > 0:
                         if len(self.objects) > 0:
-                            self.objects[-1].add_channel(
+                            self.objects[-1].addChannel(
                                 self.channel, self.buffer, addNow=False
                             )
                 elif name == self.property:

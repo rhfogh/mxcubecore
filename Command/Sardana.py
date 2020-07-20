@@ -397,7 +397,7 @@ class SardanaChannel(ChannelObject, SardanaObject):
         # if the polling value is a number set it as the taurus polling period
 
         if self.polling:
-            if isinstance(self.polling, int):
+            if isinstance(self.polling, types.IntType):
                 self.attribute.changePollingPeriod(self.polling)
 
             self.attribute.addListener(self.objectListener)
@@ -418,10 +418,9 @@ class SardanaChannel(ChannelObject, SardanaObject):
     def getInfo(self):
         try:
             b = dir(self.attribute)
-            (
-                self.info.minval,
-                self.info.maxval,
-            ) = self.attribute._TangoAttribute__attr_config.get_limits()
+            self.info.minval, self.info.maxval = (
+                self.attribute._TangoAttribute__attr_config.getLimits()
+            )
         except BaseException:
             import traceback
 

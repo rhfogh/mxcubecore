@@ -18,7 +18,6 @@
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
 from HardwareRepository.BaseHardwareObjects import Device
-from HardwareRepository.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
 
 __credits__ = ["EMBL Hamburg"]
@@ -26,7 +25,7 @@ __version__ = "2.3."
 __category__ = "General"
 
 
-class EMBLBeamstop(Device, AbstractMotor):
+class EMBLBeamstop(Device):
     def __init__(self, name):
         Device.__init__(self, name)
 
@@ -45,16 +44,15 @@ class EMBLBeamstop(Device, AbstractMotor):
         self.default_direction = self.getProperty("defaultBeamstopDirection")
 
         if self.default_distance is None:
-            self.chan_distance = self.get_channel_object("BeamstopDistance")
+            self.chan_distance = self.getChannelObject("BeamstopDistance")
             if self.chan_distance is not None:
                 self.chan_distance.connectSignal("update", self.distance_changed)
-            self.distance_changed(self.chan_distance.getValue())
         else:
             self.distance = float(self.default_distance)
 
-        self.chan_position = self.get_channel_object("BeamstopPosition")
+        self.chan_position = self.getChannelObject("BeamstopPosition")
 
-    def is_ready(self):
+    def isReady(self):
         """Returns True if device ready
         """
         return True
@@ -85,13 +83,20 @@ class EMBLBeamstop(Device, AbstractMotor):
 
     def get_distance(self):
         """Returns beamstop distance in mm"""
-        return self.distance
+        distance = None
+        if self.chan_distance is not None:
+            distance = self.chan_distance.getValue()
+
+        if distance is None:
+            return self.default_distance
+        else:
+            return distance
 
     def get_direction(self):
         """Returns beamstop direction"""
         return self.default_direction
 
-    def get_value(self):
+    def get_position(self):
         """Returns beamstop position"""
         return self.chan_position.getValue()
 
@@ -103,6 +108,8 @@ class EMBLBeamstop(Device, AbstractMotor):
         """
         self.chan_position.setValue(position)
 
-    def re_emit_values(self):
+    def update_values(self):
         """Reemits available signals"""
+        if self.chan_distance is not None:
+            self.distance = self.chan_distance.getValue()
         self.emit("beamstopDistanceChanged", self.distance)

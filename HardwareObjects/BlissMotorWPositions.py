@@ -1,14 +1,9 @@
-from warnings import warn
 from BlissMotor import BlissMotor
 import logging
 
 
 class BlissMotorWPositions(BlissMotor):
     def __init__(self, name):
-        warn(
-            "BlissMotorWPositions class is deprecated. Use BlissNState instead",
-            DeprecationWarning,
-        )
         BlissMotor.__init__(self, name)
 
     def init(self):
@@ -48,7 +43,7 @@ class BlissMotorWPositions(BlissMotor):
         BlissMotor.connectNotify(self, signal)
 
         if signal == "predefinedPositionChanged":
-            positionName = self.get_current_position_name()
+            positionName = self.getCurrentPositionName()
 
             try:
                 pos = self.predefinedPositions[positionName]
@@ -57,7 +52,7 @@ class BlissMotorWPositions(BlissMotor):
             else:
                 self.emit(signal, (positionName, pos))
         elif signal == "stateChanged":
-            self.emit(signal, (self.get_state(),))
+            self.emit(signal, (self.getState(),))
 
     def sortPredefinedPositionsList(self):
         self.predefinedPositionsNamesList = self.predefinedPositions.keys()
@@ -73,7 +68,7 @@ class BlissMotorWPositions(BlissMotor):
         BlissMotor.updateState(self, state)
 
         if self.motorState != prev_state and self.motorState == BlissMotor.READY:
-            pos = self.get_value()
+            pos = self.getPosition()
 
             for positionName in self.predefinedPositions:
                 if (
@@ -90,22 +85,22 @@ class BlissMotorWPositions(BlissMotor):
 
     def moveToPosition(self, positionName):
         try:
-            self.set_value(self.predefinedPositions[positionName])
+            self.move(self.predefinedPositions[positionName])
         except BaseException:
             logging.getLogger("HWR").exception(
-                "Cannot move motor %s: invalid position name.", str(self.username)
+                "Cannot move motor %s: invalid position name.", str(self.userName())
             )
 
-    def get_current_position_name(self):
+    def getCurrentPositionName(self):
         if (
             not self.motorIsMoving()
-        ):  # self.is_ready() and self.get_state() == self.READY:
+        ):  # self.isReady() and self.getState() == self.READY:
             for positionName in self.predefinedPositions:
                 if (
                     self.predefinedPositions[positionName]
-                    >= self.get_value() - self.delta
+                    >= self.getPosition() - self.delta
                     and self.predefinedPositions[positionName]
-                    <= self.get_value() + self.delta
+                    <= self.getPosition() + self.delta
                 ):
                     return positionName
         return ""

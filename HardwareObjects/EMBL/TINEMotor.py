@@ -37,6 +37,7 @@ class TINEMotor(AbstractMotor):
     def __init__(self, name):
         AbstractMotor.__init__(self, name)
 
+        self.previous_position = None
         self.chan_position = None
         self.chan_state = None
         self.chan_limits = None
@@ -44,45 +45,48 @@ class TINEMotor(AbstractMotor):
         self.cmd_stop_axis = None
         self.cmd_set_online = None
 
+        self.epsilon = None
+        self.username = None
         self.step_limits = None
 
     def init(self):
         """Connects to all Tine channels and commands"""
 
-        self.chan_limits = self.get_channel_object("axisLimits", optional=True)
+        self.chan_limits = self.getChannelObject("axisLimits", optional=True)
         if self.chan_limits is not None:
-            self.chan_limits.connectSignal("update", self.update_limits)
-            self.update_limits(self.chan_limits.getValue())
+            self.chan_limits.connectSignal("update", self.motor_limits_changed)
+            self.motor_limits_changed(self.chan_limits.getValue())
         else:
             try:
                 if self.getProperty("default_limits"):
-                    self.update_limits(eval(self.getProperty("default_limits")))
+                    self.motor_limits_changed(eval(self.getProperty("default_limits")))
             except BaseException:
                 pass
 
-        self.chan_position = self.get_channel_object("axisPosition")
+        self.chan_position = self.getChannelObject("axisPosition")
         if self.chan_position is not None:
-            self.chan_position.connectSignal("update", self.update_value())
-        self.update_value(self.chan_position.getValue())
+            self.chan_position.connectSignal("update", self.motor_position_changed)
+        self.motor_position_changed(self.chan_position.getValue())
 
-        self.chan_state = self.get_channel_object("axisState", optional=True)
+        self.chan_state = self.getChannelObject("axisState", optional=True)
         if self.chan_state is not None:
-            self.chan_state.connectSignal("update", self.update_state)
+            self.chan_state.connectSignal("update", self.motor_state_changed)
 
-        self.cmd_set_position = self.get_command_object("setPosition")
+        self.cmd_set_position = self.getCommandObject("setPosition")
         if self.cmd_set_position:
             self.cmd_set_position.connectSignal("connected", self.connected)
             self.cmd_set_position.connectSignal("disconnected", self.disconnected)
 
-        self.cmd_stop_axis = self.get_command_object("stopAxis")
+        self.cmd_stop_axis = self.getCommandObject("stopAxis")
         if self.cmd_stop_axis:
             self.cmd_stop_axis.connectSignal("connected", self.connected)
             self.cmd_stop_axis.connectSignal("disconnected", self.disconnected)
 
-        self.cmd_set_online = self.get_command_object("setOnline")
+        self.cmd_set_online = self.getCommandObject("setOnline")
 
-        # NBNB TODO change config from 'epsilon' to 'tolerance'?
-        self._tolerance = self.getProperty("epsilon")
+        self.epsilon = self.getProperty("epsilon")
+
+        self.username = self.getProperty("username")
 
         try:
             self.step_limits = eval(self.getProperty("stepLimits"))
@@ -94,14 +98,14 @@ class TINEMotor(AbstractMotor):
         Sets ready
         :return:
         """
-        self.update_state(self.STATES.READY)
+        self.set_ready(True)
 
     def disconnected(self):
         """
         Sets not ready
         :return:
         """
-        self.update_state(self.STATES.OFF)
+        self.set_ready(False)
 
     def connectNotify(self, signal):
         """
@@ -110,59 +114,82 @@ class TINEMotor(AbstractMotor):
         """
         if self.connected():
             if signal == "stateChanged":
-                self.update_state()
+                self.motor_state_changed(self.get_state())
             elif signal == "limitsChanged":
-                self.update_limits()
-            elif signal == "valueChanged":
-                self.update_value()
+                self.motor_limits_changed(self.get_limits())
+            elif signal == "positionChanged":
+                self.motor_position_changed(self.get_position())
+
+    def motor_limits_changed(self, limits):
+        """Updates motor limits
+
+        :param limits: limits
+        :type limits: list of two floats
+        """
+        self.set_limits(limits)
+        self.emit("limitsChanged", (limits,))
 
     def get_step_limits(self):
         """Returns step limits
         """
         return self.step_limits
 
-    # def get_position(self):
+    #def get_position(self):
     #    return self.chan_position.getValue()
 
-    def get_value(self):
-        return self.chan_position.getValue()
-
-    def get_state(self):
-        """Get HardwareObject state"""
-        # NNBNB TODO map channel states to all HardwareObject states
-        # TODO add treatment of specific_states
-        state = self.chan_state.getValue()
-        if type(state) in (tuple, list):
-            state = state[0]
-        if state in ("ready", 0):
-            state = self.STATES.READY
-        else:
-            state = self.STATES.BUSY
-        #
-        return state
-
-    def abort(self):
+    def stop(self):
         """Stops motor movement
         """
         self.cmd_stop_axis()
 
-    def _set_value(self, value):
+    def move(self, target, wait=None, timeout=None):
         """
         Main move method
-        :param value: float
+        :param target: float
+        :param wait: int
+        :param timeout: boolean
         :return:
         """
         if self.chan_state is not None:
-            self.update_state(self.STATES.BUSY)
+            self.set_state(self.motor_states.MOVING)
             self.chan_state.setOldValue("moving")
-        self.cmd_set_position(value)
+        if target == float("nan"):
 
-    def update_value(self, value=None):
+            logging.getLogger().debug(
+                "Refusing to move %s to target nan" % self.objName
+            )
+        else:
+            self.cmd_set_position(target)
+
+        if timeout:
+            gevent.sleep(2)
+            self.wait_ready(timeout)
+            self.wait_ready(10)
+
+    def motor_state_changed(self, state):
+        """Updates motor state
+        """
+        if type(state) in (tuple, list):
+            state = state[0]
+
+        if state in ("ready", 0):
+            self.set_state(self.motor_states.READY)
+        else:
+            self.set_state(self.motor_states.MOVING)
+
+    def motor_position_changed(self, position):
         """Updates motor position
         """
-        if type(value) in (list, tuple):
-            value = value[0]
-        super(TINEMotor, self).update_value(value)
+        if type(position) in (list, tuple):
+            position = position[0]
+        if (
+            self.epsilon is None
+            or self.previous_position is None
+            or (abs(position - self.previous_position) > self.epsilon)
+        ):
+            self.set_position(position)
+            self.emit("positionChanged", (position,))
+            self.previous_position = position
 
     def get_motor_mnemonic(self):
         """
@@ -170,6 +197,16 @@ class TINEMotor(AbstractMotor):
         :return:
         """
         return "TINEMotor"
+
+    def wait_ready(self, timeout=None):
+        """
+        Whaits till device is ready
+        :param timeout: sec (int)
+        :return:
+        """
+        with gevent.Timeout(timeout, Exception("Timeout waiting for device ready")):
+            while not self.is_ready():
+                gevent.sleep(0.05)
 
     def enable_motor(self):
         """

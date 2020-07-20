@@ -40,7 +40,7 @@ This object manages the movement of several motors to predefined positions.
 
 
 METHOD
-    name:           get_state
+    name:           getState
     input par.:     None
     output par.:    state
     description:    return an and on the state of all the  motor used in the
@@ -51,7 +51,7 @@ METHOD
     output par.:    None
     description:    move all motors to the predefined position "position"
 
-    name:           get_value
+    name:           getPosition
     input par.:     None
     output par.:    position
     description:    return the name of the current predefined position.
@@ -160,9 +160,6 @@ class MultiplePositions(Equipment):
 
         self.deltas = {}
         try:
-            # WARNING self.deltas is a LINK to the INTERNAL properties dictionary
-            # modifying it modifies the GLOBAL properties, not just the local copy
-            # Maybe do self["deltas"].getProperties().copy()?
             self.deltas = self["deltas"].getProperties()
         except BaseException:
             logging.getLogger().error("No deltas.")
@@ -192,24 +189,24 @@ class MultiplePositions(Equipment):
         for mot in self["motors"]:
             self.motors[mot.getMotorMnemonic()] = mot
             self.connect(mot, "moveDone", self.checkPosition)
-            self.connect(mot, "valueChanged", self.checkPosition)
+            self.connect(mot, "positionChanged", self.checkPosition)
             self.connect(mot, "stateChanged", self.stateChanged)
 
-    def get_state(self):
-        if not self.is_ready():
+    def getState(self):
+        if not self.isReady():
             return ""
 
         state = "READY"
         for mot in self.motors.values():
-            if mot.get_state() == mot.MOVING:
+            if mot.getState() == mot.MOVING:
                 state = "MOVING"
-            elif mot.get_state() == mot.UNUSABLE:
+            elif mot.getState() == mot.UNUSABLE:
                 return "UNUSABLE"
 
         return state
 
     def stateChanged(self, state):
-        self.emit("stateChanged", (self.get_state(),))
+        self.emit("stateChanged", (self.getState(),))
         self.checkPosition()
 
     def moveToPosition(self, name, wait=False):
@@ -221,17 +218,17 @@ class MultiplePositions(Equipment):
 
         for mot, pos in move_list:
             if mot is not None:
-                mot.set_value(pos)
+                mot.move(pos)
 
         if wait:
             [mot.waitEndOfMove() for mot, pos in move_list if mot is not None]
         """
         for mne,pos in self.positions[name].items():
-        self.motors[mne].set_value(pos)
+        self.motors[mne].move(pos)
         """
 
-    def get_value(self):
-        if not self.is_ready():
+    def getPosition(self):
+        if not self.isReady():
             return None
 
         for posName, position in self.positions.items():
@@ -242,7 +239,7 @@ class MultiplePositions(Equipment):
                 mot = self.getDeviceByRole(role)
 
                 if mot is not None:
-                    motpos = mot.get_value()
+                    motpos = mot.getPosition()
                     try:
                         if (
                             motpos < pos + self.deltas[role]
@@ -258,10 +255,10 @@ class MultiplePositions(Equipment):
         return None
 
     def checkPosition(self, *args):
-        if not self.is_ready():
+        if not self.isReady():
             return None
 
-        posName = self.get_value()
+        posName = self.getPosition()
 
         if posName is None:
             self.emit("noPosition", ())
@@ -282,7 +279,7 @@ class MultiplePositions(Equipment):
             position.setProperty(role, pos)
 
         self.checkPosition()
-        self.commit_changes()
+        self.commitChanges()
 
     def getPositionKeyValue(self, name, key):
         position = self.__getPositionObject(name)
@@ -302,12 +299,12 @@ class MultiplePositions(Equipment):
                 if pos.find(key) is not None:
                     position = self.__getPositionObject(name)
                     position.setProperty(key, str(value))
-                    self.commit_changes()
+                    self.commitChanges()
                     return True
                 else:
                     key_el = cElementTree.SubElement(pos, key)
                     key_el.text = value
-                    print((cElementTree.tostring(xml_tree)))
+                    print(cElementTree.tostring(xml_tree))
                     self.rewrite_xml(cElementTree.tostring(xml_tree))
                     return True
 

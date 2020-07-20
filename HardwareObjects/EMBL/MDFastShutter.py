@@ -30,7 +30,6 @@ class MDFastShutter(Device):
     """
     MD Fast shutter
     """
-
     shutterState = {3: "unknown", 1: "closed", 0: "opened", 46: "disabled"}
 
     def __init__(self, name):
@@ -55,12 +54,12 @@ class MDFastShutter(Device):
         """
         self.states_dict = {False: "closed", True: "opened"}
 
-        self.chan_current_phase = self.get_channel_object("chanCurrentPhase")
+        self.chan_current_phase = self.getChannelObject("chanCurrentPhase")
         if self.chan_current_phase is not None:
             self.current_phase = self.chan_current_phase.getValue()
             self.connect(self.chan_current_phase, "update", self.current_phase_changed)
 
-        self.chan_shutter_state = self.get_channel_object("chanShutterState")
+        self.chan_shutter_state = self.getChannelObject("chanShutterState")
         if self.chan_shutter_state:
             self.chan_shutter_state.connectSignal("update", self.shutter_state_changed)
 
