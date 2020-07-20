@@ -44,7 +44,7 @@ import ConvertUtils
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 import queue_model_objects_v1 as queue_model_objects
 import queue_model_enumerables_v1 as queue_model_enumerables
-from queue_entry import QUEUE_ENTRY_STATUS
+from queue_entry import QUEUE_ENTRY_STATUS, QueueAbortedException
 
 import GphlMessages
 
@@ -331,7 +331,15 @@ class GphlWorkflow(HardwareObject, object):
 
                 tt0 = workflow_queue.get_nowait()
                 if tt0 is StopIteration:
+                    logging.getLogger("HWR").debug(
+                        "GPhL queue StopIteration"
+                    )
                     break
+                elif tt0 == "BeamlineAbort":
+                    logging.getLogger("HWR").debug(
+                        "GPhL queue BeamlineAbort"
+                    )
+                    self._queue_entry.stop()
 
                 message_type, payload, correlation_id, result_list = tt0
                 func = self._processor_functions.get(message_type)
@@ -349,12 +357,17 @@ class GphlWorkflow(HardwareObject, object):
                     if result_list is not None:
                         result_list.append((response, correlation_id))
 
+        except QueueAbortedException:
+            pass
+
         except BaseException:
-            self.workflow_end()
-            logging.getLogger("HWR").error(
-                "Uncaught error during GPhL workflow execution", exc_info=True
+            # self.workflow_end()
+            # logging.getLogger("HWR").error(
+            #     "Uncaught error during GPhL workflow execution", exc_info=True
+            # )
+            raise QueueAbortedException(
+                "Uncaught error during GPhL workflow execution", self
             )
-            raise
 
     def _add_to_queue(self, parent_model_obj, child_model_obj):
         # There should be a better way, but apparently there isn't
@@ -733,57 +746,62 @@ class GphlWorkflow(HardwareObject, object):
 
         params = self._return_parameters.get()
         self._return_parameters = None
-        result = {}
-        tag = "imageWidth"
-        value = params.get(tag)
-        if value:
-            image_width = result[tag] = float(value)
+
+        if params == "BeamlineAbort":
+            result = "BeamlineAbort"
+
         else:
-            image_width = self.getProperty("default_image_width", 15)
-        tag = "exposure"
-        value = params.get(tag)
-        if value:
-            result[tag] = float(value)
-        tag = "transmission"
-        value = params.get(tag)
-        if value:
-            # Convert from % to fraction
-            result[tag] = float(value) / 100
-        tag = "wedgeWidth"
-        value = params.get(tag)
-        if value:
-            result[tag] = int(float(value) / image_width)
-        else:
-            # If not set is likely not used, but we want a detault value anyway
-            result[tag] = 150
-        tag = "resolution"
-        value = params.get(tag)
-        if value:
-            value = float(value)
-            result["resolution"] = value
+            result = {}
+            tag = "imageWidth"
+            value = params.get(tag)
+            if value:
+                image_width = result[tag] = float(value)
+            else:
+                image_width = self.getProperty("default_image_width", 15)
+            tag = "exposure"
+            value = params.get(tag)
+            if value:
+                result[tag] = float(value)
+            tag = "transmission"
+            value = params.get(tag)
+            if value:
+                # Convert from % to fraction
+                result[tag] = float(value) / 100
+            tag = "wedgeWidth"
+            value = params.get(tag)
+            if value:
+                result[tag] = int(float(value) / image_width)
+            else:
+                # If not set is likely not used, but we want a detault value anyway
+                result[tag] = 150
+            tag = "resolution"
+            value = params.get(tag)
+            if value:
+                value = float(value)
+                result["resolution"] = value
 
-        if geometric_strategy.isInterleaved:
-            result["interleaveOrder"] = data_model.get_interleave_order()
+            if geometric_strategy.isInterleaved:
+                result["interleaveOrder"] = data_model.get_interleave_order()
 
-        for tag in beam_energies:
-            beam_energies[tag] = float(params.get(tag, 0))
-        result["beam_energies"] = beam_energies
+            for tag in beam_energies:
+                beam_energies[tag] = float(params.get(tag, 0))
+            result["beam_energies"] = beam_energies
 
-        for tag in (
-            "centre_before_sweep",
-            "centre_at_start",
-            "centre_before_scan",
-            "centring_snapshots",
-        ):
-            # This defaults to False if parameter is not queried
-            result[tag] = bool(params.get(tag))
+            for tag in (
+                "centre_before_sweep",
+                "centre_at_start",
+                "centre_before_scan",
+                "centring_snapshots",
+            ):
+                # This defaults to False if parameter is not queried
+                result[tag] = bool(params.get(tag))
 
-        if not data_model.lattice_selected:
-            # About to collect characterisation or calibration data
-            # Update char_budget_fraction to reflect remaining dose budget
-            budget_used = float(params.get("budget_required", 0.0))
-            data_model.set_characterisation_budget_fraction(budget_used / 100.0)
-
+            if not data_model.lattice_selected:
+                # About to collect characterisation or calibration data
+                # Update char_budget_fraction to reflect remaining dose budget
+                budget_used = float(params.get("budget_required", 0.0))
+                data_model.set_characterisation_budget_fraction(budget_used / 100.0)
+        #
         return result
 
     def setup_data_collection(self, payload, correlation_id):
@@ -847,6 +865,9 @@ class GphlWorkflow(HardwareObject, object):
             logging.getLogger("HWR").warning(
                 "User modification of sweep settings not implemented. Ignored"
             )
+
+        if parameters == "BeamlineAbort":
+            return GphlMessages.BeamlineAbort()
 
         # Set transmission, detector_disance/resolution to final (unchanging) values
         # Also set energy to first energy value, necessary to get resolution consistent
@@ -1133,7 +1154,6 @@ class GphlWorkflow(HardwareObject, object):
         collection_proposal = payload
         queue_manager = self._queue_entry.get_queue_controller()
 
-        # NBNB creation and use of master_path_template is NOT in testing version yet
         gphl_workflow_model = self._queue_entry.get_data_model()
         master_path_template = gphl_workflow_model.path_template
         relative_image_dir = collection_proposal.relativeImageDir
@@ -1202,10 +1222,12 @@ class GphlWorkflow(HardwareObject, object):
             path_template.__dict__.update(master_path_template.__dict__)
             if relative_image_dir:
                 path_template.directory = os.path.join(
-                    path_template.directory, relative_image_dir
+                    api.session.get_base_image_directory(),
+                    relative_image_dir
                 )
                 path_template.process_directory = os.path.join(
-                    path_template.process_directory, relative_image_dir
+                    api.session.get_base_process_directory(),
+                    relative_image_dir
                 )
             acq.path_template = path_template
             filename_params = scan.filenameParams
@@ -1341,6 +1363,9 @@ class GphlWorkflow(HardwareObject, object):
             )
 
         params = self._return_parameters.get()
+        if params == "BeamlineAbort":
+            return GphlMessages.BeamlineAbort()
+
         ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
         if ll0[0] == "*":
             del ll0[0]
@@ -1518,9 +1543,11 @@ class GphlWorkflow(HardwareObject, object):
                         RuntimeError("Signal 'gphlParametersNeeded' is not connected")
                     )
 
-                # We do not need the result, just to end they waiting
-                self._return_parameters.get()
+                # We do not need the result, just to end the waiting
+                response = self._return_parameters.get()
                 self._return_parameters = None
+                if response == "BeamlineAbort":
+                    return GphlMessages.BeamlineAbort()
 
         settings = goniostatRotation.axisSettings.copy()
         if goniostatTranslation is not None:
@@ -1692,13 +1719,15 @@ class GphlWorkflow(HardwareObject, object):
 
         priorInformation = GphlMessages.PriorInformation(
             sampleId=sampleId,
-            sampleName=(
-                sample_model.name
-                or sample_model.code
-                or sample_model.lims_code
-                or workflow_model.path_template.get_prefix()
-                or ConvertUtils.text_type(sampleId)
-            ),
+            sampleName=workflow_model.path_template.base_prefix,
+            # Changed to use MXCuBE prefix for naming purposes
+            # sampleName=(
+            #     sample_model.name
+            #     or sample_model.code
+            #     or sample_model.lims_code
+            #     or workflow_model.path_template.get_prefix()
+            #     or ConvertUtils.text_type(sampleId)
+            # ),
             rootDirectory=image_root,
             userProvidedInfo=userProvidedInfo,
         )

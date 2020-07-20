@@ -137,7 +137,7 @@
         <!--<appdir>Set Automatically</appdir>-->
         <!-- Workflow enactment file prefix  OPTIONAL - if set to e.g. 'wfx_',
         data for workflow runs will be stored in 'wfx_1, ,wfx_2, ... -->
-        <wfprefix>gphl_wf_</wfprefix>
+<!--        <wfprefix>gphl_wf_</wfprefix>-->
         <!-- Include sample name in enactment directory spec? -->
         <samplesubdir/>
         <!-- Subdirectory to insert under beamline root directory and appdir-->
@@ -223,9 +223,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>SAD_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>SAD_</wfprefix>-->
+<!--            </options>-->
         </SingleAnomalousDispersion>
 
         <TwoWavelengthMAD>
@@ -252,9 +252,9 @@
                     <value>12.72</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>MAD2_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>MAD2_</wfprefix>-->
+<!--            </options>-->
         </TwoWavelengthMAD>
 
         <ThreeWavelengthMAD>
@@ -286,9 +286,9 @@
                     <value>12.71</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>MAD3_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>MAD3_</wfprefix>-->
+<!--            </options>-->
         </ThreeWavelengthMAD>
 
         <NativeData_short>
@@ -312,9 +312,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native1_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native1_</wfprefix>-->
+<!--            </options>-->
         </NativeData_short>
 
         <NativeData_medium>
@@ -338,9 +338,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native2_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native2_</wfprefix>-->
+<!--            </options>-->
         </NativeData_medium>
 
         <NativeData_complete>
@@ -366,9 +366,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native3_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native3_</wfprefix>-->
+<!--            </options>-->
         </NativeData_complete>
 
         <TranslationalCalibration>
@@ -404,7 +404,7 @@
                 Designed for use by beamline personnel.
             </documentation>
             <options>
-                <wfprefix>Dcalib2_</wfprefix>
+<!--                <wfprefix>Dcalib2_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal_ex</strategy>
                 <!-- Working subdirectory for workflow-side application data-->
@@ -428,7 +428,7 @@
                 Designed for use by beamline personnel.
             </documentation>
             <options>
-                <wfprefix>Dcalib1_</wfprefix>
+<!--                <wfprefix>Dcalib1_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal</strategy>
                 <!-- Working subdirectory for workflow-side application data-->

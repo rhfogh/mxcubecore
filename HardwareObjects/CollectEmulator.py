@@ -325,18 +325,18 @@ class CollectEmulator(CollectMockup):
                 command_list, stdout=fp1, stderr=fp2, env=envs
             )
             gphl_connection.collect_emulator_process = running_process
+
+            # This does waiting, so we want to collect the result afterwards
+            super(CollectEmulator, self).data_collection_hook()
+
+            logging.getLogger("HWR").info("Waiting for simcal collection emulation.")
+            # NBNB TODO put in time-out, somehow
+            return_code = running_process.wait()
         except BaseException:
-            logging.getLogger("HWR").error("Error in spawning workflow application")
+            logging.getLogger("HWR").error("Error in GPhL collectoin emulation")
             raise
         finally:
             fp1.close()
-
-        # This does waiting, so we want to collect the result afterwards
-        super(CollectEmulator, self).data_collection_hook()
-
-        logging.getLogger("HWR").info("Waiting for simcal collection emulation.")
-        # NBNB TODO put in time-out, somehow
-        return_code = running_process.wait()
         process = gphl_connection.collect_emulator_process
         gphl_connection.collect_emulator_process = None
         if process == "ABORTED":

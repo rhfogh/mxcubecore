@@ -138,7 +138,7 @@
         <!--<appdir>Set Automatically</appdir>-->
         <!-- Workflow enactment file prefix  OPTIONAL - if set to e.g. 'wfx_',
         data for workflow runs will be stored in 'wfx_1, ,wfx_2, ... -->
-        <wfprefix>gphl_wf_</wfprefix>
+<!--        <wfprefix>gphl_wf_</wfprefix>-->
         <!-- Include sample name in enactment directory spec? -->
         <samplesubdir/>
         <!-- Subdirectory to insert under beamline root directory and appdir-->
@@ -224,9 +224,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>SAD_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>SAD_</wfprefix>-->
+<!--            </options>-->
         </SingleAnomalousDispersion>
 
         <TwoWavelengthMAD>
@@ -253,9 +253,9 @@
                     <value>12.72</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>MAD2_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>MAD2_</wfprefix>-->
+<!--            </options>-->
         </TwoWavelengthMAD>
 
         <ThreeWavelengthMAD>
@@ -287,9 +287,9 @@
                     <value>12.71</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>MAD3_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>MAD3_</wfprefix>-->
+<!--            </options>-->
         </ThreeWavelengthMAD>
 
         <NativeData_short>
@@ -315,9 +315,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_short_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_short_</wfprefix>-->
+<!--            </options>-->
         </NativeData_short>
 
         <NativeData_short-eq>
@@ -343,9 +343,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_short_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_short_</wfprefix>-->
+<!--            </options>-->
         </NativeData_short-eq>
 
         <NativeData_short-ax>
@@ -371,9 +371,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_short_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_short_</wfprefix>-->
+<!--            </options>-->
         </NativeData_short-ax>
 
         <NativeData_full>
@@ -399,9 +399,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_full_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
         </NativeData_full>
 
         <NativeData_full-eq>
@@ -427,9 +427,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_full_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
         </NativeData_full-eq>
 
         <NativeData_full-ax>
@@ -455,9 +455,9 @@
                     <value>12.7</value>
                 </beam_energy>
             </beam_energies>
-            <options>
-                <wfprefix>Native_full_</wfprefix>
-            </options>
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
         </NativeData_full-ax>
 
         <TranslationalCalibration>
@@ -500,7 +500,7 @@
             <!-- Not setting the value turns off the wedgeWidth widget -->
             <!-- <interleave_order>gs</interleave_order>-->
             <options>
-                <wfprefix>Dcalib2_</wfprefix>
+<!--                <wfprefix>Dcalib2_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal_ex</strategy>
                 <!-- Working subdirectory for workflow-side application data-->
@@ -530,7 +530,7 @@
             <!-- Not setting the value turns off the wedgeWidth widget -->
             <!-- <interleave_order>gs</interleave_order>-->
             <options>
-                <wfprefix>Dcalib1_</wfprefix>
+<!--                <wfprefix>Dcalib1_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal</strategy>
                 <!-- Working subdirectory for workflow-side application data-->

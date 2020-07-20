@@ -35,6 +35,8 @@ import gevent.monkey
 import gevent.event
 from py4j import clientserver
 
+import api
+
 import ConvertUtils
 import GphlMessages
 
@@ -284,7 +286,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         if "prefix" in workflow_options:
             workflow_options["prefix"] = path_template.base_prefix
         workflow_options["wdir"] = os.path.join(
-            path_template.process_directory, self.getProperty("gphl_subdir")
+            api.session.get_base_process_directory(),
+            self.getProperty("gphl_subdir")
         )
         # Hardcoded - location for log output
         command_list.extend(
