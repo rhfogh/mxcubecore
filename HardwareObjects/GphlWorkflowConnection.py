@@ -222,8 +222,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         # NBNB All command line option values are put in quotes (repr) when
         # the workflow is invoked remotely through ssh.
 
-        self.workflow_queue = workflow_queue
-
         if self.get_state() != self.STATES.OFF:
             # NB, for now workflow is started as the connection is made,
             # so we are never in state 'ON'/STANDBY
@@ -359,8 +357,10 @@ class GphlWorkflowConnection(HardwareObject, object):
             logging.getLogger().error("Error in spawning workflow application")
             raise
 
-        logging.getLogger("py4j.clientserver").setLevel(logging.WARNING)
+        self.workflow_queue = workflow_queue
         self.set_state(self.STATES.READY)
+
+        logging.getLogger("py4j.clientserver").setLevel(logging.WARNING)
 
         logging.getLogger("HWR").debug(
             "GPhL workflow pid, returncode : %s, %s"
@@ -432,6 +432,9 @@ class GphlWorkflowConnection(HardwareObject, object):
         if self._await_result is not None:
             # Workflow waiting for answer - send abort
             self._await_result = [(GphlMessages.BeamlineAbort(), None)]
+
+        # print ('@~@~ WF, Conn', api.gphl_workflow.get_state(),
+        #        self.get_state(), self.workflow_queue)
 
         # Shut down hardware object
         que = self.workflow_queue
@@ -541,19 +544,24 @@ class GphlWorkflowConnection(HardwareObject, object):
             "PrepareForCentring",
         ):
             # Requests:
+            # print ('@~@~ Message', message_type, self.workflow_queue)
             self._await_result = []
             self.set_state(self.STATES.BUSY)
             if self.workflow_queue is None:
                 # Could be None if we have ended the workflow
+                # print ('@~@~ no queue')
                 return self._response_to_server(
                     GphlMessages.BeamlineAbort(), correlation_id
                 )
             else:
+                # print ('@~@~ put to queue')
                 self.workflow_queue.put_nowait(
                     (message_type, payload, correlation_id, self._await_result)
                 )
+                # print ('@~@~ start waiting')
                 while not self._await_result:
                     time.sleep(0.1)
+                # print ('@~@~ done waiting', self._await_result)
                 result, correlation_id = self._await_result.pop(0)
                 self._await_result = None
                 if self.get_state() == self.STATES.BUSY:

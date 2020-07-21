@@ -61,6 +61,8 @@ __author__ = "Rasmus H Fogh"
 # Used to pass to priorInformation when no wavelengths are set (DiffractCal)
 DUMMY_WAVELENGTH = 999.999
 
+STOP_WORKFLOW = "STOP_WORKFLOW"
+
 
 class GphlWorkflow(HardwareObject, object):
     """Global Phasing workflow runner.
@@ -168,14 +170,6 @@ class GphlWorkflow(HardwareObject, object):
             detector._set_beam_centre(
                 (instrument_data["det_org_x"], instrument_data["det_org_y"])
             )
-
-    def pre_execute(self, queue_entry):
-
-        self._queue_entry = queue_entry
-
-        if self.get_state() == self.STATES.OFF:
-            api.gphl_connection.open_connection()
-            self.set_state(self.STATES.READY)
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -286,7 +280,91 @@ class GphlWorkflow(HardwareObject, object):
         else:
             raise RuntimeError("GphlWorkflow set to invalid state: s" % value)
 
-    def workflow_end(self):
+
+    def abort(self, message=None):
+        logging.getLogger("HWR").info("MXCuBE aborting current GPhL workflow")
+        if api.gphl_connection is not None:
+            api.gphl_connection.abort_workflow(message=message)
+
+
+    def pre_execute(self, queue_entry):
+
+        self._queue_entry = queue_entry
+
+        if self.get_state() == self.STATES.OFF:
+            api.gphl_connection.open_connection()
+            self.set_state(self.STATES.READY)
+
+    def execute(self):
+
+        # Start execution of a new workflow
+        if self.get_state() != self.STATES.READY:
+            # TODO Add handling of potential conflicts.
+            # NBNB GPhL workflow cannot have multiple users
+            # unless they use separate persistence layers
+            raise RuntimeError(
+                "Cannot execute workflow - GphlWorkflow HardwareObject is not idle"
+            )
+
+        if api.gphl_connection is None:
+            raise RuntimeError(
+                "Cannot execute workflow - GphlWorkflowConnection not found"
+            )
+
+
+        # try:
+        self.set_state(self.STATES.BUSY)
+
+        # Queue to handle messages in coming to GphlWorkflow
+        workflow_queue = gevent._threading.Queue()
+        # Fork off workflow server process
+        api.gphl_connection.start_workflow(
+            workflow_queue, self._queue_entry.get_data_model()
+        )
+
+        while True:
+            while workflow_queue.empty():
+                time.sleep(0.1)
+
+            tt0 = workflow_queue.get_nowait()
+            if tt0 is StopIteration:
+                logging.getLogger("HWR").debug(
+                    "GPhL queue StopIteration"
+                )
+                break
+            elif tt0 == "BeamlineAbort":
+                logging.getLogger("HWR").debug(
+                    "GPhL queue BeamlineAbort"
+                )
+                self._queue_entry.stop()
+
+            message_type, payload, correlation_id, result_list = tt0
+            func = self._processor_functions.get(message_type)
+            if func is None:
+                logging.getLogger("HWR").error(
+                    "GPhL message %s not recognised by MXCuBE. Terminating...",
+                    message_type,
+                )
+                break
+            else:
+                logging.getLogger("HWR").info(
+                    "GPhL queue processing %s", message_type
+                )
+                response = func(payload, correlation_id)
+                if response == STOP_WORKFLOW:
+                    raise QueueAbortedException("GPhL owrkflow terminated", self)
+                elif result_list is not None:
+                    result_list.append((response, correlation_id))
+
+        # except (QueueAbortedException, BaseException) as ex:
+        #     if isinstance(ex, QueueAbortedException):
+        #         raise ex
+        #     else:
+        #         raise QueueAbortedException(
+        #             "Uncaught error during GPhL workflow execution", self
+        #         )
+
+    def post_execute(self):
         """
         The workflow has finished, sets the state to 'READY'
         """
@@ -300,76 +378,6 @@ class GphlWorkflow(HardwareObject, object):
         if api.gphl_connection is not None:
             api.gphl_connection.workflow_ended()
 
-    def abort(self, message=None):
-        logging.getLogger("HWR").info("MXCuBE aborting current GPhL workflow")
-        if api.gphl_connection is not None:
-            api.gphl_connection.abort_workflow(message=message)
-
-    def execute(self):
-
-        # Start execution of a new workflow
-        if self.get_state() != self.STATES.READY:
-            # TODO Add handling of potential conflicts.
-            # NBNB GPhL workflow cannot have multiple users
-            # unless they use separate persistence layers
-            raise RuntimeError(
-                "Cannot execute workflow - GphlWorkflow HardwareObject is not idle"
-            )
-
-        try:
-            self.set_state(self.STATES.BUSY)
-
-            workflow_queue = gevent._threading.Queue()
-            # Fork off workflow server process
-            if api.gphl_connection is not None:
-                api.gphl_connection.start_workflow(
-                    workflow_queue, self._queue_entry.get_data_model()
-                )
-
-            while True:
-                while workflow_queue.empty():
-                    time.sleep(0.1)
-
-                tt0 = workflow_queue.get_nowait()
-                if tt0 is StopIteration:
-                    logging.getLogger("HWR").debug(
-                        "GPhL queue StopIteration"
-                    )
-                    break
-                elif tt0 == "BeamlineAbort":
-                    logging.getLogger("HWR").debug(
-                        "GPhL queue BeamlineAbort"
-                    )
-                    self._queue_entry.stop()
-
-                message_type, payload, correlation_id, result_list = tt0
-                func = self._processor_functions.get(message_type)
-                if func is None:
-                    logging.getLogger("HWR").error(
-                        "GPhL message %s not recognised by MXCuBE. Terminating...",
-                        message_type,
-                    )
-                    break
-                else:
-                    logging.getLogger("HWR").info(
-                        "GPhL queue processing %s", message_type
-                    )
-                    response = func(payload, correlation_id)
-                    if result_list is not None:
-                        result_list.append((response, correlation_id))
-
-        except QueueAbortedException:
-            pass
-
-        except BaseException:
-            # self.workflow_end()
-            # logging.getLogger("HWR").error(
-            #     "Uncaught error during GPhL workflow execution", exc_info=True
-            # )
-            raise QueueAbortedException(
-                "Uncaught error during GPhL workflow execution", self
-            )
-
     def _add_to_queue(self, parent_model_obj, child_model_obj):
         # There should be a better way, but apparently there isn't
         api.queue_model.add_child(parent_model_obj, child_model_obj)
@@ -378,12 +386,15 @@ class GphlWorkflow(HardwareObject, object):
 
     def workflow_aborted(self, payload, correlation_id):
         logging.getLogger("user_level_log").info("GPhL Workflow aborted.")
+        return STOP_WORKFLOW
 
     def workflow_completed(self, payload, correlation_id):
         logging.getLogger("user_level_log").info("GPhL Workflow completed.")
+        return STOP_WORKFLOW
 
     def workflow_failed(self, payload, correlation_id):
         logging.getLogger("user_level_log").info("GPhL Workflow failed.")
+        return STOP_WORKFLOW
 
     def echo_info_string(self, payload, correlation_id=None):
         """Print text info to console,. log etc."""

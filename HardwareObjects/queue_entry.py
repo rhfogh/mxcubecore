@@ -1613,7 +1613,7 @@ class GphlWorkflowQueueEntry(BaseQueueEntry):
         # qc = self.get_queue_controller()
         msg = "Finishing workflow %s" % (self.get_data_model()._type)
         logging.getLogger("user_level_log").info(msg)
-        api.gphl_workflow.workflow_end()
+        api.gphl_workflow.post_execute()
 
     def stop(self):
         BaseQueueEntry.stop(self)

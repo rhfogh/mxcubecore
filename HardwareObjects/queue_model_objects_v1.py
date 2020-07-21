@@ -1652,12 +1652,12 @@ class GphlWorkflow(TaskNode):
     # Starting run number. Unnecessary.
     # Left in as it is modified by signal when edited.
     def get_number(self):
-        logging.getLogger().warning(
+        logging.getLogger().debug(
             "Attempt to get unused attribute GphlWorkflow.number"
         )
         return None
     def set_number(self, value):
-        logging.getLogger().warning(
+        logging.getLogger().debug(
             "Attempt to set unused attribute GphlWorkflow.number"
         )
 
