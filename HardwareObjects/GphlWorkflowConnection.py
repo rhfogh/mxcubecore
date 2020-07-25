@@ -381,7 +381,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         elif self._running_process is not None:
             self._running_process = None
             # NBNB TODO how do we close down the workflow if there is no answer pending?
-
         self._enactment_id = None
         self._workflow_name = None
         self.workflow_queue = None
@@ -433,9 +432,6 @@ class GphlWorkflowConnection(HardwareObject, object):
             # Workflow waiting for answer - send abort
             self._await_result = [(GphlMessages.BeamlineAbort(), None)]
 
-        # print ('@~@~ WF, Conn', api.gphl_workflow.get_state(),
-        #        self.get_state(), self.workflow_queue)
-
         # Shut down hardware object
         que = self.workflow_queue
         if que is None:
@@ -486,6 +482,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         Return goes to server
 
         NB Callled freom external java) workflow"""
+        if self.get_state() is self.STATES.OFF:
+            return None
 
         xx0 = self._decode_py4j_message(py4j_message)
         message_type = xx0.message_type
@@ -544,33 +542,40 @@ class GphlWorkflowConnection(HardwareObject, object):
             "PrepareForCentring",
         ):
             # Requests:
-            # print ('@~@~ Message', message_type, self.workflow_queue)
             self._await_result = []
             self.set_state(self.STATES.BUSY)
             if self.workflow_queue is None:
                 # Could be None if we have ended the workflow
-                # print ('@~@~ no queue')
                 return self._response_to_server(
                     GphlMessages.BeamlineAbort(), correlation_id
                 )
             else:
-                # print ('@~@~ put to queue')
                 self.workflow_queue.put_nowait(
                     (message_type, payload, correlation_id, self._await_result)
                 )
-                # print ('@~@~ start waiting')
                 while not self._await_result:
                     time.sleep(0.1)
-                # print ('@~@~ done waiting', self._await_result)
                 result, correlation_id = self._await_result.pop(0)
-                self._await_result = None
                 if self.get_state() == self.STATES.BUSY:
                     self.set_state(self.STATES.READY)
+                self._await_result = None
 
-                logging.getLogger("HWR").debug(
-                    "GPhL - response=%s jobId=%s messageId=%s"
-                    % (result.__class__.__name__, enactment_id, correlation_id)
-                )
+                if result is StopIteration:
+                    result = GphlMessages.BeamlineAbort()
+                    self.workflow_queue.put_nowait(
+                        (
+                            "WorkflowAborted",
+                            GphlMessages.WorkflowAborted(),
+                            correlation_id,
+                            None
+                        )
+                    )
+                    self.workflow_ended()
+                else:
+                    logging.getLogger("HWR").debug(
+                        "GPhL - response=%s jobId=%s messageId=%s"
+                        % (result.__class__.__name__, enactment_id, correlation_id)
+                    )
                 return self._response_to_server(result, correlation_id)
 
         elif message_type in ("WorkflowAborted", "WorkflowCompleted", "WorkflowFailed"):
@@ -579,7 +584,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                 self.workflow_queue.put_nowait(
                     (message_type, payload, correlation_id, None)
                 )
-                self.workflow_queue.put_nowait(StopIteration)
+                self.workflow_ended()
             logging.getLogger("HWR").debug("Aborting - return None")
             return None
 
@@ -590,19 +595,6 @@ class GphlWorkflowConnection(HardwareObject, object):
             return self._response_to_server(
                 GphlMessages.BeamlineAbort(), correlation_id
             )
-
-    # def _extractResponse(self, responses, message_type):
-    #     result = abort_message = None
-    #
-    #     validResponses = [tt0 for tt0 in responses if tt0[1] is not None]
-    #     if not validResponses:
-    #         abort_message = "No valid response to %s request" % message_type
-    #     elif len(validResponses) == 1:
-    #         result = validResponses[0][1]
-    #     else:
-    #         abort_message = "Too many responses to %s request" % message_type
-    #     #
-    #     return result, abort_message
 
     # Conversion to Python
 

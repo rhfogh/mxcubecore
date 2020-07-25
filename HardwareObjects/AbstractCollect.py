@@ -238,10 +238,6 @@ class AbstractCollect(HardwareObject, object):
                          self.current_dc_parameters["detdistance"])
                 self.move_detector(self.current_dc_parameters["detdistance"])
 
-            # In order to call the hook with original parameters
-            # before update_data_collection_in_lims changes them
-            # TODO check why this happens
-
             # Motor positions debug output
             ll = sorted((tt[0] if isinstance(tt[0], (str, unicode)) else tt[0].name(), tt[1])
                         for tt in self.current_dc_parameters['motors'].items())
@@ -251,6 +247,10 @@ class AbstractCollect(HardwareObject, object):
             ll = sorted(self.diffractometer_hwobj.get_positions().items())
             logging.getLogger('HWR').debug("MOTORS ACQ result: "
                                            + ', '.join('%s=%s' % (tt) for tt in ll))
+
+            # In order to call the hook with original parameters
+            # before update_data_collection_in_lims changes them
+            # TODO check why this happens
             self.data_collection_hook()
 
             log.info("Collection: Updating data collection in LIMS")
@@ -258,7 +258,8 @@ class AbstractCollect(HardwareObject, object):
 
         except:
             exc_type, exc_value, exc_tb = sys.exc_info()
-            failed_msg = 'Data collection failed!\n%s' % exc_value
+            logging.getLogger("HWR").exception("Exception during collection")
+            failed_msg = 'Data collection failed with %s\n%s' % (exc_type, exc_value)
             self.collection_failed(failed_msg)
 
         finally:

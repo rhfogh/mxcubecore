@@ -138,6 +138,8 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         #self.emit('centringAllowed', (False, ))
         try:
           for qe in self._queue_entry_list:
+            if self._is_stopped:
+                break
             try:
                 self.__execute_entry(qe)
             except (queue_entry.QueueAbortedException, Exception) as ex:
@@ -163,7 +165,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
     def __execute_entry(self, entry):
         if not entry.is_enabled() or self._is_stopped:
             return
-        
+
         status = "Successful"
         #self.emit('centringAllowed', (False, ))
         self.emit('queue_entry_execute_started', (entry, ))
@@ -205,10 +207,11 @@ class QueueManager(HardwareObject, QueueEntryContainer):
             # Definetly not good state, but call post_execute
             # in anyways, there might be code that cleans up things
             # done in _pre_execute or before the exception in _execute.
-            self.emit('queue_entry_execute_finished', (entry, "Aborted"))
-            entry.post_execute()
-            entry.handle_exception(ex)
-            raise ex
+            if not self._is_stopped:
+                self.emit('queue_entry_execute_finished', (entry, "Aborted"))
+                entry.post_execute()
+                entry.handle_exception(ex)
+                raise ex
         else:
             entry.post_execute()
         finally:
@@ -223,6 +226,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         :returns: None
         :rtype: NoneType
         """
+        logging.getLogger("user_level_log").warning("Queue stopped bu user.")
         if self._queue_entry_list:
             for qe in self._current_queue_entries:
                 try:

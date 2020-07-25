@@ -352,7 +352,7 @@ class BaseQueueEntry(QueueEntryContainer):
         """
         self.get_view().setText(1, 'Stopped')
         logging.getLogger('queue_exec').\
-            info('Calling stop on: ' + str(self))
+            info('Calling stop (1) on: ' + str(self))
 
     def handle_exception(self, ex):
         view = self.get_view()
@@ -1074,7 +1074,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             raise
 
         self.get_view().setText(1, 'Stopped')
-        logging.getLogger('queue_exec').info('Calling stop on: ' + str(self))
+        logging.getLogger('queue_exec').info('Calling stop (2) on: ' + str(self))
         logging.getLogger('user_level_log').error('Collection: Stoppend')
         # this is to work around the remote access problem
         dispatcher.send("collect_finished")
@@ -1460,7 +1460,7 @@ class EnergyScanQueueEntry(BaseQueueEntry):
             raise
 
         self.get_view().setText(1, 'Stopped')
-        logging.getLogger('queue_exec').info('Calling stop on: ' + str(self))
+        logging.getLogger('queue_exec').info('Calling stop (3) on: ' + str(self))
         # this is to work around the remote access problem
         dispatcher.send("collect_finished")
         raise QueueAbortedException('Queue stopped', self)
@@ -1610,19 +1610,14 @@ class GphlWorkflowQueueEntry(BaseQueueEntry):
 
     def post_execute(self):
         BaseQueueEntry.post_execute(self)
-        # qc = self.get_queue_controller()
         msg = "Finishing workflow %s" % (self.get_data_model()._type)
         logging.getLogger("user_level_log").info(msg)
         api.gphl_workflow.post_execute()
 
     def stop(self):
         BaseQueueEntry.stop(self)
-        logging.getLogger('queue_exec').debug(
-            "In GphlWorkflowQueueEntry.stop"
-        )
-        api.gphl_workflow.abort()
+        logging.getLogger("HWR").info("MXCuBE aborting current GPhL workflow")
         self.get_view().setText(1, 'Stopped')
-        raise QueueAbortedException('Queue stopped', self)
 
 class GenericWorkflowQueueEntry(BaseQueueEntry):
     def __init__(self, view=None, data_model=None):

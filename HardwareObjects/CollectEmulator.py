@@ -333,7 +333,7 @@ class CollectEmulator(CollectMockup):
             # NBNB TODO put in time-out, somehow
             return_code = running_process.wait()
         except BaseException:
-            logging.getLogger("HWR").error("Error in GPhL collectoin emulation")
+            logging.getLogger("HWR").error("Error in GPhL collection emulation")
             raise
         finally:
             fp1.close()

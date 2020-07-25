@@ -61,8 +61,6 @@ __author__ = "Rasmus H Fogh"
 # Used to pass to priorInformation when no wavelengths are set (DiffractCal)
 DUMMY_WAVELENGTH = 999.999
 
-STOP_WORKFLOW = "STOP_WORKFLOW"
-
 
 class GphlWorkflow(HardwareObject, object):
     """Global Phasing workflow runner.
@@ -76,9 +74,6 @@ class GphlWorkflow(HardwareObject, object):
         super(GphlWorkflow, self).__init__(name)
         self._state = self.STATES.OFF
 
-        # HO that handles connection to GPhL workflow runner
-        self._workflow_connection = None
-
         # Needed to allow methods to put new actions on the queue
         # And as a place to get hold of other objects
         self._queue_entry = None
@@ -88,6 +83,9 @@ class GphlWorkflow(HardwareObject, object):
 
         # event to handle waiting for parameter input
         self._return_parameters = None
+
+        # Queue to read messages from GphlConnection
+        self._workflow_queue = None
 
         # Message - processing function map
         self._processor_functions = {}
@@ -280,11 +278,13 @@ class GphlWorkflow(HardwareObject, object):
         else:
             raise RuntimeError("GphlWorkflow set to invalid state: s" % value)
 
-
-    def abort(self, message=None):
-        logging.getLogger("HWR").info("MXCuBE aborting current GPhL workflow")
-        if api.gphl_connection is not None:
-            api.gphl_connection.abort_workflow(message=message)
+    # # NB This was called only from GphlWorkflowQueueEntry.stop()
+    # # Abort from data dialog abort buttons go directly to the execute() queue
+    # # Abort from the Queue stop command stop execution and call post_execute
+    # # Abort originated in Java workflow send back an abort message.
+    # # As of now there is no need for this function
+    # def abort(self, message=None):
+    #     logging.getLogger("HWR").info("MXCuBE aborting current GPhL workflow")
 
 
     def pre_execute(self, queue_entry):
@@ -311,32 +311,28 @@ class GphlWorkflow(HardwareObject, object):
                 "Cannot execute workflow - GphlWorkflowConnection not found"
             )
 
-
         # try:
         self.set_state(self.STATES.BUSY)
+        self._workflow_queue = gevent._threading.Queue()
 
-        # Queue to handle messages in coming to GphlWorkflow
-        workflow_queue = gevent._threading.Queue()
         # Fork off workflow server process
         api.gphl_connection.start_workflow(
-            workflow_queue, self._queue_entry.get_data_model()
+            self._workflow_queue, self._queue_entry.get_data_model()
         )
 
         while True:
-            while workflow_queue.empty():
-                time.sleep(0.1)
+            if self._workflow_queue is None:
+                # We can only get that value if we have already done post_eecute
+                # but the mechanics of aborting means we conme back
+                # Stop further processing here
+                raise QueueAbortedException()
 
-            tt0 = workflow_queue.get_nowait()
+            tt0  = self._workflow_queue.get()
             if tt0 is StopIteration:
                 logging.getLogger("HWR").debug(
                     "GPhL queue StopIteration"
                 )
                 break
-            elif tt0 == "BeamlineAbort":
-                logging.getLogger("HWR").debug(
-                    "GPhL queue BeamlineAbort"
-                )
-                self._queue_entry.stop()
 
             message_type, payload, correlation_id, result_list = tt0
             func = self._processor_functions.get(message_type)
@@ -351,18 +347,8 @@ class GphlWorkflow(HardwareObject, object):
                     "GPhL queue processing %s", message_type
                 )
                 response = func(payload, correlation_id)
-                if response == STOP_WORKFLOW:
-                    raise QueueAbortedException("GPhL owrkflow terminated", self)
-                elif result_list is not None:
+                if result_list is not None:
                     result_list.append((response, correlation_id))
-
-        # except (QueueAbortedException, BaseException) as ex:
-        #     if isinstance(ex, QueueAbortedException):
-        #         raise ex
-        #     else:
-        #         raise QueueAbortedException(
-        #             "Uncaught error during GPhL workflow execution", self
-        #         )
 
     def post_execute(self):
         """
@@ -371,10 +357,9 @@ class GphlWorkflow(HardwareObject, object):
 
         self._queue_entry = None
         self._data_collection_group = None
-        # if not self._gevent_event.is_set():
-        #     self._gevent_event.set()
         self.set_state(self.STATES.READY)
         self._server_subprocess_names.clear()
+        self._workflow_queue = None
         if api.gphl_connection is not None:
             api.gphl_connection.workflow_ended()
 
@@ -385,16 +370,16 @@ class GphlWorkflow(HardwareObject, object):
     # Message handlers:
 
     def workflow_aborted(self, payload, correlation_id):
-        logging.getLogger("user_level_log").info("GPhL Workflow aborted.")
-        return STOP_WORKFLOW
+        logging.getLogger("user_level_log").warning("GPhL Workflow aborted.")
+        self._workflow_queue.put_nowait(StopIteration)
 
     def workflow_completed(self, payload, correlation_id):
         logging.getLogger("user_level_log").info("GPhL Workflow completed.")
-        return STOP_WORKFLOW
+        self._workflow_queue.put_nowait(StopIteration)
 
     def workflow_failed(self, payload, correlation_id):
-        logging.getLogger("user_level_log").info("GPhL Workflow failed.")
-        return STOP_WORKFLOW
+        logging.getLogger("user_level_log").warning("GPhL Workflow failed.")
+        self._workflow_queue.put_nowait(StopIteration)
 
     def echo_info_string(self, payload, correlation_id=None):
         """Print text info to console,. log etc."""
@@ -759,8 +744,8 @@ class GphlWorkflow(HardwareObject, object):
         params = self._return_parameters.get()
         self._return_parameters = None
 
-        if params == "BeamlineAbort":
-            result = "BeamlineAbort"
+        if params is StopIteration:
+            result = StopIteration
 
         else:
             result = {}
@@ -871,6 +856,8 @@ class GphlWorkflow(HardwareObject, object):
         # Get modified parameters and confirm acquisition
         # Run before centring, as it also does confirm/abort
         parameters = self.query_collection_strategy(geometric_strategy, default_energy)
+        if parameters is StopIteration:
+            return StopIteration
         user_modifiable = geometric_strategy.isUserModifiable
         if user_modifiable:
             # Query user for new rotationSetting and make it,
@@ -878,8 +865,6 @@ class GphlWorkflow(HardwareObject, object):
                 "User modification of sweep settings not implemented. Ignored"
             )
 
-        if parameters == "BeamlineAbort":
-            return GphlMessages.BeamlineAbort()
 
         # Set transmission, detector_disance/resolution to final (unchanging) values
         # Also set energy to first energy value, necessary to get resolution consistent
@@ -1375,8 +1360,8 @@ class GphlWorkflow(HardwareObject, object):
             )
 
         params = self._return_parameters.get()
-        if params == "BeamlineAbort":
-            return GphlMessages.BeamlineAbort()
+        if params is StopIteration:
+            return StopIteration
 
         ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
         if ll0[0] == "*":
@@ -1558,8 +1543,8 @@ class GphlWorkflow(HardwareObject, object):
                 # We do not need the result, just to end the waiting
                 response = self._return_parameters.get()
                 self._return_parameters = None
-                if response == "BeamlineAbort":
-                    return GphlMessages.BeamlineAbort()
+                if response is StopIteration:
+                    return StopIteration
 
         settings = goniostatRotation.axisSettings.copy()
         if goniostatTranslation is not None:
