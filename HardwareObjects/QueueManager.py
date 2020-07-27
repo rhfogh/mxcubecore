@@ -226,7 +226,6 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         :returns: None
         :rtype: NoneType
         """
-        logging.getLogger("user_level_log").warning("Queue stopped bu user.")
         if self._queue_entry_list:
             for qe in self._current_queue_entries:
                 try:

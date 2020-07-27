@@ -227,6 +227,11 @@ class GphlWorkflowConnection(HardwareObject, object):
             # so we are never in state 'ON'/STANDBY
             raise RuntimeError("Workflow is already running, cannot be started")
 
+        # Cannot be done in init, where the api.sessions link is not yet ready
+        self.software_paths["GPHL_WDIR"] = os.path.join(
+            api.session.get_base_process_directory(), self.getProperty("gphl_subdir")
+        )
+
         self._workflow_name = workflow_model_obj.get_type()
         params = workflow_model_obj.get_workflow_parameters()
 
@@ -274,10 +279,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         path_template = workflow_model_obj.get_path_template()
         if "prefix" in workflow_options:
             workflow_options["prefix"] = path_template.base_prefix
-        workflow_options["wdir"] = os.path.join(
-            api.session.get_base_process_directory(),
-            self.getProperty("gphl_subdir")
-        )
+        workflow_options["wdir"] = self.software_paths["GPHL_WDIR"]
         # Hardcoded - location for log output
         command_list.extend(
             ConvertUtils.java_property(

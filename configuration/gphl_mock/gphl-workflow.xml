@@ -22,10 +22,10 @@
     <characterisation_budget_percent>5</characterisation_budget_percent>
 
     <characterisation_strategies>
-        InitialCharacterisation_6_5
-        InitialCharacterisation_12_3
-        InitialCharacterisation_12_4
-        InitialCharacterisation_12_5
+        Std_Characterisation_6_5
+        TEST_Characterisation_12_3
+        TEST_Characterisation_12_4
+        TEST_Characterisation_12_5
     </characterisation_strategies>
 
     <!-- Dose budgets (in MGy) for Pulldown in GphlAcquisitionWidget -->

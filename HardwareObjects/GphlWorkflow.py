@@ -865,7 +865,6 @@ class GphlWorkflow(HardwareObject, object):
                 "User modification of sweep settings not implemented. Ignored"
             )
 
-
         # Set transmission, detector_disance/resolution to final (unchanging) values
         # Also set energy to first energy value, necessary to get resolution consistent
 
@@ -1058,9 +1057,8 @@ class GphlWorkflow(HardwareObject, object):
         corresponding x,y,z translation position"""
 
         # Make input file
-        gphl_workflow_model = self._queue_entry.get_data_model()
         infile = os.path.join(
-            gphl_workflow_model.path_template.process_directory, "temp_recen.in"
+            api.gphl_connection.software_paths["GPHL_WDIR"], "temp_recen.in"
         )
         recen_data = OrderedDict()
         indata = {"recen_list": recen_data}
