@@ -29,6 +29,7 @@ import uuid
 import time
 import datetime
 import os
+import math
 import subprocess
 import socket
 import f90nml
@@ -105,25 +106,11 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
-        # Dose budget pulldown labels and default
-        self.dose_budgets = OrderedDict()
-        self.default_dose_budget_label = None
-
     def _init(self):
         super(GphlWorkflow, self)._init()
 
     def init(self):
         super(GphlWorkflow, self).init()
-
-        # Get dose budget data
-        default_dose_budget_label = None
-        xx0 = next(self.getObjects("dose_budgets"))
-        for pulldown_item in xx0.getObjects("pulldown_item"):
-            dd0 = pulldown_item.getProperties()
-            self.dose_budgets[dd0["label"]] = float(dd0["value"])
-            if default_dose_budget_label is None or dd0.get("is_default"):
-                default_dose_budget_label = dd0["label"]
-        self.default_dose_budget_label = default_dose_budget_label
 
         # Set up processing functions map
         self._processor_functions = {
@@ -246,12 +233,10 @@ class GphlWorkflow(HardwareObject, object):
                 wf_dict["options"] = dd0 = mx_workflow_options.copy()
                 if wf_node.hasObject("options"):
                     dd0.update(wf_node["options"].getProperties())
-                if wf_node.hasObject("beam_energies"):
-                    wf_dict["beam_energies"] = dd0 = OrderedDict()
-                    for wavelength in wf_node["beam_energies"]:
-                        dd0[wavelength.getProperty("role")] = wavelength.getProperty(
-                            "value"
-                        )
+
+            beam_energy_tags = wf_node.getProperty("beam_energy_tags")
+            if beam_energy_tags:
+                 wf_dict["beam_energy_tags"] = beam_energy_tags.strip().split()
 
             wf_dict["properties"] = dd0 = properties.copy()
             if wf_node.hasObject("properties"):
@@ -364,7 +349,6 @@ class GphlWorkflow(HardwareObject, object):
             api.gphl_connection.workflow_ended()
 
     def _add_to_queue(self, parent_model_obj, child_model_obj):
-        # There should be a better way, but apparently there isn't
         api.queue_model.add_child(parent_model_obj, child_model_obj)
 
     # Message handlers:
@@ -441,64 +425,67 @@ class GphlWorkflow(HardwareObject, object):
             sweeps = orientations.setdefault(rotation_id, [])
             sweeps.append(sweep)
 
-        char_budget_fraction = data_model.get_characterisation_budget_fraction()
         relative_sensitivity = data_model.get_relative_rad_sensitivity()
-        full_dose_budget = data_model.get_dose_budget() / relative_sensitivity
-        lines = ["Geometric strategy   :"]
-        if data_model.lattice_selected:
-            # Data collection TODO: Use workflow info to distinguish
-            beam_energies = data_model.get_beam_energies()
-            total_strategy_length = strategy_length * len(beam_energies)
-            # NB We no longer use the actual energies, only the tags
-            # TODO clean up the configs to match
-            energies = [default_energy, default_energy + 0.01, default_energy - 0.01]
-            for ii, tag in enumerate(beam_energies):
-                beam_energies[tag] = energies[ii]
 
-            for tag, energy in beam_energies.items():
-                # NB beam_energies is an ordered dictionary
-                lines.append("- %-18s %6.1f degrees" % (tag, strategy_length))
-            lines.append(
-                "%-18s:  %6.1f degrees" % ("Total rotation", total_strategy_length)
-            )
-            # This is not characterisation but acuisition
-            dose_budget = full_dose_budget = full_dose_budget * (
-                1 - char_budget_fraction
-            )
+        test_crystal_data, junk = self.get_emulation_crystal_data()
+        if test_crystal_data:
+            resolution = test_crystal_data.get("res_limit_def")
+        else:
+            resolution = api.resolution.get_position()
+
+        full_dose_budget = self.get_dose_budget(
+            resolution, relative_sensitivity=relative_sensitivity
+        )
+
+        if data_model.lattice_selected or "calibration" in data_model.get_type().lower():
+            lines = ["%s strategy" % api.gphl_connection.get_workflow_name()]
+            lines.extend(("-"*len(lines[0]), ""))
+            # Data collection TODO: Use workflow info to distinguish
+            beam_energies = OrderedDict()
+            energies = [default_energy, default_energy + 0.01, default_energy - 0.01]
+            for ii, tag in enumerate(data_model.get_beam_energy_tags()):
+                beam_energies[tag] = energies[ii]
+            budget_use_fraction = 1.0
 
         else:
-            # Charcterisation TODO: Use workflow info to distinguish h_o
+            # Characterisation
+            lines = ["Characterisation strategy"]
+            lines.extend(("="*len(lines[0]), ""))
             beam_energies = OrderedDict((("Characterisation", default_energy),))
-            lines.append("    - Total rotation : %7.1f degrees" % strategy_length)
-            total_strategy_length = strategy_length
-            dose_budget = char_budget_fraction * full_dose_budget
+            budget_use_fraction = data_model.get_characterisation_budget_fraction()
 
-        # For calculating dose-budget transmission
-        std_dose_rate = api.flux.get_dose_rate()
-        if std_dose_rate:
-            std_dose_rate = std_dose_rate * 100.0 / api.transmission.get_value()
-            # Convert from KGy/s to MGy/s
-            std_dose_rate /= 1000
+        total_strategy_length = strategy_length * len(beam_energies)
+        if len(beam_energies) > 1:
+            lines.append(
+                "Experiment length: %s * %6.1f°" % (len(beam_energies), strategy_length)
+            )
+        else:
+            lines.append("Experiment length: %6.1f°" % strategy_length)
 
         for rotation_id, sweeps in orientations.items():
             goniostatRotation = sweeps[0].goniostatSweepSetting
             axis_settings = goniostatRotation.axisSettings
             scan_axis = goniostatRotation.scanAxis
-            ss0 = "\nOrientation: " + ", ".join(
-                "%s= %6.1f" % (x, axis_settings.get(x))
+            ss0 = "\nSweep :     " + ",  ".join(
+                "%s= %6.1f°" % (x, axis_settings.get(x))
                 for x in axis_names
                 if x != scan_axis
             )
-            lines.append(ss0)
+            ll1 = []
             for sweep in sweeps:
                 start = sweep.start
                 width = sweep.width
-                ss0 = "    - sweep %s=%8.1f, width= %s degrees" % (
+                ss1 = "%s= %6.1f°,  sweep width= %6.1f°" % (
                     scan_axis,
                     start,
                     width,
                 )
-                lines.append(ss0)
+                ll1.append(ss1)
+            lines.append(ss0 + ",  " + ll1[0])
+            spacer = " " * (len(ss0) + 2)
+            for ss1 in ll1[1:]:
+                lines.append(spacer + ss1)
+
         info_text = "\n".join(lines)
 
         acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
@@ -510,34 +497,69 @@ class GphlWorkflow(HardwareObject, object):
         experiment_time = (
                 total_strategy_length * default_exposure / default_image_width
         )
-        if std_dose_rate:
-            transmission = 100.0 * dose_budget / (std_dose_rate * experiment_time)
-            transmission = min(transmission, 100.0)
 
-            def update_function(field_widget, experiment_length=total_strategy_length):
+        # For calculating dose-budget transmission
+        std_dose_rate = self.get_nominal_dose_rate(energy=beam_energies.values()[0])
+        if std_dose_rate:
+            dose_budget = self.get_dose_budget(
+                resolution, relative_sensitivity=relative_sensitivity
+            )
+            dose_budget -= data_model.get_dose_consumed()
+            if dose_budget > 0:
+                transmission = 100 * dose_budget * budget_use_fraction / (
+                    experiment_time * std_dose_rate
+                )
+                transmission = min(transmission, 100.0)
+            else:
+                transmission = 0.0
+
+            def update_function(
+                field_widget,
+                # experiment_length=total_strategy_length,
+                # relative_sensitivity=relative_sensitivity,
+            ):
                 """Function to update rotation_rate and budget_used fields
                 In parameter popup"""
                 parameters = field_widget.get_parameters_map()
                 exposure_time = float(parameters.get("exposure", 0))
                 image_width = float(parameters.get("imageWidth", 0))
-                dose_budget = float(parameters.get("dose_budget", 0))
-                transmission = float(parameters.get("transmission", 0))
+                resolution = float(parameters.get("resolution", 0))
+                budget_use_fraction = (
+                    float(parameters.get("budget_use_fraction", 0)) / 100.0
+                )
+                energy = float(parameters.get(list(beam_energies)[0], 0))
+                if not energy:
+                    energy = api.energy.get_value()
+
+                rotation_rate = experiment_time = transmission = dose_budget = 0.0
                 if image_width and exposure_time:
                     rotation_rate = image_width / exposure_time
-                    experiment_time = experiment_length / rotation_rate
-                else:
-                    rotation_rate = experiment_time = 0.0
-                if dose_budget:
-                    budget_required = (
-                        experiment_time * std_dose_rate * transmission / dose_budget
-                    )
-                else:
-                    budget_required = 0
+                    experiment_time = total_strategy_length / rotation_rate
+
+                    if resolution:
+                        std_dose_rate = self.get_nominal_dose_rate(energy=energy)
+
+                        dose_budget = self.get_dose_budget(
+                            resolution, relative_sensitivity=relative_sensitivity
+                        )
+                        use_dose_budget  = (
+                            dose_budget * budget_use_fraction
+                            - data_model.get_dose_consumed()
+                        )
+                        if use_dose_budget > 0:
+                            transmission = 100 * use_dose_budget / (
+                                experiment_time * std_dose_rate
+                            )
+                            transmission = min(transmission, 100.0)
+                        else:
+                            transmission = 0.0
+
 
                 dd0 = {
                     "rotation_rate": rotation_rate,
                     "experiment_time": experiment_time,
-                    "budget_required": budget_required,
+                    "dose_budget": dose_budget,
+                    "transmission": transmission,
                 }
                 field_widget.set_values(dd0)
 
@@ -551,6 +573,16 @@ class GphlWorkflow(HardwareObject, object):
                 "uiLabel": "Data collection plan",
                 "type": "textarea",
                 "defaultValue": info_text,
+            },
+            {
+                "variableName": "resolution",
+                "uiLabel": "Detector resolution (A)",
+                "type": "floatstring",
+                "defaultValue": resolution,
+                "lowerBound": 0.0,
+                "upperBound": 9.0,
+                "decimals": 3,
+                "update_function": update_function,
             },
             {
                 "variableName": "imageWidth",
@@ -571,71 +603,32 @@ class GphlWorkflow(HardwareObject, object):
                 "decimals": 4,
                 "update_function": update_function,
             },
-            # NB Transmission is in % in UI, but in 0-1 in workflow
             {
-                "variableName": "transmission",
-                "uiLabel": "Transmission (%)",
+                "variableName": "budget_use_fraction",
+                "uiLabel": "% of dose budget to use",
                 "type": "floatstring",
-                "defaultValue": transmission,
+                "defaultValue": budget_use_fraction * 100.0,
                 "lowerBound": 0.0,
-                "upperBound": 100.0,
-                "decimals": 2,
+                "upperBound": 300.0,
                 "update_function": update_function,
-            },
-            {
-                "variableName": "experiment_time",
-                "uiLabel": "Experiment duration (s)",
-                "type": "floatstring",
-                "defaultValue": experiment_time,
                 "decimals": 1,
-                "readOnly": True,
-            },
-            {
-                "variableName": "rotation_rate",
-                "uiLabel": "Rotation speed (deg/s)",
-                "type": "floatstring",
-                "defaultValue": (float(default_image_width / default_exposure)),
-                "decimals": 1,
-                "readOnly": True,
-            },
-            {
-                "variableName": "dose_budget",
-                "uiLabel": "Dose budget (MGy)",
-                "type": "floatstring",
-                "defaultValue": full_dose_budget,
-                "lowerBound": 0.0,
-                "decimals": 1,
-                "readOnly": True,
-            },
-            {
-                "variableName": "budget_required",
-                "uiLabel": "% of dose budget required",
-                "type": "floatstring",
-                "defaultValue": 0.0,
-                "lowerBound": 0.0,
-                "upperBound": 100.0,
-                "decimals": 2,
-                "readOnly": True,
             },
         ]
+        if (
+            data_model.lattice_selected
+            or "calibration" in data_model.get_type().lower()
+        ):
+            field_list.append(
+                {
+                    "variableName": "snapshot_count",
+                    "uiLabel": "Number of snapshots",
+                    "type": "combo",
+                    "defaultValue": str(data_model.get_snapshot_count()),
+                    "textChoices": ["0", "1", "2", "4"],
+                }
+            )
 
         field_list[-1]["NEW_COLUMN"] = "True"
-        test_crystal_data, junk = self.get_emulation_crystal_data()
-        if test_crystal_data:
-            resolution = test_crystal_data.get("res_limit_def")
-        else:
-            resolution = api.resolution.get_position()
-        field_list.append(
-            {
-                "variableName": "resolution",
-                "uiLabel": "Detector resolution (A)",
-                "type": "floatstring",
-                "defaultValue": resolution,
-                "lowerBound": 0.0,
-                "upperBound": 9.0,
-                "decimals": 3,
-            }
-        )
 
         ll0 = []
         for tag, val in beam_energies.items():
@@ -654,6 +647,8 @@ class GphlWorkflow(HardwareObject, object):
             # Use current energy and disallow changes
             ll0[0]["defaultValue"] = api.energy.getCurrentEnergy()
             ll0[0]["readOnly"] = True
+        else:
+            ll0[0]["update_function"] = update_function
         field_list.extend(ll0)
 
         if (
@@ -722,15 +717,56 @@ class GphlWorkflow(HardwareObject, object):
                         "defaultValue": bool(self.getProperty("centre_before_scan")),
                     }
                 )
-            if data_model.get_snapshot_count():
-                field_list.append(
-                    {
-                        "variableName": "centring_snapshots",
-                        "uiLabel": "Collect snapshots after each centring?",
-                        "type": "boolean",
-                        "defaultValue": False,
-                    }
-                )
+
+        # Add third column of non-edited values
+        field_list[-1]["NEW_COLUMN"] = "True"
+        field_list.extend(
+            [
+                # NB Transmission is in % in UI, but in 0-1 in workflow
+                {
+                    "variableName": "experiment_lengh",
+                    "uiLabel": "Experiment length (°)",
+                    "type": "text",
+                    "defaultValue": str(int(total_strategy_length)),
+                    "readOnly": True,
+                },
+                {
+                    "variableName": "experiment_time",
+                    "uiLabel": "Experiment duration (s)",
+                    "type": "floatstring",
+                    "defaultValue": experiment_time,
+                    "decimals": 1,
+                    "readOnly": True,
+                },
+                {
+                    "variableName": "rotation_rate",
+                    "uiLabel": "Rotation speed (°/s)",
+                    "type": "floatstring",
+                    "defaultValue": (float(default_image_width / default_exposure)),
+                    "decimals": 1,
+                    "readOnly": True,
+                },
+                {
+                    "variableName": "dose_budget",
+                    "uiLabel": "Nominal dose budget (MGy)",
+                    "type": "floatstring",
+                    "defaultValue": full_dose_budget,
+                    "lowerBound": 0.0,
+                    "decimals": 1,
+                    "readOnly": True,
+                },
+                {
+                    "variableName": "transmission",
+                    "uiLabel": "Transmission (%)",
+                    "type": "floatstring",
+                    "defaultValue": transmission,
+                    "lowerBound": 0.0,
+                    "upperBound": 100.0,
+                    "decimals": 1,
+                    "readOnly": True,
+                },
+            ]
+        )
 
         self._return_parameters = gevent.event.AsyncResult()
         responses = dispatcher.send(
@@ -774,8 +810,12 @@ class GphlWorkflow(HardwareObject, object):
             tag = "resolution"
             value = params.get(tag)
             if value:
-                value = float(value)
-                result["resolution"] = value
+                result[tag] = float(value)
+
+            tag = "snapshot_count"
+            value = params.get(tag)
+            if value:
+                result[tag] = int(value)
 
             if geometric_strategy.isInterleaved:
                 result["interleaveOrder"] = data_model.get_interleave_order()
@@ -788,16 +828,20 @@ class GphlWorkflow(HardwareObject, object):
                 "centre_before_sweep",
                 "centre_at_start",
                 "centre_before_scan",
-                "centring_snapshots",
             ):
                 # This defaults to False if parameter is not queried
                 result[tag] = bool(params.get(tag))
 
-            if not data_model.lattice_selected:
-                # About to collect characterisation or calibration data
-                # Update char_budget_fraction to reflect remaining dose budget
-                budget_used = float(params.get("budget_required", 0.0))
-                data_model.set_characterisation_budget_fraction(budget_used / 100.0)
+            # Register the dose (about to be) consumed
+            energy = list(beam_energies.values())[0]
+            std_dose_rate = self.get_nominal_dose_rate(energy=energy)
+            dose_consumed = (
+                float(params.get("transmission"))
+                * float(params.get("experiment_time"))
+                * std_dose_rate
+                / 100
+            ) + data_model.get_dose_consumed()
+            data_model.set_dose_consumed(dose_consumed)
         #
         return result
 
@@ -915,9 +959,12 @@ class GphlWorkflow(HardwareObject, object):
         queue_entries = []
         transcal_parameters = self.load_transcal_parameters()
 
+        snapshot_count = parameters.pop("snapshot_count", None)
+        if snapshot_count is not None:
+            gphl_workflow_model.set_snapshot_count(snapshot_count)
+
         # Decide whether to centre before individual sweeps
         centre_at_start = parameters.pop("centre_at_start", False)
-        centring_snapshots = parameters.pop("centring_snapshots", False)
         centre_before_sweep = parameters.pop("centre_before_sweep", False)
         centre_before_scan = parameters.pop("centre_before_scan", False)
         gphl_workflow_model.set_centre_before_sweep(centre_before_sweep)
@@ -982,11 +1029,10 @@ class GphlWorkflow(HardwareObject, object):
                         qe = self.enqueue_sample_centring(motor_settings=settings)
                         translation = self.execute_sample_centring(qe, sweepSetting)
 
-                        if centring_snapshots:
-                            okp = tuple(
-                                int(settings[x]) for x in self.rotation_axis_roles
-                            )
-                            self.collect_centring_snapshots('%s_%s_%s' % okp)
+                        okp = tuple(
+                            int(settings[x]) for x in self.rotation_axis_roles
+                        )
+                        self.collect_centring_snapshots('%s_%s_%s' % okp)
                         goniostatTranslations.append(translation)
                         recen_parameters["ref_xyz"] = tuple(
                             translation.axisSettings[x]
@@ -1010,9 +1056,8 @@ class GphlWorkflow(HardwareObject, object):
             goniostatTranslations.append(
                 self.execute_sample_centring(qe, goniostatRotation)
             )
-            if centring_snapshots:
-                okp = tuple(int(settings[x]) for x in self.rotation_axis_roles)
-                self.collect_centring_snapshots('%s_%s_%s' % okp)
+            okp = tuple(int(settings[x]) for x in self.rotation_axis_roles)
+            self.collect_centring_snapshots('%s_%s_%s' % okp)
 
         # Return SampleCentred message
         sampleCentred = GphlMessages.SampleCentred(
@@ -1582,15 +1627,16 @@ class GphlWorkflow(HardwareObject, object):
         :return:
         """
 
-        filename_template = "%s_%s_%s.jpeg"
 
         gphl_workflow_model = self._queue_entry.get_data_model()
-        snapshot_directory = os.path.join(
-            gphl_workflow_model.path_template.get_archive_directory(),
-            "centring_snapshots",
-        )
         number_of_snapshots = gphl_workflow_model.get_snapshot_count()
         if number_of_snapshots:
+            filename_template = "%s_%s_%s.jpeg"
+            snapshot_directory = os.path.join(
+                gphl_workflow_model.path_template.get_archive_directory(),
+                "centring_snapshots",
+            )
+
             logging.getLogger("user_level_log").info(
                 "Post-centring: Taking %d sample snapshot(s)", number_of_snapshots
             )
@@ -1730,6 +1776,39 @@ class GphlWorkflow(HardwareObject, object):
         return priorInformation
 
     # Utility functions
+
+    def get_dose_budget(self, resolution, decay_limit=None, relative_sensitivity=1.0):
+        """Get resolution-dependent dose budget using configured values"""
+        decay_limit = decay_limit or self.getProperty("default_decay_limit", 0.25)
+        max_budget = self.getProperty("", 20)
+        result = -2 * math.log(decay_limit) * resolution * resolution
+        #
+        return min(result, max_budget) / relative_sensitivity
+
+    def get_nominal_dose_rate(self, energy=None):
+        """
+        Get dose rate in MGy/s for a standard crystal at current settings.
+        Assumes square, top-hat beam so that the flux is evenly spread
+        over the rectangulat area of the beam.
+
+        :param energy: float Energy for calculation of dose rate, in keV.
+        :return: float
+        """
+
+        energy = energy or api.energy.get_value()()
+
+        # NB   Calculation assumes beam sizes in mm
+        beam_size = api.beam_info.get_beam_size()
+
+        # Result in kGy/s
+        result = (
+                api.flux.dose_rate_per_photon_per_mmsq(energy)
+                * api.flux.get_flux()
+                / beam_size[0]
+                / beam_size[1]
+                / 1000000.  # Converts to MGy/s
+        )
+        return result
 
     def get_emulation_crystal_data(self):
         """If sample is a test data set for emulation, get crystal data

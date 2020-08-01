@@ -211,6 +211,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
                 self.emit('queue_entry_execute_finished', (entry, "Aborted"))
                 entry.post_execute()
                 entry.handle_exception(ex)
+                logging.getLogger('HWR').exception("Exception while running queue:")
                 raise ex
         else:
             entry.post_execute()

@@ -1609,19 +1609,23 @@ class GphlWorkflow(TaskNode):
         self._characterisation_strategy = str()
         self._interleave_order = str()
         self._number = 0
-        self._beam_energies = OrderedDict()
+        self._beam_energy_tags = ("Acquisition",)
         self._detector_resolution = None
         self._space_group = None
         self._crystal_system = None
         self._point_group = None
         self._cell_parameters = None
-        self._snapshot_count = None
+        self._snapshot_count = int(
+            workflow_hwobj.getProperty("default_snapshot_count", 0)
+        )
         self._centre_before_sweep = None
         self._centre_before_scan = None
 
         self._dose_budget = None
+        self._decay_limit = 0.25
         self._characterisation_budget_fraction = 1.0
         self._relative_rad_sensitivity = 1.0
+        self._dose_consumed = 0.0
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1668,10 +1672,10 @@ class GphlWorkflow(TaskNode):
         self._detector_resolution = value
 
     # role:value beam_energy dictionary (in keV)
-    def get_beam_energies(self):
-        return self._beam_energies.copy()
-    def set_beam_energies(self, value):
-        self._beam_energies = OrderedDict(value)
+    def get_beam_energy_tags(self):
+        return self._beam_energy_tags
+    def set_beam_energy_tags(self, value):
+        self._beam_energy_tags = tuple(value)
 
     # Space Group.
     def get_space_group(self):
@@ -1704,6 +1708,20 @@ class GphlWorkflow(TaskNode):
 
     def set_dose_budget(self, value):
         self._dose_budget = value
+
+    # Decay limit. smallest relative intensity allowed - used for setting dose budget.
+    def get_decay_limit(self):
+        return self._decay_limit
+
+    def set_decay_limit(self, value):
+        self._decay_limit = value
+
+    # Dose already consumed, tyupicaly in characterisation
+    def get_dose_consumed(self):
+        return self._dose_consumed
+
+    def set_dose_consumed(self, value):
+        self._dose_consumed = value
 
     # Fraction of dose budget intended for characterisation.
     def get_characterisation_budget_fraction(self):

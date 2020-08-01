@@ -79,19 +79,6 @@ class ALBAFlux(AbstractFlux.AbstractFlux):
         last_current = (last_flux_norm / 250.) * current
         return last_current
 
-    def get_dose_rate(self, energy=None):
-        """
-        Get dose rate in kGy/s for a standard crystal at current settings.
-        Assumes Gaussian beam with beamsize giving teh FWHH in both dimensions.
-
-        :param energy: float Energy for calculation of dose rate, in keV.
-        :return: float
-        """
-
-        # The factor 1.25 converts from the average value over the beamsize
-        # to an estimated flux density at the peak.
-        return 1.25 * AbstractFlux.AbstractFlux.get_dose_rate(self, energy=energy)
-
 
 def test_hwo(hwo):
     print("Flux = %.4e" % hwo.get_flux())

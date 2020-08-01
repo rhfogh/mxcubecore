@@ -31,6 +31,12 @@
     <!-- Force GPhL workflow to use current energy value always.  -->
     <!-- Any non-empty value is True -->
     <characterisation_budget_percent>5</characterisation_budget_percent>
+    <!-- Lowest relative diffraction intensity allowed - used to set dose budgets -->
+    <default_decay_limit>0.25</default_decay_limit>
+    <!-- Maximum dose budget to use, in MGy-->
+    <maximum_dose_budget>20</maximum_dose_budget>
+    <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
+    <default_snapshot_count>0</default_snapshot_count>
 
     <characterisation_strategies>
         Std_Characterisation_6_5
@@ -38,23 +44,6 @@
         TEST_Characterisation_12_4
         TEST_Characterisation_12_5
     </characterisation_strategies>
-
-    <!-- Dose budgets (in MGy) for Pulldown in GphlAcquisitionWidget -->
-    <dose_budgets>
-        <pulldown_item>
-            <label>Sensitive Crystal:  5.0 MGy</label>
-            <value>5.0</value>
-        </pulldown_item>
-        <pulldown_item>
-            <label>Standard Crystal: 10.0 MGy</label>
-            <value>10.0</value>
-            <is_default>True</is_default>
-        </pulldown_item>
-        <pulldown_item>
-            <label>Robust Crystal: 20.0 MGy</label>
-            <value>20.0</value>
-        </pulldown_item>
-    </dose_budgets>
 
     <!-- Describes the test crystals used for diffractometer calibration -->
     <test_crystals>
@@ -215,14 +204,6 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <interleave_order>gs</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
 <!--            <options>-->
 <!--                <wfprefix>SAD_</wfprefix>-->
 <!--            </options>-->
@@ -239,19 +220,8 @@
             <!-- 'g' (Goniostat position); 's' (Scan number); -->
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <interleave_order>gsb</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Peak</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Remote</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.72</value>
-                </beam_energy>
-            </beam_energies>
+            <!-- Names of beam energies used, space-separated. -->
+            <beam_energy_tags>Peak Remote</beam_energy_tags>
 <!--            <options>-->
 <!--                <wfprefix>MAD2_</wfprefix>-->
 <!--            </options>-->
@@ -268,24 +238,8 @@
             <!-- 'g' (Goniostat position); 's' (Scan number); -->
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <interleave_order>gsb</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Peak</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Rising_Inflection</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.69</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Falling_Inflection</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.71</value>
-                </beam_energy>
-            </beam_energies>
+            <!-- Names of beam energies used, space-separated. -->
+            <beam_energy_tags>Peak Rising_Inflection Falling_Inflection</beam_energy_tags>
 <!--            <options>-->
 <!--                <wfprefix>MAD3_</wfprefix>-->
 <!--            </options>-->
@@ -304,14 +258,6 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <interleave_order>gs</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
 <!--            <options>-->
 <!--                <wfprefix>Native1_</wfprefix>-->
 <!--            </options>-->
@@ -330,14 +276,6 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <interleave_order>gs</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
 <!--            <options>-->
 <!--                <wfprefix>Native2_</wfprefix>-->
 <!--            </options>-->
@@ -358,14 +296,6 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <interleave_order>gs</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
 <!--            <options>-->
 <!--                <wfprefix>Native3_</wfprefix>-->
 <!--            </options>-->

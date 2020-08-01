@@ -57,30 +57,5 @@ class AbstractFlux(HardwareObject):
         """Get flux at current transmission in units of photons/s"""
         raise NotImplementedError
 
-    def get_dose_rate(self, energy=None):
-        """
-        Get dose rate in kGy/s for a standard crystal at current settings.
-        Assumes square, top-hat beam with al flux snside the beam size.
-        Override in subclasses for different situations
-
-        :param energy: float Energy for calculation of dose rate, in keV.
-        :return: float
-        """
-
-        energy = energy or api.energy.getCurrentEnergy()
-
-        # NB   Calculation assumes beam sizes in mm
-        beam_size = api.beam_info.get_beam_size()
-
-        # Result in kGy/s
-        result = (
-                self.dose_rate_per_photon_per_mmsq(energy)
-                * self.get_flux()
-                / beam_size[0]
-                / beam_size[1]
-                / 1000.  # Converts to kGy/s
-        )
-        return result
-
     def update_values(self):
         self.emit("fluxValueChanged", self.get_flux())
