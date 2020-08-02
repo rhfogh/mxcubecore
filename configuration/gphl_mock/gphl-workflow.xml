@@ -28,7 +28,7 @@
     <default_snapshot_count>0</default_snapshot_count>
 
     <characterisation_strategies>
-        Std_Characterisation_6_5
+        Characterisation_6_5
         TEST_Characterisation_12_3
         TEST_Characterisation_12_4
         TEST_Characterisation_12_5
