@@ -48,6 +48,8 @@
   <command type="tine" name="collectStart" tinename="/P14/collection/mx-standard">collect</command>
   <command type="tine" name="collectAbort"   tinename="/P14/collection/mx-standard">abort</command>
 
+  <command type="tine" name="collectNexpFrame"   tinename="/P14/collection/mx-standard">nexp-frame</command>
+
   <command type="tine" name="cmdSetCallibrationName"   tinename="/P14/collection/distance">calibration</command>
 
   <input_files_server>localhost:5698</input_files_server>

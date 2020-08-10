@@ -24,8 +24,8 @@
   <channel type="tine" name="chanBeamXY" tinename="/P14/detector/eiger16m">beam-xy</channel> 
   <channel type="tine" name="chanActualFrameRate" tinename="/P14/tioga/tioga">average-speed</channel>
 
-  <channel type="tine" name="chanCoverState" tinename="P14/P14ExpTbl.CDI/GuillCmd" size="2">RECV</channel>
-  <command type="tine" name="cmdCloseCover"  tinename="P14/P14ExpTbl.CDI/GuillCmd">GuillCmd</command>
+  <channel type="tine" name="chanCoverState" tinename="P14/P14DetTrans.CDI/GuillCmd" size="2">RECV</channel>
+  <command type="tine" name="cmdCloseCover"  tinename="P14/P14DetTrans.CDI/GuillCmd">GuillCmd</command>
   <!--command type="tine" name="cmdCloseCover"   tinename="/P14/collection/shutter">close</command-->
   <command type="tine" name="cmdRestartDaq" tinename="/P14/detector/eiger16m">initialize</command>
 

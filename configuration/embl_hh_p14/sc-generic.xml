@@ -1,6 +1,6 @@
 <equipment class = "Marvin">
 	<!--channel type="tine" name="chanSampleIsLoaded" tinename="/P14/MD3/MD3_0" timeout="500" verbose="True" attach="datachange">SampleIsLoaded</channel-->
-   <channel type="tine" name="chanSampleIsLoaded" tinename="/P14/MD3/MD3_0" timeout="500" verbose="False" attach="datachange">SampleIsLoaded</channel>
+   <channel type="tine" name="chanSampleIsLoaded" tinename="/P14/MD3/MD3_0" timeout="500" verbose="True" attach="datachange">SampleIsLoaded</channel>
    <channel type="tine" name="chanStatusList" tinename="/P14/P14SC/P14Marvin">MarvinStatus</channel>
    <channel type="tine" name="chanPuckSwitches" tinename="/P14/P14SC/P14Marvin">PuckSwitches</channel>
    <channel type="tine" name="chanMountedSamplePuck" tinename="/P14/P14SC/P14Marvin">StsSmplMnted</channel>
@@ -10,7 +10,9 @@
    <channel type="tine" name="chanCommandList" tinename="/P14/P14SC/P14Marvin" attach="datachange">CommandList</channel>
    <channel type="tine" name="chanErrors" tinename="/P14/P14SC/P14Marvin" attach="datachange">Errors</channel>
    <channel type="tine" name="chanDeviceBusy" tinename="/P14/P14SC/P14Marvin" attach="datachange">Marvin.MountStat</channel>
+   <channel type="tine" name="chanExpHutchDoorState" tinename="/P14/P14DetTrans.CDI/P14ExpHutchDoorState" attach="datachange">RECV</channel>
 
+   <command type="tine" name="cmdServiceMode" tinename="/P14/P14SC/P14Marvin" timeout="2000">ServiceMode</command>
    <command type="tine" name="cmdMountSample" tinename="/P14/P14SC/P14Marvin" timeout="2000">MountSample</command> 
    <command type="tine" name="cmdUnmountSample" tinename="/P14/P14SC/P14Marvin" timeout="2000">DismountSample</command>
    <command type="tine" name="cmdOpenLid" tinename="/P14/P14SC/P14Marvin">Dewar.OpenLid</command>
