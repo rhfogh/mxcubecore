@@ -25,6 +25,26 @@ __category__ = "General"
 
 
 class AbstractFlux(HardwareObject):
+
+    # Dose rate for a standard composition crystal, in Gy/s
+    # As a function of energy in keV
+    dose_rate_per_photon_per_mmsq = interp1d(
+        [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30.0],
+        [
+            4590.0e-12,
+            1620.0e-12,
+            790.0e-12,
+            457.0e-12,
+            293.0e-12,
+            202.0e-12,
+            146.0e-12,
+            111.0e-12,
+            86.1e-12,
+            68.7e-12,
+            55.2e-12,
+        ],
+    )
+
     def __init__(self, name):
         HardwareObject.__init__(self, name)
 

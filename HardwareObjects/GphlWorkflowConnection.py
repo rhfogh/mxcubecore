@@ -35,11 +35,11 @@ import gevent.monkey
 import gevent.event
 from py4j import clientserver
 
-from HardwareRepository import ConvertUtils
-from HardwareRepository.HardwareObjects import GphlMessages
+import api
 
-# NB MUST be imported via full path to match imports elsewhere:
-from HardwareRepository.HardwareObjects.queue_model_enumerables import States
+import ConvertUtils
+import GphlMessages
+
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from HardwareRepository.HardwareRepository import getHardwareRepository
 
@@ -75,14 +75,7 @@ class GphlWorkflowConnection(HardwareObject, object):
     """
     This HO acts as a gateway to the Global Phasing workflow engine.
     """
-
-    # object states
-    valid_states = [
-        States.OFF,  # Not connected to remote server
-        States.ON,  # Connected, inactive, awaiting start (or disconnect)
-        States.RUNNING,  # Server is active and will produce next message
-        States.OPEN,  # Server is waiting for a message from the beamline
-    ]
+    STATES = GphlMessages.States
 
     def __init__(self, name):
         super(GphlWorkflowConnection, self).__init__(name)
@@ -102,7 +95,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         self._running_process = None
         self.collect_emulator_process = None
 
-        self._state = States.OFF
+        self._state = self.STATES.OFF
 
         # py4j connection parameters
         self._connection_parameters = {}
@@ -150,11 +143,11 @@ class GphlWorkflowConnection(HardwareObject, object):
         paths["BDG_home"] = paths.get("co.gphl.wf.bdg_licence_dir") or pp0
 
     def get_state(self):
-        """Returns a member of the General.States enumeration"""
+        """Returns a member of the self.STATES enumeration"""
         return self._state
 
     def set_state(self, value):
-        if value in self.valid_states:
+        if value in self.STATES:
             self._state = value
             dispatcher.send("stateChanged", self, self._state)
         else:
@@ -229,12 +222,15 @@ class GphlWorkflowConnection(HardwareObject, object):
         # NBNB All command line option values are put in quotes (repr) when
         # the workflow is invoked remotely through ssh.
 
-        self.workflow_queue = workflow_queue
-
-        if self.get_state() != States.OFF:
+        if self.get_state() != self.STATES.OFF:
             # NB, for now workflow is started as the connection is made,
             # so we are never in state 'ON'/STANDBY
             raise RuntimeError("Workflow is already running, cannot be started")
+
+        # Cannot be done in init, where the api.sessions link is not yet ready
+        self.software_paths["GPHL_WDIR"] = os.path.join(
+            api.session.get_base_process_directory(), self.getProperty("gphl_subdir")
+        )
 
         self._workflow_name = workflow_model_obj.get_type()
         params = workflow_model_obj.get_workflow_parameters()
@@ -283,9 +279,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         path_template = workflow_model_obj.get_path_template()
         if "prefix" in workflow_options:
             workflow_options["prefix"] = path_template.base_prefix
-        workflow_options["wdir"] = os.path.join(
-            path_template.process_directory, self.getProperty("gphl_subdir")
-        )
+        workflow_options["wdir"] = self.software_paths["GPHL_WDIR"]
         # Hardcoded - location for log output
         command_list.extend(
             ConvertUtils.java_property(
@@ -301,7 +295,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         command_list.append(params["application"])
 
         for keyword, value in params.get("properties", {}).items():
-            print(keyword, value)
             command_list.extend(
                 ConvertUtils.java_property(keyword, value, quote_value=in_shell)
             )
@@ -340,15 +333,23 @@ class GphlWorkflowConnection(HardwareObject, object):
         # # Any value is OK, just setting it is enough.
         # envs["AutoPROCWorkFlowUser"] = "1"
 
-        # Hack to pass alternative installation dir for processing
-        val = self.software_paths.get("gphl_wf_processing_installation")
-        if val:
-            envs["GPHL_PROC_INSTALLATION"] = val
-
         # These env variables are needed in some cases for wrapper scripts
         # Specifically for the stratcal wrapper.
         envs["GPHL_INSTALLATION"] = self.software_paths["GPHL_INSTALLATION"]
         envs["BDG_home"] = self.software_paths["BDG_home"]
+        envs["GPHL_XDS_PATH"] = os.path.dirname(
+            self.software_paths["co.gphl.wf.xds.bin"]
+        )
+        GPHL_CCP4_PATH =  self.software_paths.get("GPHL_CCP4_PATH")
+        if GPHL_CCP4_PATH:
+            envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
+        # Hack to pass alternative installation dir for processing
+        val = self.software_paths.get("gphl_wf_processing_installation")
+        if val:
+            envs["GPHL_PROC_INSTALLATION"] = val
+        else:
+            envs["GPHL_PROC_INSTALLATION"] =  envs["GPHL_INSTALLATION"]
+
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
         )
@@ -358,8 +359,10 @@ class GphlWorkflowConnection(HardwareObject, object):
             logging.getLogger().error("Error in spawning workflow application")
             raise
 
+        self.workflow_queue = workflow_queue
+        self.set_state(self.STATES.READY)
+
         logging.getLogger("py4j.clientserver").setLevel(logging.WARNING)
-        self.set_state(States.RUNNING)
 
         logging.getLogger("HWR").debug(
             "GPhL workflow pid, returncode : %s, %s"
@@ -367,12 +370,12 @@ class GphlWorkflowConnection(HardwareObject, object):
         )
 
     def workflow_ended(self):
-        if self.get_state() == States.OFF:
+        if self.get_state() == self.STATES.OFF:
             # No workflow to abort
             return
 
         logging.getLogger("HWR").debug("GPhL workflow ended")
-        self.set_state(States.OFF)
+        self.set_state(self.STATES.OFF)
         if self._await_result is not None:
             # We are awaiting an answer - give an abort
             self._await_result.append((GphlMessages.BeamlineAbort(), None))
@@ -380,7 +383,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         elif self._running_process is not None:
             self._running_process = None
             # NBNB TODO how do we close down the workflow if there is no answer pending?
-
         self._enactment_id = None
         self._workflow_name = None
         self.workflow_queue = None
@@ -482,6 +484,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         Return goes to server
 
         NB Callled freom external java) workflow"""
+        if self.get_state() is self.STATES.OFF:
+            return None
 
         xx0 = self._decode_py4j_message(py4j_message)
         message_type = xx0.message_type
@@ -541,7 +545,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         ):
             # Requests:
             self._await_result = []
-            self.set_state(States.OPEN)
+            self.set_state(self.STATES.BUSY)
             if self.workflow_queue is None:
                 # Could be None if we have ended the workflow
                 return self._response_to_server(
@@ -554,14 +558,26 @@ class GphlWorkflowConnection(HardwareObject, object):
                 while not self._await_result:
                     time.sleep(0.1)
                 result, correlation_id = self._await_result.pop(0)
+                if self.get_state() == self.STATES.BUSY:
+                    self.set_state(self.STATES.READY)
                 self._await_result = None
-                if self.get_state() == States.OPEN:
-                    self.set_state(States.RUNNING)
 
-                logging.getLogger("HWR").debug(
-                    "GPhL - response=%s jobId=%s messageId=%s"
-                    % (result.__class__.__name__, enactment_id, correlation_id)
-                )
+                if result is StopIteration:
+                    result = GphlMessages.BeamlineAbort()
+                    self.workflow_queue.put_nowait(
+                        (
+                            "WorkflowAborted",
+                            GphlMessages.WorkflowAborted(),
+                            correlation_id,
+                            None
+                        )
+                    )
+                    self.workflow_ended()
+                else:
+                    logging.getLogger("HWR").debug(
+                        "GPhL - response=%s jobId=%s messageId=%s"
+                        % (result.__class__.__name__, enactment_id, correlation_id)
+                    )
                 return self._response_to_server(result, correlation_id)
 
         elif message_type in ("WorkflowAborted", "WorkflowCompleted", "WorkflowFailed"):
@@ -570,7 +586,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                 self.workflow_queue.put_nowait(
                     (message_type, payload, correlation_id, None)
                 )
-                self.workflow_queue.put_nowait(StopIteration)
+                self.workflow_ended()
             logging.getLogger("HWR").debug("Aborting - return None")
             return None
 
@@ -581,19 +597,6 @@ class GphlWorkflowConnection(HardwareObject, object):
             return self._response_to_server(
                 GphlMessages.BeamlineAbort(), correlation_id
             )
-
-    # def _extractResponse(self, responses, message_type):
-    #     result = abort_message = None
-    #
-    #     validResponses = [tt0 for tt0 in responses if tt0[1] is not None]
-    #     if not validResponses:
-    #         abort_message = "No valid response to %s request" % message_type
-    #     elif len(validResponses) == 1:
-    #         result = validResponses[0][1]
-    #     else:
-    #         abort_message = "Too many responses to %s request" % message_type
-    #     #
-    #     return result, abort_message
 
     # Conversion to Python
 

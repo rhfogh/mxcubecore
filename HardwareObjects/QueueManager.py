@@ -218,10 +218,12 @@ class QueueManager(HardwareObject, QueueEntryContainer):
             # Definetly not good state, but call post_execute
             # in anyways, there might be code that cleans up things
             # done in _pre_execute or before the exception in _execute.
-            self.emit("queue_entry_execute_finished", (entry, "Aborted"))
-            entry.post_execute()
-            entry.handle_exception(ex)
-            raise ex
+            if not self._is_stopped:
+                self.emit('queue_entry_execute_finished', (entry, "Aborted"))
+                entry.post_execute()
+                entry.handle_exception(ex)
+                logging.getLogger('HWR').exception("Exception while running queue:")
+                raise ex
         else:
             entry.post_execute()
         finally:
@@ -252,7 +254,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         # Reset the pause event, incase we were waiting.
         self.set_pause(False)
         self.emit("queue_stopped", (None,))
-        self.emit("statusMessage", ("status", "", "Queue stoped"))
+        self.emit("statusMessage", ("status", "", "Queue stopped"))
         # self.emit('centringAllowed', (True, ))
         self._is_stopped = True
 

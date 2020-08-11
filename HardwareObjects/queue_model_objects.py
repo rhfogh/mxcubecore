@@ -1803,21 +1803,23 @@ class GphlWorkflow(TaskNode):
         self._characterisation_strategy = str()
         self._interleave_order = str()
         self._number = 0
-        self._beam_energies = OrderedDict()
+        self._beam_energy_tags = ("Acquisition",)
         self._detector_resolution = None
         self._space_group = None
         self._crystal_system = None
         self._point_group = None
         self._cell_parameters = None
-        self._snapshot_count = None
+        self._snapshot_count = int(
+            workflow_hwobj.getProperty("default_snapshot_count", 0)
+        )
+        self._centre_before_sweep = None
         self._centre_before_scan = None
 
         self._dose_budget = None
+        self._decay_limit = 0.25
         self._characterisation_budget_fraction = 1.0
         self._relative_rad_sensitivity = 1.0
-
-        # Used only for emulation, to oint to test data
-        self._emulate_sample_name = None
+        self._dose_consumed = 0.0
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1851,13 +1853,13 @@ class GphlWorkflow(TaskNode):
     # Starting run number. Unnecessary.
     # Left in as it is modified by signal when edited.
     def get_number(self):
-        logging.getLogger().warning(
+        logging.getLogger().debug(
             "Attempt to get unused attribute GphlWorkflow.number"
         )
         return None
 
     def set_number(self, value):
-        logging.getLogger().warning(
+        logging.getLogger().debug(
             "Attempt to set unused attribute GphlWorkflow.number"
         )
 
@@ -1869,11 +1871,10 @@ class GphlWorkflow(TaskNode):
         self._detector_resolution = value
 
     # role:value beam_energy dictionary (in keV)
-    def get_beam_energies(self):
-        return self._beam_energies.copy()
-
-    def set_beam_energies(self, value):
-        self._beam_energies = OrderedDict(value)
+    def get_beam_energy_tags(self):
+        return self._beam_energy_tags
+    def set_beam_energy_tags(self, value):
+        self._beam_energy_tags = tuple(value)
 
     # Space Group.
     def get_space_group(self):
@@ -1911,6 +1912,20 @@ class GphlWorkflow(TaskNode):
     def set_dose_budget(self, value):
         self._dose_budget = value
 
+    # Decay limit. smallest relative intensity allowed - used for setting dose budget.
+    def get_decay_limit(self):
+        return self._decay_limit
+
+    def set_decay_limit(self, value):
+        self._decay_limit = value
+
+    # Dose already consumed, tyupicaly in characterisation
+    def get_dose_consumed(self):
+        return self._dose_consumed
+
+    def set_dose_consumed(self, value):
+        self._dose_consumed = value
+
     # Fraction of dose budget intended for characterisation.
     def get_characterisation_budget_fraction(self):
         return self._characterisation_budget_fraction
@@ -1944,6 +1959,12 @@ class GphlWorkflow(TaskNode):
     def set_snapshot_count(self, value):
         self._snapshot_count = value
 
+    # (Re)centre before each sweep?.
+    def get_centre_before_sweep(self):
+        return self._centre_before_sweep
+    def set_centre_before_sweep(self, value):
+        self._centre_before_sweep = bool(value)
+
     # (Re)centre before each scan?.
     def get_centre_before_scan(self):
         return self._centre_before_scan
@@ -1952,26 +1973,6 @@ class GphlWorkflow(TaskNode):
 
     def get_path_template(self):
         return self.path_template
-
-    def get_emulate_sample_name(self):
-        """Sample name - Needed only for emulation
-
-        Either set directly, or derived form sample name, if this start with 'emulate-'
-        """
-        import api
-        result = self._emulate_sample_name
-        if result is None:
-            sample = api.sample_changer.getLoadedSample()
-            if sample is not None:
-                sample_name =  sample.getName()
-                prefix = self.workflow_hwobj.TEST_SAMPLE_PREFIX
-                if sample_name.startswith(prefix):
-                    result = sample_name[len(prefix):]
-        #
-        return result
-
-    def set_emulate_sample_name(self, value):
-        self._emulate_sample_name = value
 
     def get_workflow_parameters(self):
         result = self.workflow_hwobj.get_available_workflows().get(self.get_type())

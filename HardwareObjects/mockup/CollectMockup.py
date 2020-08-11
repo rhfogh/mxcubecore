@@ -61,26 +61,31 @@ class CollectMockup(AbstractCollect):
         number_of_images = self.current_dc_parameters["oscillation_sequence"][0][
             "number_of_images"
         ]
-        for image in range(
-            self.current_dc_parameters["oscillation_sequence"][0]["number_of_images"]
-        ):
-            if self.aborted_by_user:
-                self.ready_event.set()
-                self.aborted_by_user = False
-                return
 
-            # Uncomment to test collection failed
-            # if image == 5:
-            #    self.emit("collectOscillationFailed", (self.owner, False,
-            #       "Failed on 5", self.current_dc_parameters.get("collection_id")))
-            #    self.ready_event.set()
-            #    return
+        try:
+            for image in range(
+		        self.current_dc_parameters["oscillation_sequence"][0]["number_of_images"]
+		    ):
+                if self.aborted_by_user:
+                    self.ready_event.set()
+                    self.aborted_by_user = False
+                    return
 
-            time.sleep(
-                self.current_dc_parameters["oscillation_sequence"][0]["exposure_time"]
-            )
-            self.emit("collectImageTaken", image)
-            self.emit("progressStep", (int(float(image) / number_of_images * 100)))
+                # Uncomment to test collection failed
+                # if image == 5:
+                #    self.emit("collectOscillationFailed", (self.owner, False,
+                #       "Failed on 5", self.current_dc_parameters.get("collection_id")))
+                #    self.ready_event.set()
+                #    return
+
+                time.sleep(
+                    self.current_dc_parameters["oscillation_sequence"][0]["exposure_time"]
+                )
+                self.emit("collectImageTaken", image)
+                self.emit("progressStep", (int(float(image) / number_of_images * 100)))
+        except gevent.GreenletExit:
+            # Leaving this in causes GPhL mock acquisition to be reported as Failed
+            pass
         self.emit_collection_finished()
 
     def emit_collection_finished(self):
@@ -143,13 +148,11 @@ class CollectMockup(AbstractCollect):
                 self.run_processing_after,
             )
 
-    def stopCollect(self, owner="MXCuBE"):
-        """
-        Descript. :
-        """
+
+    def stop_collect(self):
+        """"""
         self.aborted_by_user = True
-        self.cmd_collect_abort()
-        self.emit_collection_failed("Aborted by user")
+        super(CollectMockup, self).stop_collect()
 
     @task
     def _take_crystal_snapshot(self, filename):

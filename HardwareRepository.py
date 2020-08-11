@@ -250,7 +250,14 @@ class __HardwareRepositoryClient:
             try:
                 hwobj_instance = self.parseXML(xml_data, hwobj_name)
                 if isinstance(hwobj_instance, str):
-                    return self.loadHardwareObject(hwobj_instance)
+                    # Changed so import redirection gets the ho name registered
+                    # return self.loadHardwareObject(ho)
+                    hwobj_instance = self.loadHardwareObject(hwobj_instance)
+                    if hwobj_name in self.invalidHardwareObjects:
+                        self.invalidHardwareObjects.remove(hwobj_name)
+
+                    self.hardwareObjects[hwobj_name] = hwobj_instance
+                    return hwobj_instance
             except BaseException:
                 comment = "Cannot parse xml"
                 logging.getLogger("HWR").exception(
