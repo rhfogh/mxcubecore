@@ -135,6 +135,7 @@ class EMBLMachineInfo(HardwareObject):
         self.chan_sc_dewar_low_level_alarm = None
         self.chan_sc_dewar_overflow_alarm = None
 
+        self.cryojet_in_place = True
         self.cryojet_temperature = "Unknown"
 
         self.flux_hwobj = None
@@ -259,7 +260,7 @@ class EMBLMachineInfo(HardwareObject):
     def cryojet_temperature_changed(self, value):
         self.cryojet_temperature = value
         self.values_list[5]["value"] = "%s Temp: %s K"%(self.values_list[5]["value"].split(" Temp:")[0],value)
-        if value < 111. and self.values_list[5]["in_range"]:
+        if value < 111. and self.criojet_in_place: #self.values_list[5]["in_range"]:
            self.values_list[5]["in_range"] = True
         else:
            self.values_list[5]["in_range"] = False
@@ -274,6 +275,7 @@ class EMBLMachineInfo(HardwareObject):
         :return: None
         """
 
+        self.criojet_in_place = value
         self.values_list[5]["in_range"] = False
         self.values_list[5]["bold"] = True and ( self.cryojet_temperature < 111. )
 

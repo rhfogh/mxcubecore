@@ -81,6 +81,7 @@ class EMBLCollect(AbstractCollect):
         self.cmd_collect_start = None
         self.cmd_collect_abort = None
         self.cmd_collect_xds_data_range = None
+        self.cmd_collect_nexp_frame = None
 
         self.flux_hwobj = None
         self.graphics_manager_hwobj = None
@@ -135,6 +136,8 @@ class EMBLCollect(AbstractCollect):
         self.cmd_collect_unit_cell = self.getCommandObject("collectUnitCell")
         self.cmd_collect_xds_data_range = self.getCommandObject("collectXdsDataRange")
 
+        self.cmd_collect_nexp_frame = self.getCommandObject("collectNexpFrame")
+
         self.cmd_collect_start = self.getCommandObject("collectStart")
         self.cmd_collect_abort = self.getCommandObject("collectAbort")
 
@@ -177,7 +180,15 @@ class EMBLCollect(AbstractCollect):
             self.cmd_collect_directory(str(file_info["directory"]))
             self.cmd_collect_exposure_time(osc_seq["exposure_time"])
             self.cmd_collect_in_queue(self.current_dc_parameters["in_queue"] != False)
+          
+            if osc_seq["overlap"] == 0.0:
+                self.cmd_collect_nexp_frame(1)
+            #self.print_log("GUI","info","overlap %s"%osc_seq["overlap"])
+            #if osc_seq["overlap"] == -89:
+            #    osc_seq["overlap"] = -89.9
             self.cmd_collect_overlap(osc_seq["overlap"])
+
+
             #            self.cmd_collect_overlap(-0.5)
             shutter_name = self.detector_hwobj.get_shutter_name()
             if shutter_name is not None:

@@ -169,6 +169,9 @@ class EMBLDoorInterlock(Device):
            It doesn't matter what we are sending in the command
            as long as it is a one char
         """
+        gevent.spawn(self.unlock_door_interlock_task)
+
+    def unlock_door_interlock_task(self):
         if self.diffractometer_hwobj is not None:
             if self.diffractometer_hwobj.in_plate_mode():
                 if self.detector_distance_hwobj is not None:
@@ -180,8 +183,15 @@ class EMBLDoorInterlock(Device):
             else:
                 if self.detector_distance_hwobj is not None:
                     if self.detector_distance_hwobj.getPosition() < 1099:
+                        logging.getLogger("GUI").info("Moving detector. Wait...")
                         self.detector_distance_hwobj.move(1100)
+                        self.detector_distance_hwobj.wait_ready(25)
                         gevent.sleep(1)
+                        #with gevent.Timeout(25, Exception("Timeout waiting for device ready")):
+                        #     while not self.detector_distance_hwobj.is_ready():
+                        #         gevent.sleep(0.05)
+                        #gevent.sleep(1)
+                        logging.getLogger("GUI").info("Detector moved to save position")
             try:
                
                 self.diffractometer_hwobj.set_phase(
@@ -198,7 +208,7 @@ class EMBLDoorInterlock(Device):
                 )
 
         if not self.use_door_interlock:
-            logging.getLogger().info("Door interlock is disabled")
+            logging.getLogger("HWR").info("Door interlock is disabled")
             return
 
         if self.door_interlock_state:

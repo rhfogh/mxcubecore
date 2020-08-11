@@ -123,6 +123,8 @@ class Marvin(AbstractSampleChanger.SampleChanger):
 
         self._device_busy = False
 
+        self._exp_hutch_door_ready = True
+
         self.chan_status = None
         self.chan_sample_is_loaded = None
         self.chan_puck_switched = None
@@ -186,6 +188,11 @@ class Marvin(AbstractSampleChanger.SampleChanger):
         if self.chan_device_busy is not None:
             self.chan_device_busy.connectSignal("update", self.device_busy_changed)
 
+        self.chan_exp_hutch_door_state = self.getChannelObject("chanExpHutchDoorState", optional=True)
+        if self.chan_exp_hutch_door_state is not None:
+           self.chan_exp_hutch_door_state.connectSignal("update", self.exp_hutch_door_state_changed)
+
+
         self.cmd_mount_sample = self.getCommandObject("cmdMountSample")
         self.cmd_unmount_sample = self.getCommandObject("cmdUnmountSample")
         self.cmd_open_lid = self.getCommandObject("cmdOpenLid")
@@ -227,6 +234,8 @@ class Marvin(AbstractSampleChanger.SampleChanger):
         self.mounted_sample_puck_changed(self.chan_mounted_sample_puck.getValue())
         self.sample_is_loaded_changed(self.chan_sample_is_loaded.getValue())
 
+    def exp_hutch_door_state_changed(self,state):
+        self._exp_hutch_door_ready = state
 
     def device_busy_changed(self, ar):
         logging.getLogger("HWR").debug("Sample changer: device busy changed %s"%ar)
@@ -285,7 +294,10 @@ class Marvin(AbstractSampleChanger.SampleChanger):
         with gevent.Timeout(timeout, Exception("Timeout waiting for command acknowldegement")):
              logging.getLogger("HWR").debug("Sample changer: start waiting command acknowldegement")
              while not self._command_acknowledgement:
-                 gevent.sleep(0.05)
+                if self._was_mount_error:
+                   self._was_mount_error = False
+                   return
+                gevent.sleep(0.05)
              logging.getLogger("HWR").debug("Sample changer: done waiting command acknowldegement")
                 
 
@@ -378,9 +390,9 @@ class Marvin(AbstractSampleChanger.SampleChanger):
     def process_step_info_changed(self, process_step_info):
         self._process_step_info = process_step_info.replace("\n", " ")
         self._command_acknowledgement = True
-        if "error" in process_step_info.lower():
+        if "error" in process_step_info.lower() or "hutch door open" in process_step_info.lower():
             self._was_mount_error = True
-            logging.getLogger("GUI").error("Sample changer: %s" % self._process_step_info)
+            logging.getLogger("GUI").error("Sample changer:%s" % self._process_step_info)
 	    # GB: 20190304: this seemd to lock mxcube forever on any marvin error
             #self._in_error_state = True
             #self._setState(AbstractSampleChanger.SampleChangerState.Alarm)
@@ -485,6 +497,10 @@ class Marvin(AbstractSampleChanger.SampleChanger):
         """
         #self._setState(AbstractSampleChanger.SampleChangerState.Ready)
         log = logging.getLogger("GUI")
+
+        if not self._exp_hutch_door_ready:
+           log.error("Hutch door is open. Please close it")
+           return
 
         if self._focusing_mode not in ("Collimated", "Double", "Imaging", "TREXX", "P13mode"):
             error_msg = "Focusing mode is undefined. Sample loading is disabled"
@@ -622,7 +638,11 @@ class Marvin(AbstractSampleChanger.SampleChanger):
     def _doUnload(self, sample_slot=None):
         """Unloads a sample from the diffractometer"""
         log = logging.getLogger("GUI")
- 
+
+        if not self._exp_hutch_door_ready:
+           log.error("Hutch door is open. Please close it")
+           return
+
         #self._setState(AbstractSampleChanger.SampleChangerState.Ready)
         if self._focusing_mode not in ("Collimated", "Double", "Imaging", "TREXX", "P13mode"):
             error_msg = "Focusing mode is undefined. Sample loading is disabled"
