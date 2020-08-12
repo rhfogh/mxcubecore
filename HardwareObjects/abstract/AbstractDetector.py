@@ -27,19 +27,17 @@ class AbstractDetector(object):
 
         self.distance_motor_hwobj = None
 
-    @abc.abstractmethod
     def get_distance(self):
         """
         Descript. :
         """
-        return
+        return self.distance_motor_hwobj.get_position()
 
-    @abc.abstractmethod
     def get_distance_limits(self):
         """
         Descript. :
         """
-        return
+        return self.distance_motor_hwobj.get_limits()
 
     @abc.abstractmethod
     def has_shutterless(self):
@@ -82,7 +80,7 @@ class AbstractDetector(object):
         """
         Descript. :
         """
-        return
+        self.distance_motor_hwobj.move(value, timeout=timeout)
 
     def get_detector_mode(self):
         return self.binning_mode

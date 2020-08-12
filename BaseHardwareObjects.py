@@ -36,7 +36,7 @@ class PropertySet(dict):
         self.__propertiesChanged = {}  # reset changes at commit
 
 
-class HardwareObjectNode:
+class HardwareObjectNode(object):
     def __init__(self, nodeName):
         """Constructor"""
         self.__dict__["_propertySet"] = PropertySet()
