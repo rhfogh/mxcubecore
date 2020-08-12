@@ -9,10 +9,9 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from HardwareRepository.TaskUtils import cleanup
 from HardwareRepository.HardwareObjects.abstract.AbstractEnergyScan import (
-    AbstractEnergyScan,
+    AbstractEnergyScan
 )
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-from HardwareRepository import HardwareRepository as HWR
 
 scan_test_data = [
     (10841.0, 20.0),
@@ -179,6 +178,11 @@ class EnergyScanMockup(AbstractEnergyScan, HardwareObject):
         self.energy2WavelengthConstant = 12.3980
         self.defaultWavelength = 0.976
 
+        self.energy_hwobj = self.getObjectByRole("energy")
+        self.db_connection_hwobj = self.getObjectByRole("dbserver")
+        self.transmission_hwobj = self.getObjectByRole("transmission")
+        self.beam_info_hwobj = self.getObjectByRole("beam_info")
+
     def emit_result_values(self):
         for value_tuple in scan_test_data:
             x = value_tuple[0]
@@ -216,14 +220,14 @@ class EnergyScanMockup(AbstractEnergyScan, HardwareObject):
         }
         self.scan_info["exposureTime"] = exptime
 
-        if HWR.beamline.transmission is not None:
-            self.scan_info["transmissionFactor"] = HWR.beamline.transmission.get_value()
+        if self.transmission_hwobj is not None:
+            self.scan_info["transmissionFactor"] = self.transmission_hwobj.get_value()
         else:
             self.scan_info["transmissionFactor"] = None
         size_hor = None
         size_ver = None
-        if HWR.beamline.beam is not None:
-            size_hor, size_ver = HWR.beamline.beam.get_beam_size()
+        if self.beam_info_hwobj is not None:
+            size_hor, size_ver = self.beam_info_hwobj.get_beam_size()
             size_hor = size_hor * 1000
             size_ver = size_ver * 1000
         self.scan_info["beamSizeHorizontal"] = size_hor
@@ -423,6 +427,9 @@ class EnergyScanMockup(AbstractEnergyScan, HardwareObject):
             pass
         return energies
 
+    def canMoveEnergy(self):
+        return False
+
     def isConnected(self):
         return True
 
@@ -469,5 +476,5 @@ class EnergyScanMockup(AbstractEnergyScan, HardwareObject):
         """
         Descript. :
         """
-        if HWR.beamline.lims:
-            db_status = HWR.beamline.lims.storeEnergyScan(self.scan_info)
+        if self.db_connection_hwobj:
+            db_status = self.db_connection_hwobj.storeEnergyScan(self.scan_info)

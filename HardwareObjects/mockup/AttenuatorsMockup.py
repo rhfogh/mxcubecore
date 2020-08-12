@@ -7,18 +7,24 @@ class AttenuatorsMockup(Device):
         self.value = 100
         self.emit("attFactorChanged", self.value)
 
-    def is_ready(self):
+    def isReady(self):
         return True
 
     def getAttState(self):
         return 0
 
+    def getAttFactor(self):
+        return self.get_value()
+
     def get_value(self):
         return self.value
 
-    def _set_value(self, value):
+    def set_value(self, value):
         self.value = value
         self.emit("attFactorChanged", self.value)
 
-    def re_emit_values(self):
+    def setTransmission(self, value):
+        self.set_value(value)
+
+    def update_values(self):
         self.emit("attFactorChanged", self.value)

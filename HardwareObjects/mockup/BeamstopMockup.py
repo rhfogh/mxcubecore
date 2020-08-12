@@ -69,5 +69,5 @@ class BeamstopMockup(HardwareObject):
         """
         return self.default_direction
 
-    def re_emit_values(self):
+    def update_values(self):
         self.emit("beamstopDistanceChanged", (self.default_distance))

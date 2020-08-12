@@ -17,46 +17,52 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
-""" Mockup shutter implementation"""
-
-from enum import Enum, unique
-from HardwareRepository.HardwareObjects.abstract.AbstractShutter import AbstractShutter
-from HardwareRepository.BaseHardwareObjects import HardwareObjectState
-from HardwareRepository.HardwareObjects.mockup.ActuatorMockup import ActuatorMockup
+import time
+import random
+from HardwareRepository.HardwareObjects.abstract.AbstractNState import AbstractShutter
 
 
-@unique
-class ShutterStates(Enum):
-    """Shutter states definitions."""
-
-    OPEN = HardwareObjectState.READY, 6
-    CLOSED = HardwareObjectState.READY, 7
-    MOVING = HardwareObjectState.BUSY, 8
-    DISABLED = HardwareObjectState.WARNING, 9
-    AUTOMATIC = HardwareObjectState.READY, 10
-
-
-class ShutterMockup(ActuatorMockup, AbstractShutter):
+class ShutterMockup(AbstractShutter):
     """
-    ShutterMockup for simulating a simple open/close shutter.
+    ShutterMockup for simulating a simple open/close shutter. For more detailed
+    method documentation see AbstractShutter
     """
 
-    SPECIFIC_STATES = ShutterStates
+    def __init__(self, name):
+        AbstractShutter.__init__(self, name)
+        self.current_state = ShutterMockup.STATE.OPEN
 
-    def init(self):
-        """Initialisation"""
-        super(ShutterMockup, self).init()
-        self.update_value(self.VALUES.CLOSED)
-        self.update_state(self.STATES.READY)
+    def value_changed(self, value):
+        """See AbstractShutter"""
+        self.current_state = ShutterMockup.STATE(value)
+        self.emit("shutterStateChanged", self.current_state.name)
+
+    def state(self):
+        """See AbstractShutter"""
+        return self.current_state.name
 
     def is_open(self):
-        return self.get_value() is self.VALUES.OPEN
+        """See AbstractShutter"""
+        return self.current_state == ShutterMockup.STATE.OPEN
 
     def is_closed(self):
-        return self.get_value() is self.VALUES.CLOSED
+        """See AbstractShutter"""
+        return self.current_state == ShutterMockup.STATE.CLOSED
+
+    def is_valid(self):
+        """See AbstractShutter"""
+        return self.current_state.name in dir(ShutterMockup.STATE)
 
     def open(self):
-        self.set_value(self.VALUES.OPEN, timeout=None)
+        """See AbstractShutter"""
+        self.set_state(ShutterMockup.STATE.OPEN)
 
     def close(self):
-        self.set_value(self.VALUES.CLOSED, timeout=None)
+        """See AbstractShutter"""
+        self.set_state(ShutterMockup.STATE.CLOSED)
+
+    def set_state(self, state, wait=False, timeout=None):
+        """See AbstractShutter"""
+        time.sleep(random.uniform(0.1, 1.0))
+        self.current_state = state
+        self.value_changed(state.value)

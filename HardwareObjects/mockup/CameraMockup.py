@@ -7,11 +7,7 @@ import gevent
 import time
 import numpy
 from PIL import Image
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+import cStringIO
 
 
 class CameraMockup(BaseHardwareObjects.Device):
@@ -32,9 +28,10 @@ class CameraMockup(BaseHardwareObjects.Device):
             time.sleep(delay)
 
     def getOneImage(self):
+
         a = numpy.random.rand(485, 650) * 255
         im_out = Image.fromarray(a.astype("uint8")).convert("RGBA")
-        buf = StringIO()
+        buf = cStringIO.StringIO()
         im_out.save(buf, "JPEG")
         return buf
 
@@ -48,7 +45,7 @@ class CameraMockup(BaseHardwareObjects.Device):
         return False
 
     def setLive(self, live):
-        print(("Setting camera live ", live))
+        print "Setting camera live ", live
         if live and self.liveState == live:
             return
 
@@ -70,3 +67,14 @@ class CameraMockup(BaseHardwareObjects.Device):
         f = open(*(args + ("w",)))
         f.write("".join(map(chr, jpeg_data)))
         f.close()
+
+    def getHeight(self):
+        return 1000.
+
+    def getWidth(self):
+        return 1000.
+
+
+
+
+     

@@ -5,7 +5,6 @@ from __future__ import print_function
 import logging
 from datetime import datetime
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-from HardwareRepository import HardwareRepository as HWR
 
 try:
     from urlparse import urljoin
@@ -71,9 +70,10 @@ class ISPyBRestClientMockup(HardwareObject):
         }
 
     def init(self):
+        self.session_hwobj = self.getObjectByRole("session")
 
-        if HWR.beamline.session:
-            self.beamline_name = HWR.beamline.session.beamline_name
+        if self.session_hwobj:
+            self.beamline_name = self.session_hwobj.beamline_name
         else:
             self.beamline_name = "ID:TEST"
 
@@ -132,8 +132,8 @@ class ISPyBRestClientMockup(HardwareObject):
         if self.base_result_url is not None:
             path = "/#/mx/{pcode}{pnumber}/datacollection/datacollectionid/{did}/main"
             path = path.format(
-                pcode=HWR.beamline.session.proposal_code,
-                pnumber=HWR.beamline.session.proposal_number,
+                pcode=self.session_hwobj.proposal_code,
+                pnumber=self.session_hwobj.proposal_number,
                 did=did,
             )
 
@@ -211,7 +211,7 @@ class ISPyBRestClientMockup(HardwareObject):
 
         return translated
 
-    def store_data_collection(self, mx_collection, bl_config=None):
+    def store_data_collection(self, mx_collection, beamline_setup=None):
         """
         Stores the data collection mx_collection, and the beamline setup
         if provided.
@@ -219,8 +219,8 @@ class ISPyBRestClientMockup(HardwareObject):
         :param mx_collection: The data collection parameters.
         :type mx_collection: dict
 
-        :param bl_config: The beamline setup.
-        :type bl_config: dict
+        :param beamline_setup: The beamline setup.
+        :type beamline_setup: dict
 
         :returns: None
 
@@ -228,21 +228,21 @@ class ISPyBRestClientMockup(HardwareObject):
         print("store_data_collection...", mx_collection)
         return None, None
 
-    def store_beamline_setup(self, session_id, bl_config):
+    def store_beamline_setup(self, session_id, beamline_setup):
         """
-        Stores the beamline setup dict <bl_config>.
+        Stores the beamline setup dict <beamline_setup>.
 
-        :param session_id: The session id that the bl_config
+        :param session_id: The session id that the beamline_setup
                            should be associated with.
         :type session_id: int
 
-        :param bl_config: The dictonary with beamline settings.
-        :type bl_config: dict
+        :param beamline_setup: The dictonary with beamline settings.
+        :type beamline_setup: dict
 
         :returns beamline_setup_id: The database id of the beamline setup.
         :rtype: str
         """
-        print("store_beamline_setup...", bl_config)
+        print("store_beamline_setup...", beamline_setup)
 
     def update_data_collection(self, mx_collection, wait=False):
         """

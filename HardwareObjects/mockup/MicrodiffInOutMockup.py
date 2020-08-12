@@ -68,7 +68,7 @@ class MicrodiffInOutMockup(Device):
             else:
                 time.sleep(0.5)
 
-    def get_actuator_state(self, read=False):
+    def getActuatorState(self, read=False):
         if read is True:
             value = self.state_attr
             self.actuatorState = self.states.get(value, "unknown")

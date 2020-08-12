@@ -19,13 +19,10 @@
 
 import os
 import time
-from random import uniform
-from collections import OrderedDict
-
 from gevent import spawn
+from random import uniform
 
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -44,50 +41,50 @@ class MachineInfoMockup(HardwareObject):
         """
         # Parameters
         # Intensity current ranges
-        self.values_ordered_dict = OrderedDict()
-        self.values_ordered_dict["current"] = {
-            "value": 90.1,
-            "value_str": "90.1 mA",
-            "in_range": True,
-            "title": "Machine current",
-            "bold": True,
-            "font": 14,
-            "history": True,
-        }
+        self.values_list = []
+        temp_dict = {}
+        temp_dict["value"] = 90.1
+        temp_dict["value_str"] = "90.1 mA"
+        temp_dict["in_range"] = True
+        temp_dict["title"] = "Machine current"
+        temp_dict["bold"] = True
+        temp_dict["font"] = 14
+        temp_dict["history"] = True
+        self.values_list.append(temp_dict)
 
-        self.values_ordered_dict["message"] = {
-            "value": "Test message",
-            "in_range": True,
-            "title": "Machine state",
-        }
+        temp_dict = {}
+        temp_dict["value"] = "Test message"
+        temp_dict["in_range"] = True
+        temp_dict["title"] = "Machine state"
+        self.values_list.append(temp_dict)
 
-        self.values_ordered_dict["temp"] = {
-            "value": 24.4,
-            "value_str": "24.4 C",
-            "in_range": True,
-            "title": "Hutch temperature",
-        }
+        temp_dict = {}
+        temp_dict["value"] = 24.4
+        temp_dict["value_str"] = "24.4 C"
+        temp_dict["in_range"] = True
+        temp_dict["title"] = "Hutch temperature"
+        self.values_list.append(temp_dict)
 
-        self.values_ordered_dict["hum"] = {
-            "value": 64.4,
-            "value_str": "64.4 %",
-            "in_range": True,
-            "title": "Hutch humidity",
-        }
+        temp_dict = {}
+        temp_dict["value"] = 64.4
+        temp_dict["value_str"] = "64.4 %"
+        temp_dict["in_range"] = True
+        temp_dict["title"] = "Hutch humidity"
+        self.values_list.append(temp_dict)
 
-        self.values_ordered_dict["flux"] = {
-            "value": None,
-            "value_str": "Remeasure flux!",
-            "in_range": False,
-            "title": "Flux",
-        }
+        temp_dict = {}
+        temp_dict["value"] = 4e11
+        temp_dict["value_str"] = "4e+11 ph/s"
+        temp_dict["in_range"] = False
+        temp_dict["title"] = "Flux"
+        self.values_list.append(temp_dict)
 
-        self.values_ordered_dict["disk"] = {
-            "value": "-",
-            "in_range": True,
-            "title": "Disk space",
-            "align": "left",
-        }
+        temp_dict = {}
+        temp_dict["value"] = "-"
+        temp_dict["in_range"] = True
+        temp_dict["title"] = "Disk space"
+        temp_dict["align"] = "left"
+        self.values_list.append(temp_dict)
 
     def init(self):
         """
@@ -96,63 +93,56 @@ class MachineInfoMockup(HardwareObject):
         self.min_current = self.getProperty("min_current", 80.1)
         self.min_current = self.getProperty("max_current", 90.1)
 
-        self.connect(HWR.beamline.flux, "fluxInfoChanged", self.flux_info_changed)
+        self.flux_hwobj = self.getObjectByRole("flux")
+        self.connect(self.flux_hwobj, "fluxValueChanged", self.flux_changed)
 
-        self.re_emit_values()
+        self.session_hwobj = self.getObjectByRole("session")
+
+        self.update_values()
         spawn(self.change_mach_current)
 
-    def re_emit_values(self):
+    def update_values(self):
         """
-        Updates storage disc information, detects if intensity
-        and storage space is in limits, forms a value list
-        and value in range list, both emited by qt as lists
+        Descript. : Updates storage disc information, detects if intensity
+                    and storage space is in limits, forms a value list
+                    and value in range list, both emited by qt as lists
+        Arguments : -
+        Return    : -
         """
-        self.emit("valuesChanged", self.values_ordered_dict)
+        self.emit("valuesChanged", self.values_list)
 
     def get_current(self):
-        return self.values_ordered_dict["current"]["value"]
+        return self.values_list[0]["value"]
 
     def get_current_value(self):
-        return self.values_ordered_dict["current"]["value"]
+        """
+        Descript. :
+        """
+        return self.values_list[0]["value"]
 
     def get_message(self):
-        return self.values_ordered_dict["message"]["value"]
+        """
+        Descript :
+        """
+        return self.values_list[1]["value"]
 
     def change_mach_current(self):
         while True:
-            self.values_ordered_dict["current"]["value"] = uniform(
-                self.min_current, self.min_current
-            )
-            self.values_ordered_dict["current"]["value_str"] = (
-                "%.1f mA" % self.values_ordered_dict["current"]["value"]
-            )
+            self.values_list[0]["value"] = uniform(self.min_current, self.min_current)
+            self.values_list[0]["value_str"] = "%.1f mA" % self.values_list[0]["value"]
 
             self.update_disk_space()
-            self.re_emit_values()
+            self.update_values()
             time.sleep(5)
 
-    def flux_info_changed(self, flux_info):
-        if flux_info["measured"] is None:
-            self.values_ordered_dict["flux"]["value"] = 0
-            self.values_ordered_dict["flux"]["value_str"] = "Remeasure flux!"
-            self.values_ordered_dict["flux"]["in_range"] = False
-        else:
-            msg_str = "Flux: %.2E ph/s\n" % flux_info["measured"]["flux"]
-            msg_str += "%d%% transmission, %dx%d beam" % (
-                flux_info["measured"]["transmission"],
-                flux_info["measured"]["size_x"] * 1000,
-                flux_info["measured"]["size_y"] * 1000,
-            )
-
-            self.values_ordered_dict["flux"]["value"] = flux_info["measured"]["flux"]
-            self.values_ordered_dict["flux"]["value_str"] = msg_str
-            self.values_ordered_dict["flux"]["in_range"] = (
-                flux_info["measured"]["flux"] > 1e6
-            )
-        self.re_emit_values()
+    def flux_changed(self, value):
+        self.values_list[4]["value"] = value
+        self.values_list[4]["in_range"] = value > 1e10
+        self.values_list[4]["value_str"] = "%.2e ph/s" % value
+        self.update_values()
 
     def update_disk_space(self):
-        data_path = HWR.beamline.session.get_base_data_directory()
+        data_path = self.session_hwobj.get_base_data_directory()
         data_path_root = "/%s" % data_path.split("/")[0]
 
         if os.path.exists(data_path_root):
@@ -165,9 +155,14 @@ class MachineInfoMockup(HardwareObject):
                 self.sizeof_fmt(free),
                 "{0:.0%}".format(perc),
             )
+            # if free / 2 ** 30 > self['diskThreshold']:
+            #        Qt4_widget_colors.set_widget_color(self.disc_value_label,
+            #                                       STATES['ready'])
+            #    else:
+            #        Qt4_widget_colors.set_widget_color(self.disc_value_label,
         else:
             txt = "Not available"
-        self.values_ordered_dict["disk"]["value_str"] = txt
+        self.values_list[5]["value_str"] = txt
 
     def sizeof_fmt(self, num):
         """Returns disk space formated in string"""
@@ -181,7 +176,7 @@ class MachineInfoMockup(HardwareObject):
     def sizeof_num(self, num):
         """Returns disk space formated in exp value"""
 
-        for x in ["m", chr(181), "n"]:
+        for x in ["m", unichr(181), "n"]:
             if num > 0.001:
                 num *= 1000.0
                 return "%0.1f%s" % (num, x)

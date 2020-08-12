@@ -20,51 +20,17 @@
 from random import random
 from HardwareRepository.HardwareObjects.abstract.AbstractFlux import AbstractFlux
 
-from HardwareRepository import HardwareRepository as HWR
 
 __credits__ = ["MXCuBE collaboration"]
 __category__ = "General"
 
 
 class FluxMockup(AbstractFlux):
-
-    # default_flux - for initialising mockup
-    default_flux = 1e10
-
     def __init__(self, name):
         AbstractFlux.__init__(self, name)
-
-        self.measured_flux_list = []
-        self.measured_flux_dict = {}
-        self.current_flux_dict = {}
-
-    def init(self):
-
-        self.measure_flux()
-
-    def get_value(self):
-        """Get flux at current transmission in units of photons/s"""
-        return self.current_flux_dict["flux"]
+        self._value = 7e12
 
     def measure_flux(self):
         """Measures intesity"""
-        beam_size = HWR.beamline.beam.get_beam_size()
-        transmission = HWR.beamline.transmission.get_value()
-        flux = self.default_flux * (1 + random())
-
-        self.measured_flux_list = [
-            {
-                "size_x": beam_size[0],
-                "size_y": beam_size[1],
-                "transmission": transmission,
-                "flux": flux,
-            }
-        ]
-
-        self.measured_flux_dict = self.measured_flux_list[0]
-        self.current_flux_dict = self.measured_flux_list[0]
-
-        self.emit(
-            "fluxInfoChanged",
-            {"measured": self.measured_flux_dict, "current": self.current_flux_dict},
-        )
+        self._value = 1e12 + random() * 1e12
+        self.emit("fluxValueChanged", self._value)
