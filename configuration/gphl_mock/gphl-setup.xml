@@ -95,7 +95,7 @@
         <!-- processing for stratcal acqisitions. In practice, this will almost always
          be a wrapper script that sets up the environment properly. -->
         <!--<co.gphl.wf.diffractcal.bin>{GPHL_SETUP}/scripts/aP_wf_rotcal</co.gphl.wf.diffractcal.bin>-->
-        <co.gphl.wf.process.bin>scripts/aP_wf_process</co.gphl.wf.process.bin>
+<!--        <co.gphl.wf.process.bin>scripts/aP_wf_process</co.gphl.wf.process.bin>-->
 
     </software_properties>
 

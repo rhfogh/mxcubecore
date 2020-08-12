@@ -43,11 +43,12 @@ import api
 
 import ConvertUtils
 from HardwareRepository.BaseHardwareObjects import HardwareObject
-import queue_model_objects_v1 as queue_model_objects
-import queue_model_enumerables_v1 as queue_model_enumerables
-from queue_entry import QUEUE_ENTRY_STATUS, QueueAbortedException
 
-import GphlMessages
+from HardwareRepository.HardwareObjects import queue_model_objects
+from HardwareRepository.HardwareObjects import queue_model_enumerables
+from HardwareRepository.HardwareObjects.queue_entry import QUEUE_ENTRY_STATUS, QueueAbortedException
+
+from HardwareRepository.HardwareObjects import GphlMessages
 
 try:
     from collections import OrderedDict
