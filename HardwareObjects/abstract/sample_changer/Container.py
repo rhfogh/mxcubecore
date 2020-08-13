@@ -14,7 +14,7 @@ class Container(Component):
 
     #########################           PUBLIC           #########################
 
-    def get_type(self):
+    def getType(self):
         """
         Returns a desctiption of the type of container
         Known types:
@@ -29,150 +29,150 @@ class Container(Component):
         """
         return self.type
 
-    def get_components(self):
+    def getComponents(self):
         """
         Returns the list of components of this container
         :rtype: list
         """
         return self.components
 
-    def get_number_of_components(self):
+    def getNumberOfComponents(self):
         return len(self.components)
 
-    def get_sample_list(self):
+    def getSampleList(self):
         """
         Returns the list of all Sample objects under of this container (recursivelly)
         :rtype: list
         """
         samples = []
-        for c in self.get_components():
+        for c in self.getComponents():
             if isinstance(c, Sample):
                 samples.append(c)
             else:
-                samples.extend(c.get_sample_list())
+                samples.extend(c.getSampleList())
         return samples
 
-    def get_basket_list(self):
+    def getBasketList(self):
         basket_list = []
         for basket in self.components:
             if isinstance(basket, Basket):
                 basket_list.append(basket)
         return basket_list
 
-    def get_present_samples(self):
+    def getPresentSamples(self):
         """
         Returns the list of all Sample objects under of this container (recursivelly) tagged as present
         :rtype: list
         """
         ret = []
-        for sample in self.get_sample_list():
-            if sample.is_present():
+        for sample in self.getSampleList():
+            if sample.isPresent():
                 ret.append(sample)
 
-    def is_empty(self):
+    def isEmpty(self):
         """
         Returns true if there is no sample present sample under this container
         :rtype: bool
         """
-        for s in self.get_sample_list():
-            if s.is_present():
+        for s in self.getSampleList():
+            if s.isPresent():
                 return False
         return True
 
-    def get_component_by_address(self, address):
+    def getComponentByAddress(self, address):
         """
         Returns a component through its slot address or None if address is invalid
         :rtype: Component
         """
-        for c in self.get_components():
-            if c.get_address() == address:
+        for c in self.getComponents():
+            if c.getAddress() == address:
                 return c
             if isinstance(c, Container):
-                aux = c.get_component_by_address(address)
+                aux = c.getComponentByAddress(address)
                 if aux is not None:
                     return aux
         return None
 
-    def has_component_address(self, address):
+    def hasComponentAddress(self, address):
         """
         Returns if has a component with a given address
         :rtype: bool
         """
-        return self.get_component_by_address(address) is not None
+        return self.getComponentByAddress(address) is not None
 
-    def get_component_by_id(self, id):
+    def getComponentById(self, id):
         """
         Returns a component through its id or None if id is invalid
         :rtype: Component
         """
-        for c in self.get_components():
-            if c.get_id() == id:
+        for c in self.getComponents():
+            if c.getID() == id:
                 return c
             if isinstance(c, Container):
-                aux = c.get_component_by_id(id)
+                aux = c.getComponentById(id)
                 if aux is not None:
                     return aux
         return None
 
-    def has_component_id(self, id):
+    def hasComponentId(self, id):
         """
         Returns if has a component with a given ID
         :rtype: bool
         """
-        return self.get_component_by_id(id) is not None
+        return self.getComponentById(id) is not None
 
-    def get_selected_sample(self):
-        for s in self.get_sample_list():
-            if s.is_selected():
+    def getSelectedSample(self):
+        for s in self.getSampleList():
+            if s.isSelected():
                 return s
         return None
 
-    def get_selected_component(self):
-        for c in self.get_components():
-            if c.is_selected():
+    def getSelectedComponent(self):
+        for c in self.getComponents():
+            if c.isSelected():
                 return c
         return None
 
-    def clear_info(self):
-        Component._reset_dirty(self)
-        for c in self.get_components():
-            c.clear_info()
+    def clearInfo(self):
+        Component._resetDirty(self)
+        for c in self.getComponents():
+            c.clearInfo()
 
     #########################           PROTECTED           #########################
 
-    def _add_component(self, c):
+    def _addComponent(self, c):
         self.components.append(c)
 
-    def _remove_component(self, c):
+    def _removeComponent(self, c):
         self.components.remove(c)
 
-    def _clear_components(self):
+    def _clearComponents(self):
         self.components = []
 
-    def _reset_dirty(self):
-        Component._reset_dirty(self)
-        for c in self.get_components():
-            c._reset_dirty()
+    def _resetDirty(self):
+        Component._resetDirty(self)
+        for c in self.getComponents():
+            c._resetDirty()
 
-    def _set_selected_sample(self, sample):
-        for s in self.get_sample_list():
+    def _setSelectedSample(self, sample):
+        for s in self.getSampleList():
             if s == sample:
-                s._set_selected(True)
+                s._setSelected(True)
             else:
-                s._set_selected(False)
+                s._setSelected(False)
 
-    def _set_selected_component(self, component):
+    def _setSelectedComponent(self, component):
         if component is None:
-            for c in self.get_components():
-                c._set_selected(False)
+            for c in self.getComponents():
+                c._setSelected(False)
         else:
-            component._set_selected(True)
+            component._setSelected(True)
 
-    def _set_selected(self, selected):
+    def _setSelected(self, selected):
         if not selected:
-            for c in self.get_components():
-                c._set_selected(False)
-        Component._set_selected(self, selected)
+            for c in self.getComponents():
+                c._setSelected(False)
+        Component._setSelected(self, selected)
 
 
 class Basket(Container):
@@ -180,25 +180,25 @@ class Basket(Container):
 
     def __init__(self, container, number, samples_num=10, name="Puck"):
         super(Basket, self).__init__(
-            self.__TYPE__, container, Basket.get_basket_address(number), True
+            self.__TYPE__, container, Basket.getBasketAddress(number), True
         )
 
         self._name = name
         self.samples_num = samples_num
         for i in range(samples_num):
             slot = Pin(self, number, i + 1)
-            self._add_component(slot)
+            self._addComponent(slot)
 
     @staticmethod
-    def get_basket_address(basket_number):
+    def getBasketAddress(basket_number):
         return str(basket_number)
 
-    def get_number_of_samples(self):
+    def getNumberOfSamples(self):
         return self.samples_num
 
-    def clear_info(self):
-        # self.get_container()._reset_basket_info(self.get_index()+1)
-        self.get_container()._trigger_info_changed_event()
+    def clearInfo(self):
+        # self.getContainer()._reset_basket_info(self.getIndex()+1)
+        self.getContainer()._triggerInfoChangedEvent()
 
 
 class Pin(Sample):
@@ -206,16 +206,16 @@ class Pin(Sample):
 
     def __init__(self, basket, basket_no, sample_no):
         super(Pin, self).__init__(
-            basket, Pin.get_sample_address(basket_no, sample_no), False
+            basket, Pin.getSampleAddress(basket_no, sample_no), False
         )
-        self._set_holder_length(Pin.STD_HOLDERLENGTH)
+        self._setHolderLength(Pin.STD_HOLDERLENGTH)
 
-    def get_basket_no(self):
-        return self.get_container().get_index() + 1
+    def getBasketNo(self):
+        return self.getContainer().getIndex() + 1
 
-    def get_vial_no(self):
-        return self.get_index() + 1
+    def getVialNo(self):
+        return self.getIndex() + 1
 
     @staticmethod
-    def get_sample_address(basket_number, sample_number):
+    def getSampleAddress(basket_number, sample_number):
         return str(basket_number) + ":" + "%02d" % (sample_number)

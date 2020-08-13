@@ -1,11 +1,6 @@
 import sys
 from .Component import Component
 
-try:
-    from urllib import urlopen
-except ImportError:
-    from urllib.request import urlopen
-
 
 class Sample(Component):
     """
@@ -23,111 +18,111 @@ class Sample(Component):
         super(Sample, self).__init__(container, address, scannable)
         self.properties = {}
         self.loaded = False
-        self._has_been_loaded = False
+        self.has_been_loaded = False
         self._leaf = True
 
     #########################           PUBLIC           #########################
 
-    def is_loaded(self):
+    def isLoaded(self):
         """
         Returns if the sample is currently loaded for data collection
         :rtype: bool
         """
         return self.loaded
 
-    def has_been_loaded(self):
+    def hasBeenLoaded(self):
         """
         Returns if the sample has already beenloaded for data collection
         :rtype: bool
         """
-        return self._has_been_loaded
+        return self.has_been_loaded
 
-    def get_properties(self):
+    def getProperties(self):
         """
         Returns a dictionary with sample changer specific sample properties
         :rtype: dictionary
         """
         return self.properties
 
-    def has_property(self, name):
+    def hasProperty(self, name):
         """
         Returns true if a property is defined
         :rtype: bool
         """
         return name in self.properties
 
-    def get_property(self, name):
+    def getProperty(self, name):
         """
         Returns a given property or None if not defined
         :rtype: object
         """
-        if not self.has_property(name):
+        if not self.hasProperty(name):
             return None
 
         return self.properties[name]
 
-    def fetch_image(self):
+    def fetchImage(self):
         try:
-            if self.has_property(self.__IMAGE_URL_PROPERTY__):
-                img_url = self.get_property(self.__IMAGE_URL_PROPERTY__)
+            if self.hasProperty(self.__IMAGE_URL_PROPERTY__):
+                img_url = self.getProperty(self.__IMAGE_URL_PROPERTY__)
                 if len(img_url) == 0:
                     return None
-                import urllib.request, urllib.parse, urllib.error
+                import urllib
 
-                f = urlopen(img_url)
+                f = urllib.urlopen(img_url)
                 img = f.read()
                 return img
         except BaseException:
-            print((sys.exc_info()[1]))
+            print(sys.exc_info()[1])
 
-    def clear_info(self):
-        Component.clear_info(self)
+    def clearInfo(self):
+        Component.clearInfo(self)
         changed = False
         if self.loaded:
             self.loaded = False
             changed = True
-        if self._has_been_loaded:
-            self._has_been_loaded = False
+        if self.has_been_loaded:
+            self.has_been_loaded = False
             changed = True
         if changed:
-            self._set_dirty()
+            self._setDirty()
 
     # Common properties
-    def get_holder_length(self):
-        return self.get_property(self.__HOLDER_LENGTH_PROPERTY__)
+    def getHolderLength(self):
+        return self.getProperty(self.__HOLDER_LENGTH_PROPERTY__)
 
-    def _set_holder_length(self, value):
-        self._set_property(self.__HOLDER_LENGTH_PROPERTY__, value)
+    def _setHolderLength(self, value):
+        self._setProperty(self.__HOLDER_LENGTH_PROPERTY__, value)
 
-    def _set_image_x(self, value):
-        self._set_property(self.__IMAGE_X_PROPERTY__, value)
+    def _setImageX(self, value):
+        self._setProperty(self.__IMAGE_X_PROPERTY__, value)
 
-    def get_image_x(self):
-        return self.get_property(self.__IMAGE_X_PROPERTY__)
+    def getImageX(self):
+        return self.getProperty(self.__IMAGE_X_PROPERTY__)
 
-    def _set_image_y(self, value):
-        self._set_property(self.__IMAGE_Y_PROPERTY__, value)
+    def _setImageY(self, value):
+        self._setProperty(self.__IMAGE_Y_PROPERTY__, value)
 
-    def get_image_y(self):
-        return self.get_property(self.__IMAGE_Y_PROPERTY__)
+    def getImageY(self):
+        return self.getProperty(self.__IMAGE_Y_PROPERTY__)
 
-    def _set_image_url(self, value):
+    def _setImageURL(self, value):
         if (value is not None) and (value.startswith("http://")):
             value = "https://" + value[7]
-        self._set_property(self.__IMAGE_URL_PROPERTY__, value)
+        self._setProperty(self.__IMAGE_URL_PROPERTY__, value)
 
-    def get_image_url(self):
-        return self.get_property(self.__IMAGE_URL_PROPERTY__)
+    def getImageURL(self):
+        return self.getProperty(self.__IMAGE_URL_PROPERTY__)
 
-    def _set_info_url(self, value):
-        self._set_property(self.__INFO_URL_PROPERTY__, value)
+    def _setInfoURL(self, value):
+        self._setProperty(self.__INFO_URL_PROPERTY__, value)
 
     def getInfoURL(self):
-        return self.get_property(self.__INFO_URL_PROPERTY__)
+        return self.getProperty(self.__INFO_URL_PROPERTY__)
 
     #########################           PROTECTED           #########################
 
-    def _set_loaded(self, loaded, has_been_loaded=None):
+    def _setLoaded(self, loaded, has_been_loaded=None):
         changed = False
         if self.loaded != loaded:
             self.loaded = loaded
@@ -135,18 +130,18 @@ class Sample(Component):
         if has_been_loaded is None:
             if loaded:
                 has_been_loaded = True
-        if self._has_been_loaded != has_been_loaded:
-            self._has_been_loaded = has_been_loaded
+        if self.has_been_loaded != has_been_loaded:
+            self.has_been_loaded = has_been_loaded
             changed = True
         if changed:
-            self._set_dirty()
+            self._setDirty()
 
-    def _set_property(self, name, value):
-        if (not self.has_property(name)) or (self.get_property(name) != value):
-            self._set_dirty()
+    def _setProperty(self, name, value):
+        if (not self.hasProperty(name)) or (self.getProperty(name) != value):
+            self._setDirty()
         self.properties[name] = value
 
-    def _reset_property(self, name, value):
-        if self.has_property(name):
+    def _resetProperty(self, name, value):
+        if self.hasProperty(name):
             self.properties.pop(name)
-            self._set_dirty()
+            self._setDirty()

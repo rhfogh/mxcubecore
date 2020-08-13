@@ -17,10 +17,10 @@ class Component(object):
 
     #########################           PUBLIC           #########################
 
-    def get_name(self):
+    def getName(self):
         return self._name
 
-    def get_id(self):
+    def getID(self):
         """
         Returns an unique ID of an element - typically scanned from the real object
         Can be None if sample is unknown or not present
@@ -28,7 +28,7 @@ class Component(object):
         """
         return self.id
 
-    def get_address(self):
+    def getAddress(self):
         """
         Returns an unique identifier of the slot of the element ()
         Can never be None - even if the component is not present
@@ -36,89 +36,89 @@ class Component(object):
         """
         return self.address
 
-    def get_coords(self):
-        coords_list = [self.get_index() + 1]
-        x = self.get_container()
+    def getCoords(self):
+        coords_list = [self.getIndex() + 1]
+        x = self.getContainer()
         while x:
-            idx = x.get_index()
+            idx = x.getIndex()
             if idx is not None:
                 coords_list.append(idx + 1)
-            x = x.get_container()
+            x = x.getContainer()
         coords_list.reverse()
         return tuple(coords_list)
 
-    def get_index(self):
+    def getIndex(self):
         """
         Returns the index of the object within the parent's component list,
         :rtype: int
         """
         try:
-            container = self.get_container()
+            container = self.getContainer()
             if container is not None:
-                components = container.get_components()
+                components = container.getComponents()
                 for i in range(len(components)):
                     if components[i] is self:
                         return i
         except BaseException:
             return -1
 
-    def is_leaf(self):
+    def isLeaf(self):
         return self._leaf
 
-    def is_present(self):
+    def isPresent(self):
         """
         Returns true if the element is known to be currently present
         :rtype: bool
         """
         return self.present
 
-    def is_selected(self):
+    def isSelected(self):
         """
         Returns if the element is currently selected
         :rtype: bool
         """
         return self.selected
 
-    def is_scanned(self):
+    def isScanned(self):
         """
         Returns if the element has been scanned for ID (for scannable components)
         :rtype: bool
         """
-        if self.is_scannable() == False:
+        if self.isScannable() == False:
             return False
         return self.scanned
 
-    def is_scannable(self):
+    def isScannable(self):
         """
         Returns if the element can be scanned for ID
         :rtype: bool
         """
         return self.scannable
 
-    def assert_is_scannable(self):
-        if not self.is_scannable():
+    def assertIsScannable(self):
+        if not self.isScannable():
             raise "Element is not scannable"
 
-    def get_container(self):
+    def getContainer(self):
         """
         Returns the parent of this element
         :rtype: Container
         """
         return self.container
 
-    def get_siblings(self):
+    def getSiblings(self):
         """
         Returns the parent of this element
         :rtype: Container
         """
         ret = []
-        if self.get_container() is not None:
-            for c in self.get_container().get_components():
+        if self.getContainer() is not None:
+            for c in self.getContainer().getComponents():
                 if c != self:
                     ret.append(c)
         return ret
 
-    def clear_info(self):
+    def clearInfo(self):
         """
         Clears all sample info (also in components if object is a container)
         """
@@ -133,10 +133,10 @@ class Component(object):
             self.scanned = False
             changed = True
         if changed:
-            self._set_dirty()
+            self._setDirty()
 
     #########################           PROTECTED           #########################
-    def _set_info(self, present=False, id=None, scanned=False):
+    def _setInfo(self, present=False, id=None, scanned=False):
         changed = False
         if self.id != id:
             self.id = id
@@ -146,30 +146,30 @@ class Component(object):
         if self.present != present:
             self.present = present
             changed = True
-        if self.is_scannable() == False:
+        if self.isScannable() == False:
             scanned = False
         if self.scanned != scanned:
             self.scanned = scanned
             changed = True
         if changed:
-            self._set_dirty()
+            self._setDirty()
 
-    def _set_selected(self, selected):
+    def _setSelected(self, selected):
         if selected:
-            for c in self.get_siblings():
-                c._set_selected(False)
-            if self.get_container() is not None:
-                self.get_container()._set_selected(True)
+            for c in self.getSiblings():
+                c._setSelected(False)
+            if self.getContainer() is not None:
+                self.getContainer()._setSelected(True)
         self.selected = selected
 
-    def _is_dirty(self):
+    def _isDirty(self):
         return self.dirty
 
-    def _set_dirty(self):
+    def _setDirty(self):
         self.dirty = True
-        container = self.get_container()
+        container = self.getContainer()
         if container is not None:
-            container._set_dirty()
+            container._setDirty()
 
-    def _reset_dirty(self):
+    def _resetDirty(self):
         self.dirty = False
