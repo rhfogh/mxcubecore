@@ -33,6 +33,12 @@ class DetectorMockup(AbstractDetector, HardwareObject):
         self.status = "ready"
         self.distance_motor_hwobj = self.getObjectByRole("distance_motor")
 
+        """Get approx detector centre (default to Pilatus values)"""
+        xval = self.getProperty('width', 2463)/2. + 0.4
+        yval = self.getProperty('height', 2527)/2. + 0.4
+        self._beam_centre = (xval, yval)
+
+
     def get_distance(self):
         return self.distance_motor_hwobj.get_position()
 
@@ -52,10 +58,11 @@ class DetectorMockup(AbstractDetector, HardwareObject):
         return True
 
     def get_beam_centre(self):
-        """Get approx detector centre (default to Pilatus values)"""
-        xval = self.getProperty('width', 2463)/2. + 0.4
-        yval = self.getProperty('height', 2527)/2. + 0.4
-        return  xval, yval
+        return  self._beam_centre
+
+    def _set_beam_centre(self, beam_centre):
+        # Needed for GPhL collection emulation
+        self._beam_centre = beam_centre
 
     def update_values(self):
         self.emit("detectorModeChanged", (self.roi_mode,))

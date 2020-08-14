@@ -17,6 +17,8 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
+from scipy.interpolate import interp1d
+
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 
 
