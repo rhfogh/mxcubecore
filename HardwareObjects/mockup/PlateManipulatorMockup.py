@@ -293,7 +293,6 @@ class PlateManipulatorMockup(AbstractSampleChanger.SampleChanger):
         gevent.spawn(self.load_sample_task, sample_location)
 
     def load_sample_task(self, sample_location):
-        print "load ", sample_location
         row = sample_location[0] - 1
         col = (sample_location[1] - 1) / self.num_drops
         drop = sample_location[1] - self.num_drops * col

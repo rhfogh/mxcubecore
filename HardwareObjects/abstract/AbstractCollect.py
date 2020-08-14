@@ -101,6 +101,7 @@ class AbstractCollect(HardwareObject, object):
         self.autoprocessing_hwobj = self.getObjectByRole("auto_processing")
         self.beam_info_hwobj = self.getObjectByRole("beam_info")
         self.detector_hwobj = self.getObjectByRole("detector")
+        print (self.detector_hwobj)
         self.diffractometer_hwobj = self.getObjectByRole("diffractometer")
         self.energy_hwobj = self.getObjectByRole("energy")
         self.lims_client_hwobj = self.getObjectByRole("lims_client")
@@ -122,7 +123,9 @@ class AbstractCollect(HardwareObject, object):
             synchrotron_name = session_hwobj.getProperty("synchrotron_name")
         else:
             synchrotron_name = "UNKNOWN"
-
+ 
+        print(1)
+        print(self.detector_hwobj)
         self.set_beamline_configuration(
             synchrotron_name=synchrotron_name,
             directory_prefix=self.getProperty("directory_prefix"),

@@ -5,7 +5,7 @@ class AttenuatorsMockup(Device):
     def __init__(self, *args):
         Device.__init__(self, *args)
         self.value = 100
-        self.emit("attFactorChanged", self.value)
+        self.emit("valueChanged", self.value)
 
     def isReady(self):
         return True
@@ -21,10 +21,10 @@ class AttenuatorsMockup(Device):
 
     def set_value(self, value):
         self.value = value
-        self.emit("attFactorChanged", self.value)
+        self.emit("valueChanged", self.value)
 
     def setTransmission(self, value):
         self.set_value(value)
 
     def update_values(self):
-        self.emit("attFactorChanged", self.value)
+        self.emit("valueChanged", self.value)

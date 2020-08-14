@@ -1431,7 +1431,6 @@ class PathTemplate(object):
         :returns: Archive directory
         """
         folders = self.directory.split("/")
-        self.synchrotron_name = "EMBL-HH"
         #TODO remove the line later and find the bug    
 
         #if PathTemplate.synchrotron_name == "MAXLAB":
@@ -1479,7 +1478,7 @@ class PathTemplate(object):
                 endstation_name = folders[1]
                 folders[1] = PathTemplate.archive_folder
                 folders[2] = endstation_name
-
+            
             archive_directory = os.path.join(
                 PathTemplate.archive_base_directory, *folders[1:]
             )
