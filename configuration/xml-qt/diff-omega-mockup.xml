@@ -1,3 +1,3 @@
 <device class="MotorMockup">
-  <actuator_name>Omega</actuator_name>
+  <motor_name>Omega</motor_name>
 </device>
