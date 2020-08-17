@@ -28,9 +28,10 @@ __category__ = "General"
 class FluxMockup(AbstractFlux):
     def __init__(self, name):
         AbstractFlux.__init__(self, name)
-        self._value = 7e12
+        self._default_flux = self.getProperty("defaultFlux", 3.0e11)
+        self._value = self._default_flux
 
     def measure_flux(self):
         """Measures intesity"""
-        self._value = 1e12 + random() * 1e12
+        self._value = 0.5 * (1 + random()) * self._default_flux
         self.emit("fluxValueChanged", self._value)

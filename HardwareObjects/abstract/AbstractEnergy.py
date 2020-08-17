@@ -62,14 +62,23 @@ class AbstractEnergy(HardwareObject):
     def get_current_energy(self):
         return self._energy_value
 
+    def get_value(self):
+        return self.get_current_energy()
+
     def get_current_wavelength(self):
         if self._energy_value is not None:
             return h_over_e / self._energy_value
         else:
             return None
 
+    def get_wavelength(self):
+        return self.get_current_wavelength()
+
     def get_energy_limits(self):
         return self._energy_limits
+
+    def get_limits(self):
+        return self.get_energy_limits()
 
     def set_energy_limits(self, limits):
         self._energy_limits = limits
@@ -87,8 +96,14 @@ class AbstractEnergy(HardwareObject):
         self._energy_value = value
         self.update_values()
 
+    def set_value(self, value, timeout=None):
+        self.move_energy(value=value, wait=(timeout is not None))
+
     def move_wavelength(self, value, wait=True):
         self.move_energy(h_over_e / value, wait)
+
+    def set_wavelength(self, value, timeout=None):
+        self.set_value(h_over_e / value, timeout)
 
     def update_values(self):
         self.emit("energyChanged", self._energy_value, h_over_e / self._energy_value)

@@ -432,7 +432,7 @@ class GphlWorkflow(HardwareObject, object):
         if test_crystal_data:
             resolution = test_crystal_data.get("res_limit_def")
         else:
-            resolution = api.resolution.get_position()
+            resolution = api.resolution.get_value()
 
         full_dose_budget = self.get_dose_budget(
             resolution, relative_sensitivity=relative_sensitivity
@@ -532,7 +532,7 @@ class GphlWorkflow(HardwareObject, object):
                 if not energy:
                     energy = api.energy.get_value()
 
-                rotation_rate = experiment_time = transmission = dose_budget = 0.0
+                transmission = dose_budget = 0.0
                 if image_width and exposure_time:
                     rotation_rate = image_width / exposure_time
                     experiment_time = total_strategy_length / rotation_rate
@@ -894,7 +894,7 @@ class GphlWorkflow(HardwareObject, object):
             api.detector.set_distance(detectorSetting.axisSettings.get("Distance"))
         # TODO NBNB put in wait-till-ready to make sure value settles
         api.detector.wait_ready()
-        strategy_resolution = api.resolution.get_position()
+        strategy_resolution = api.resolution.get_value()
         # Put resolution value in workflow model object
         gphl_workflow_model.set_detector_resolution(strategy_resolution)
 
