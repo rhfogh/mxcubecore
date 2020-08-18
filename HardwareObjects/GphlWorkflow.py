@@ -1215,7 +1215,8 @@ class GphlWorkflow(HardwareObject, object):
         data_collections = []
         snapshot_counts = dict()
         found_orientations = set()
-        for scan in collection_proposal.scans:
+        scans = collection_proposal.scans
+        for scan in scans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
 
@@ -1257,7 +1258,8 @@ class GphlWorkflow(HardwareObject, object):
             # Edna also sets osc_end
 
             # Path_template
-            path_template = queue_model_objects.PathTemplate()
+            # path_template = queue_model_objects.PathTemplate()
+            path_template = api.beamline_setup.get_default_path_template()
             # Naughty, but we want a clone, right?
             # NBNB this ONLY works because all the attributes are immutable values
             path_template.__dict__.update(master_path_template.__dict__)
@@ -1304,7 +1306,7 @@ class GphlWorkflow(HardwareObject, object):
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
                 self.enqueue_sample_centring(
-                    motor_settings=sweep.get_initial_settings()
+                    motor_settings=sweep.get_initial_settings(), in_queue=True
                 )
             else:
                 # Collect using precalculated centring position
@@ -1327,6 +1329,7 @@ class GphlWorkflow(HardwareObject, object):
                 # or canned strategies
                 snapshot_counts[sweep] = 0
 
+
             data_collection = queue_model_objects.DataCollection([acq], crystal)
             data_collections.append(data_collection)
 
@@ -1334,6 +1337,9 @@ class GphlWorkflow(HardwareObject, object):
             data_collection.set_name(path_template.get_prefix())
             data_collection.set_number(path_template.run_number)
             self._add_to_queue(self._data_collection_group, data_collection)
+            if scan is not scans[-1]:
+                dc_entry = queue_manager.get_entry_with_model(data_collection)
+                dc_entry.in_queue = True
 
         data_collection_entry = queue_manager.get_entry_with_model(
             self._data_collection_group
@@ -1609,7 +1615,7 @@ class GphlWorkflow(HardwareObject, object):
             goniostatTranslation=goniostatTranslation,
         )
 
-    def enqueue_sample_centring(self, motor_settings):
+    def enqueue_sample_centring(self, motor_settings, in_queue=False):
 
         queue_manager = self._queue_entry.get_queue_controller()
 
@@ -1618,6 +1624,7 @@ class GphlWorkflow(HardwareObject, object):
         )
         self._add_to_queue(self._data_collection_group, centring_model)
         centring_entry = queue_manager.get_entry_with_model(centring_model)
+        centring_entry.in_queue = in_queue
 
         return centring_entry
 

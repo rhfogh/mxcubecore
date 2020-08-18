@@ -140,7 +140,7 @@
 
     <mx_workflow_options>
         <!-- Default prefix filename prefix - overwritten from user input -->
-        <prefix>gphl_data</prefix>
+<!--        <prefix>gphl_data</prefix>-->
         <!-- Filenamer pattern name for inverse-beam collections -->
         <ibpattern>ib_interleaved</ibpattern>
         <!-- Pattern name for normal collections -->

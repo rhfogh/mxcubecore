@@ -18,6 +18,7 @@
 
 import os
 import time
+import gevent
 from HardwareRepository.TaskUtils import task
 from HardwareRepository.HardwareObjects.abstract.AbstractCollect import AbstractCollect
 
