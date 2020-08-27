@@ -69,10 +69,13 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.chan_saving_format = None
         self.chan_saving_next_number = None
         self.chan_saving_header_delimiter = None
+        self.chan_saving_statistics = None
 
         self.chan_acq_nb_frames = None
         self.chan_acq_trigger_mode = None
         self.chan_acq_expo_time = None
+        self.chan_acq_status = None
+        self.chan_acq_status_fault_error = None
 
         self.chan_latency_time = None
 
@@ -112,10 +115,14 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.chan_saving_next_number = self.getChannelObject('saving_next_number')
         self.chan_saving_header_delimiter = self.getChannelObject(
             'saving_header_delimiter')
+        self.chan_saving_statistics = self.getChannelObject('saving_statistics')
 
         self.chan_acq_nb_frames = self.getChannelObject('acq_nb_frames')
         self.chan_acq_trigger_mode = self.getChannelObject('acq_trigger_mode')
         self.chan_acq_expo_time = self.getChannelObject('acq_expo_time')
+        self.chan_acq_status = self.getChannelObject('acq_status')
+        self.chan_acq_status_fault_error = self.getChannelObject(
+            'acq_status_fault_error')
 
         self.chan_latency_time = self.getChannelObject('latency_time')
 
@@ -389,6 +396,21 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.cmd_reset_common_header()
         self.cmd_reset_frame_headers()
         self.cmd_set_image_header(headers)
+
+    def get_saving_statistics(self):
+        values = self.chan_saving_statistics.getValue()
+        if all(values):
+            saving_speed, compression_speed, compression_ratio, incoming_speed = values
+            comp_ratio = compression_speed / incoming_speed
+            saving_ratio = saving_speed / (incoming_speed / compression_ratio)
+        else:
+            self.logger.debug("No data available to evaluate the Pilatus/Lima performance")
+            self.logger.debug("raw values --> %s" % values)
+
+        self.logger.debug("  compression ratio = %.4f" % comp_ratio)
+        self.logger.debug("       saving ratio = %.4f" % saving_ratio)
+        self.logger.debug("If comp_ratio < 1, increase the NbProcessingThread")
+        self.logger.debug("If saving_ratio < 1, increase the SavingMaxConcurrentWritingTask")
 
 
 def test_hwo(hwo):
