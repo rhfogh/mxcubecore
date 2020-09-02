@@ -527,7 +527,7 @@ class ALBACollect(AbstractCollect):
                 cam_state = self.detector_hwobj.chan_cam_state.getValue()
                 acq_status = self.detector_hwobj.chan_acq_status.getValue()
                 fault_error = self.detector_hwobj.chan_acq_status_fault_error.getValue()
-                self.logger.debug(self.detector_hwobj.get_saving_statistics())
+                self.detector_hwobj.get_saving_statistics()
                 msg = "cam_state = {}, acq_status = {}, fault_error = {}".format(
                     cam_state, acq_status, fault_error)
                 logging.getLogger('user_level_log').error("Incompleted data collection")
@@ -536,7 +536,7 @@ class ALBACollect(AbstractCollect):
                 return False
             time.sleep(0.2)
 
-        self.logger.debug(self.detector_hwobj.get_saving_statistics())
+        self.detector_hwobj.get_saving_statistics()
 
         # self.last_saved_image = fullpath
 
