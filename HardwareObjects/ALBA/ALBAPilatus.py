@@ -403,15 +403,15 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             saving_speed, compression_speed, compression_ratio, incoming_speed = values
             comp_ratio = compression_speed / incoming_speed
             saving_ratio = saving_speed / (incoming_speed / compression_ratio)
+
+            self.logger.debug("  compression ratio = %.4f" % comp_ratio)
+            self.logger.debug("       saving ratio = %.4f" % saving_ratio)
+            self.logger.debug("If comp_ratio < 1, increase the NbProcessingThread")
+            self.logger.debug(
+                "If saving_ratio < 1, increase the SavingMaxConcurrentWritingTask")
         else:
             self.logger.debug("No data available to evaluate the Pilatus/Lima performance")
             self.logger.debug("raw values --> %s" % values)
-
-        self.logger.debug("  compression ratio = %.4f" % comp_ratio)
-        self.logger.debug("       saving ratio = %.4f" % saving_ratio)
-        self.logger.debug("If comp_ratio < 1, increase the NbProcessingThread")
-        self.logger.debug("If saving_ratio < 1, increase the SavingMaxConcurrentWritingTask")
-
 
 def test_hwo(hwo):
     for chan in hwo.getChannels():
