@@ -377,15 +377,15 @@
                 position, and ask for centring.
             </documentation>
             <options>
-                <!-- Name for translation calibration output -->
-                <calibration>transcal</calibration>
+                <!-- Name for translation calibration output - not used after Sep 2020 -->
+<!--                <calibration>transcal</calibration>-->
                 <!-- file: File containing settings of rotation axes for calibration -->
                 <!-- The name is the relative path from the gphl_beamline_config directory -->
                 <!-- grid: Grid definition [axis_name:start:end:step], slowest-varying to fastest varying -->
                 <!-- EITHER file OR grid must be set.-->
                 <!--<grid>grid_axes_spec</grid>-->
-<!--                <file>transcal_2stage.json</file>-->
-                <file>transcal_2stage_0_252.json</file>
+                <file>transcal_2stage.json</file>
+<!--                <file>transcal_2stage_0_252.json</file>-->
                 <!-- copy calibration result to configuration directory, -->
                 <!-- moving aside previous value -->
                 <updateblconfig/>
