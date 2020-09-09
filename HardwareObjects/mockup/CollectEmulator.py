@@ -231,6 +231,12 @@ class CollectEmulator(CollectMockup):
                 template
                 # data_collect_parameters['fileinfo']['template']
             )
+            # We still use the normal name template for compressed data
+            if name_template.endswith(".gz"):
+                compress_data = True
+                name_template = name_template[:-3]
+            else:
+                compress_data = False
             sweep["name_template"] = name_template
 
             # Overwrite kappa and phi from motors - if set
@@ -252,7 +258,7 @@ class CollectEmulator(CollectMockup):
         else:
             result["sweep_list"] = sweeps
         #
-        return result
+        return result, compress_data
 
     @task
     def data_collection_hook(self):
@@ -280,7 +286,9 @@ class CollectEmulator(CollectMockup):
         # get crystal data
         crystal_data, hklfile = api.gphl_workflow.get_emulation_crystal_data()
 
-        input_data = self._get_simcal_input(data_collect_parameters, crystal_data)
+        input_data, compress_data= self._get_simcal_input(
+            data_collect_parameters, crystal_data
+        )
 
         # NB outfile is the echo output of the input file;
         # image files templates are set in the input file
@@ -315,6 +323,9 @@ class CollectEmulator(CollectMockup):
         logging.getLogger("HWR").info(
             "Executing environment: %s" % sorted(envs.items())
         )
+
+        if compress_data:
+            command_list.append(" --gzip-img")
 
         fp1 = open(logfile, "w")
         fp2 = subprocess.STDOUT
