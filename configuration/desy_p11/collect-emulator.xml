@@ -47,7 +47,7 @@
   <!-- NB - these options are prefixed with a double hyphen -->
   <simcal_options>
     <!-- Simcal memory pool option, in Gb - should be 50-66% of available memory -->
-    <memory-pool>9</memory-pool>
+    <memory-pool>4</memory-pool>
     <!-- Default is 1.0. Too low makes for 'insufficient spots', -->
     <!-- too high for 'insufficient indexed fraction' errors -->
     <!-- For now all test hkli files are sdcaled to work with scale 1.0 -->
