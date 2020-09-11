@@ -311,7 +311,7 @@ class GphlWorkflow(HardwareObject, object):
                 # We can only get that value if we have already done post_eecute
                 # but the mechanics of aborting means we conme back
                 # Stop further processing here
-                raise QueueAbortedException()
+                raise QueueAbortedException("Aborting...", self)
 
             tt0  = self._workflow_queue.get()
             if tt0 is StopIteration:
