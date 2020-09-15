@@ -27,23 +27,39 @@ class SardanaMotor(AbstractMotor):
     suffix_velocity = "Velocity"
     suffix_acceleration = "Acceleration"
 
-    state_map = {
-        "DevState.ON": MotorStates.READY,
-        "DevState.OFF": MotorStates.OFF,
-        "DevState.CLOSE": MotorStates.DISABLED,
-        "DevState.OPEN": MotorStates.DISABLED,
-        "DevState.INSERT": MotorStates.DISABLED,
-        "DevState.EXTRACT": MotorStates.DISABLED,
-        "DevState.MOVING": MotorStates.MOVING,
-        "DevState.STANDBY": MotorStates.READY,
-        "DevState.FAULT": MotorStates.FAULT,
-        "DevState.INIT": MotorStates.INITIALIZING,
-        "DevState.RUNNING": MotorStates.MOVING,
-        "DevState.ALARM": MotorStates.ALARM,
-        "DevState.DISABLE": MotorStates.DISABLED,
-        "DevState.UNKNOWN": MotorStates.UNKNOWN,
-    }
+#    state_map = {
+#        "DevState.ON": MotorStates.READY,
+#        "DevState.OFF": MotorStates.OFF,
+#        "DevState.CLOSE": MotorStates.DISABLED,
+#        "DevState.OPEN": MotorStates.DISABLED,
+#        "DevState.INSERT": MotorStates.DISABLED,
+#        "DevState.EXTRACT": MotorStates.DISABLED,
+#        "DevState.MOVING": MotorStates.MOVING,
+#        "DevState.STANDBY": MotorStates.READY,
+#        "DevState.FAULT": MotorStates.FAULT,
+#        "DevState.INIT": MotorStates.INITIALIZING,
+#        "DevState.RUNNING": MotorStates.MOVING,
+#        "DevState.ALARM": MotorStates.ALARM,
+#        "DevState.DISABLE": MotorStates.DISABLED,
+#        "DevState.UNKNOWN": MotorStates.UNKNOWN,
+#    }
 
+    state_map = {
+        "ON": MotorStates.READY,
+        "OFF": MotorStates.OFF,
+        "CLOSE": MotorStates.DISABLED,
+        "OPEN": MotorStates.DISABLED,
+        "INSERT": MotorStates.DISABLED,
+        "EXTRACT": MotorStates.DISABLED,
+        "MOVING": MotorStates.MOVING,
+        "STANDBY": MotorStates.READY,
+        "FAULT": MotorStates.FAULT,
+        "INIT": MotorStates.INITIALIZING,
+        "RUNNING": MotorStates.MOVING,
+        "ALARM": MotorStates.ALARM,
+        "DISABLE": MotorStates.DISABLED,
+        "UNKNOWN": MotorStates.UNKNOWN,
+    }
     def __init__(self, name):
         AbstractMotor.__init__(self, name)
         self.stop_command = None
@@ -148,12 +164,16 @@ class SardanaMotor(AbstractMotor):
                     checks if the motor is at it's limit,
                     and sets the new device state
         """
+        # This line does what?
         motor_state = self.motor_state
-
+        print('state is %s (type = %s)' % (state, type(state)))
         if state is None:
             state = self.state_channel.getValue()
+            print('now state is %s (type = %s)' % (state, type(state)))
+            if not state:
+                return
 
-        state = str(state)
+        state = state.name
         motor_state = SardanaMotor.state_map[state]
 
         if motor_state != MotorStates.DISABLED:
@@ -223,11 +243,19 @@ class SardanaMotor(AbstractMotor):
         """
         return self.getPosition()
 
-    def move(self, absolute_position):
+    def move(self, absolute_position, wait=False, timeout=None):
         """
         Descript. : move to the given position
         """
         current_pos = self.position_channel.getValue()
+        logging.getLogger("HWR").debug("On move, cached motor_position = %s" % self.motor_position)
+        current_pos = self.getPosition()
+        logging.getLogger("HWR").debug("On move, updated motor position = %s" % current_pos)
+
+        if not current_pos:
+            logging.getLogger("HWR").debug("current position was None")
+            current_pos = self.motor_position
+
         if abs(absolute_position-current_pos) > self.move_threshold_default:
             self.position_channel.setValue(absolute_position)
 
