@@ -860,9 +860,25 @@ class GenericDiffractometer(HardwareObject):
         """
         if not type(motor_positions) is dict:
             motor_positions = motor_positions.as_dict()
-
+        # WORKAROUND
+        # Sort motors to decide the starting order
+        # Convert to list and move omegaz to the end
+        # Iterate over the list elements, but access the dictionary
+        motor_names_list = [n for n in motor_positions.keys()]
+        for m in motor_names_list:
+            logging.getLogger('HWR').debug(m)
+            if m == 'OmegaZ':
+                omegaz = m
+                motor_names_list.append(omegaz)
+                motor_names_list.remove(omegaz)
+        logging.getLogger('HWR').debug(motor_positions.keys())
+        logging.getLogger('HWR').debug(motor_names_list)
+        #motor_names_list.append('omegaz')  # Add to the end
+        #motor_names_list.remove('omegaz')  # Remove first occurrence
+        logging.getLogger('HWR').debug(motor_names_list)
         self.wait_device_ready(timeout)
-        for motor in motor_positions.keys():
+        # for motor in motor_positions.keys():
+        for motor in motor_names_list:
             position = motor_positions[motor]
             # if type(motor) == str:
             if isinstance(motor, (str, unicode)):
