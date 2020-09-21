@@ -261,7 +261,10 @@ class ALBAMiniDiff(GenericDiffractometer):
         @return: 2-tuple float
         """
         #self.logger.debug("Getting calibration data")
+        # This MUST be equivalent:
+        # calibration uses the zoom percentage
         #calibx, caliby = self.calibration_hwobj.get_calibration()
+        # zoom motor use zoom index
         calibx, caliby = self.zoom_motor_hwobj.get_calibration()
         return 1000.0 / caliby, 1000.0 / caliby
 

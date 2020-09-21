@@ -524,8 +524,19 @@ class ALBACollect(AbstractCollect):
             dirlist = os.listdir(basedir)  # forces directory flush ?
             if (time.time() - start_wait) > timeout:
                 self.logger.debug("   giving up waiting for image")
+                cam_state = self.detector_hwobj.chan_cam_state.getValue()
+                acq_status = self.detector_hwobj.chan_acq_status.getValue()
+                fault_error = self.detector_hwobj.chan_acq_status_fault_error.getValue()
+                self.detector_hwobj.get_saving_statistics()
+                msg = "cam_state = {}, acq_status = {}, fault_error = {}".format(
+                    cam_state, acq_status, fault_error)
+                logging.getLogger('user_level_log').error("Incompleted data collection")
+                logging.getLogger('user_level_log').error(msg)
+                # raise RuntimeError(msg)
                 return False
             time.sleep(0.2)
+
+        self.detector_hwobj.get_saving_statistics()
 
         # self.last_saved_image = fullpath
 

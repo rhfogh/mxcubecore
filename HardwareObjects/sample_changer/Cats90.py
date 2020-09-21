@@ -1051,6 +1051,9 @@ class Cats90(SampleChanger):
     def lidsample_to_basketsample(self, lid, num):
         if self.is_isara():
             return lid,num
+        # Workaround for HT at XALOC
+        elif lid == 100:
+            return lid, num
         else:
            lid_base = (lid - 1) * self.baskets_per_lid # nb of first basket in lid
            basket_type = self.basket_types[lid_base]
