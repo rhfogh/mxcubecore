@@ -1222,6 +1222,8 @@ class ALBACollect(AbstractCollect):
     def stopCollect(self):
         """
            Apparently this method is called when the user aborts data collection
+           
+           TODO: stop the supervisor from changing state 
         """
         self.logger.debug("ALBACollect stopCollect") 
 
@@ -1418,6 +1420,10 @@ class ALBACollect(AbstractCollect):
 
     def _motor_persistently_set_velocity(self, motor_hwobj, new_velo, Timeout = 10):
         starttime = time.time()
+        if new_velo is None:
+            self.logger.debug('Could not set motor velocity to %s' % 
+                                      new_velo ) 
+            return
         while time.time()-starttime < Timeout:
             try: 
                 #self.logger.debug('Setting motor velocity to %s, motor state is %s' % 
@@ -1441,6 +1447,10 @@ class ALBACollect(AbstractCollect):
           
     def _motor_persistently_syncmove(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
         starttime = time.time()
+        if new_pos is None:
+            self.logger.debug('Could not set motor position to %s' % 
+                                      new_pos ) 
+            return
         while time.time()-starttime < Timeout:
             try: 
                 #self.logger.debug('Setting motor position to %s, motor state is %s' % 
@@ -1467,6 +1477,10 @@ class ALBACollect(AbstractCollect):
 
     def _motor_persistently_move(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
         starttime = time.time()
+        if new_pos is None:
+            self.logger.debug('Could not set motor position to %s' % 
+                                      new_pos ) 
+            return
         while time.time()-starttime < Timeout:
             try: 
                 #self.logger.debug('Setting motor position to %s, motor state is %s' % 
@@ -1499,12 +1513,11 @@ class ALBACollect(AbstractCollect):
         for directory in args:
             try:
                 os.makedirs(directory)
-            except os.error, e:
+            except OSError as e:
+                import errno
                 if e.errno != errno.EEXIST:
                     logging.getLogger('user_level_log').error('Error in making the directories, has the permission lockdown been setup properly?' )
                     raise
-
-
             
 def test_hwo(hwo):
     print("Energy: ", hwo.get_energy())
