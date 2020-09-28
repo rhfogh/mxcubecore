@@ -66,6 +66,7 @@ class ALBASupervisor(Device):
         self.chan_state = self.getChannelObject("state")
         self.chan_phase = self.getChannelObject("phase")
         self.chan_detector_cover = self.getChannelObject("detector_cover_open")
+        self.chan_fast_shutter_collect_position = self.getChannelObject("FastShutCollectPosition")
 
         self.chan_state.connectSignal("update", self.state_changed)
         self.chan_phase.connectSignal("update", self.phase_changed)
@@ -135,6 +136,9 @@ class ALBASupervisor(Device):
 
     def is_detector_cover_opened(self):
         return self.chan_detector_cover.getValue()
+    
+    def is_fast_shutter_in_collect_position(self):
+        return self.chan_fast_shutter_collect_position.getValue()
 
 
 def test_hwo(hwo):

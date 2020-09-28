@@ -102,6 +102,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         self.cmd_prepare_acq = self.getCommandObject('prepare_acq')
         self.cmd_start_acq = self.getCommandObject('start_acq')
         self.cmd_abort_acq = self.getCommandObject('abort_acq')
+        self.cmd_reset = self.getCommandObject('reset')
         self.cmd_reset_common_header = self.getCommandObject('reset_common_header')
         self.cmd_reset_frame_headers = self.getCommandObject('reset_frame_headers')
         self.cmd_set_image_header = self.getCommandObject('set_image_header')
@@ -150,6 +151,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
     def stop_acquisition(self):
         self.cmd_abort_acq()
+        self.cmd_reset()
 
     def get_distance(self):
         """Returns detector distance in mm"""
@@ -242,7 +244,6 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
     def arm(self):
         """
         Configure detector electronics.
-
         :return:
         """
         try:
@@ -326,7 +327,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
         exp_time = osc_seq['exposure_time']
 
         fileformat = "CBF"
-        trig_mode = "EXTERNAL_TRIGGER"
+        trig_mode = dcpars['detector_mode'][0]
 
         self.logger.debug(" Preparing detector for data collection")
 
