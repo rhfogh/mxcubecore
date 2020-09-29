@@ -1,4 +1,4 @@
-<bject class="GphlWorkflow-BREAKME">
+<object class="GphlWorkflow">
 
     <!-- Directory for (optional) output of instrument calbration results-->
     <!-- combined with instcfgout parameter (see below); see also <newinstr> -->
@@ -20,30 +20,32 @@
 
     <!-- Percentage of dose budget to use in characterisation.  -->
     <characterisation_budget_percent>5</characterisation_budget_percent>
+    <!-- Lowest relative diffraction intensity allowed - used to set dose budgets -->
+    <default_decay_limit>0.25</default_decay_limit>
+    <!-- Maximum dose budget to use, in MGy-->
+    <maximum_dose_budget>20</maximum_dose_budget>
+    <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
+    <default_snapshot_count>0</default_snapshot_count>
 
     <characterisation_strategies>
-        InitialCharacterisation_6_5
-        InitialCharacterisation_12_3
-        InitialCharacterisation_12_4
-        InitialCharacterisation_12_5
+        Characterisation_6_5
+        TEST_Characterisation_12_3
+        TEST_Characterisation_12_4
+        TEST_Characterisation_12_5
     </characterisation_strategies>
 
-    <!-- Dose budgets (in MGy) for Pulldown in GphlAcquisitionWidget -->
-    <dose_budgets>
-        <pulldown_item>
-            <label>Gentle:  5.0 MGy</label>
-            <value>5.0</value>
-        </pulldown_item>
-        <pulldown_item>
-            <label>Standard: 10.0 MGy</label>
-            <value>10.0</value>
-            <is_default>True</is_default>
-        </pulldown_item>
-        <pulldown_item>
-            <label>Robust: 20.0 MGy</label>
-            <value>20.0</value>
-        </pulldown_item>
-    </dose_budgets>
+    <!-- NBNB COMMENT OUT boolean properties to set them to False -->
+    <!-- NB Adds a sample centring at first acquisition for each orientation -->
+    <!-- May not work well if you interleave! -->
+    <!-- Sets default value only -->
+    <centre_before_sweep>True</centre_before_sweep>
+    <!-- NB Adds a sample centring for every scan -->
+    <!-- Would not work well with too many scans -->
+    <!-- Sets default value only -->
+<!--    <centre_before_scan>True</centre_before_scan>-->
+    <!-- Centre all orientations before acquisition start -->
+    <!-- Sets default value only -->
+    <!--<centre_at_start>True</centre_at_start>-->
 
     <!-- Describes the test crystals used for diffractometer calibration -->
     <test_crystals>
@@ -59,7 +61,7 @@
             <gamma>90</gamma>
         </test_crystal>
         <test_crystal>
-            <name>germanate</name>
+            <name>Germanate</name>
             <space_group>Ia-3d</space_group>
             <a>51.2487</a>
             <b>51.2487</b>
@@ -84,7 +86,7 @@
             <!-- From PDB 193L -->
             <space_group>P43212</space_group>
             <a>78.54</a>
-            <b>78.45</b>
+            <b>78.54</b>
             <c>37.70</c>
             <alpha>90</alpha>
             <beta>90</beta>
@@ -126,7 +128,7 @@
         <!--<appdir>Set Automatically</appdir>-->
         <!-- Workflow enactment file prefix  OPTIONAL - if set to e.g. 'wfx_',
         data for workflow runs will be stored in 'wfx_1, ,wfx_2, ... -->
-        <wfprefix>gphl_wf_</wfprefix>
+<!--        <wfprefix>gphl_wf_</wfprefix>-->
         <!-- Include sample name in enactment directory spec? -->
         <samplesubdir/>
         <!-- Subdirectory to insert under beamline root directory and appdir-->
@@ -167,7 +169,7 @@
     <!-- Note that irtrelevant properties are simply ignored.-->
     <workflow_properties>
         <!-- Set to false to switch off pre-start checks for directory existence -->
-        <co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>
+        <!--<co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>-->
         <!--<co.gphl.wf.procRootCheck>false</co.gphl.wf.procRootCheck>-->
         <!-- Dummy sample properties. -->
         <!-- Choose values for these to make the
@@ -192,6 +194,126 @@
     <!-- List of supported workflows, with options for each -->
     <workflows>
 
+        <Native_minimal>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_minimal</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Short, 1 sweep (2 for triclinic)
+                Optimised for uniform distribution of redundancy,
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting the value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+<!--            <options>-->
+<!--                <wfprefix>Native_minimal_</wfprefix>-->
+<!--            </options>-->
+        </Native_minimal>
+
+        <Native_full>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_full</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Optimised for uniform distribution of redundancy,
+                2-3 sweeps (4 for triclinic).
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting teh value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
+        </Native_full>
+
+        <Native_full-eq>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_full-eq</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Generally multiple sweeps
+                Optimised for cases where main symetry axis is extra long or diffracts better
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting teh value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
+        </Native_full-eq>
+
+        <Native_full-ax>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_full-ax</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Generally multiple sweeps
+                Optimised for cases where main symetry axis diffracts less well
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting teh value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+<!--            <options>-->
+<!--                <wfprefix>Native_full_</wfprefix>-->
+<!--            </options>-->
+        </Native_full-ax>
+
+        <Native_minimal-eq>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_minimal-eq</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Short, 1 sweep (2 for triclinic)
+                Optimised for cases where main symetry axis is extra-long or diffracts better
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting the value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+            <!--            <options>-->
+            <!--                <wfprefix>Native_minimal_</wfprefix>-->
+            <!--            </options>-->
+        </Native_minimal-eq>
+
+        <Native_minimal-ax>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native_minimal-ax</strategy_type>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                Short, 1 sweep (2 for triclinic)
+                Optimised for cases where main symetry axis diffracts less well
+            </documentation>
+            <!-- Workflow interleave order (string);  Slowest changing first-->
+            <!-- 'g' (Goniostat position); 's' (Scan number); -->
+            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
+            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
+            <!-- Not setting the value turns off the wedgeWidth widget -->
+            <!--            <interleave_order>gs</interleave_order>-->
+            <!--            <options>-->
+            <!--                <wfprefix>Native_minimal_</wfprefix>-->
+            <!--            </options>-->
+        </Native_minimal-ax>
+
         <SingleAnomalousDispersion>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
@@ -204,17 +326,9 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <interleave_order>gs</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>SAD_</wfprefix>
-            </options>
+            <!--            <options>-->
+            <!--                <wfprefix>SAD_</wfprefix>-->
+            <!--            </options>-->
         </SingleAnomalousDispersion>
 
         <TwoWavelengthMAD>
@@ -228,22 +342,11 @@
             <!-- 'g' (Goniostat position); 's' (Scan number); -->
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <interleave_order>gsb</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Peak</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Remote</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.72</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>MAD2_</wfprefix>
-            </options>
+            <!-- Names of beam energies used, space-separated. -->
+            <beam_energy_tags>Peak Remote</beam_energy_tags>
+            <!--            <options>-->
+            <!--                <wfprefix>MAD2_</wfprefix>-->
+            <!--            </options>-->
         </TwoWavelengthMAD>
 
         <ThreeWavelengthMAD>
@@ -257,111 +360,13 @@
             <!-- 'g' (Goniostat position); 's' (Scan number); -->
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <interleave_order>gsb</interleave_order>
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Peak</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Rising_Inflection</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.69</value>
-                </beam_energy>
-                <beam_energy>
-                    <role>Falling_Inflection</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.71</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>MAD3_</wfprefix>
-            </options>
+            <!-- Names of beam energies used, space-separated. -->
+            <beam_energy_tags>Peak Rising_Inflection Falling_Inflection</beam_energy_tags>
+            <!--            <options>-->
+            <!--                <wfprefix>MAD3_</wfprefix>-->
+            <!--            </options>-->
         </ThreeWavelengthMAD>
 
-        <NativeData_fast>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
-            <strategy_type>native_short</strategy_type>
-            <documentation>
-                Single wavelength data acquisition for native data collection
-                Includes initial characterisation and complete collection.
-                Fast, 1 sweep (2 for triclinic and monoclinic), chiMax = 20deg
-            </documentation>
-            <!-- Workflow interleave order (string);  Slowest changing first-->
-            <!-- 'g' (Goniostat position); 's' (Scan number); -->
-            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
-            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
-            <!-- Not setting the value turns off the wedgeWidth widget -->
-            <!--            <interleave_order>gs</interleave_order>-->
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>Native1_</wfprefix>
-            </options>
-        </NativeData_fast>
-
-        <NativeData_medium>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
-            <strategy_type>native_two360</strategy_type>
-            <documentation>
-                Single wavelength data acquisition for native data collection
-                Includes initial characterisation and complete collection.
-                Medium, 2 sweeps (3 for triclinic and monoclinic), chiMax = 35deg
-            </documentation>
-            <!-- Workflow interleave order (string);  Slowest changing first-->
-            <!-- 'g' (Goniostat position); 's' (Scan number); -->
-            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
-            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
-            <!-- Not setting the value turns off the wedgeWidth widget -->
-            <!--            <interleave_order>gs</interleave_order>-->
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>Native2_</wfprefix>
-            </options>
-        </NativeData_medium>
-
-        <NativeData_complete>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
-            <strategy_type>native_antishadow</strategy_type>
-            <documentation>
-                Single wavelength data acquisition for native data collection
-                Includes initial characterisation and complete collection.
-                Strategy for optimal distribution of redundancy,
-                3-4 sweeps. Uses full kappa range.
-                May default to medium strategy for sixfold and cubic symmetries.
-            </documentation>
-            <!-- Workflow interleave order (string);  Slowest changing first-->
-            <!-- 'g' (Goniostat position); 's' (Scan number); -->
-            <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
-            <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
-            <!-- Not setting the value turns off the wedgeWidth widget -->
-            <!--            <interleave_order>gs</interleave_order>-->
-            <!-- Default wavelengths (in A) and their roles -->
-            <beam_energies>
-                <beam_energy>
-                    <role>Acquisition</role>
-                    <!-- beamline energies in keV -->
-                    <value>12.7</value>
-                </beam_energy>
-            </beam_energies>
-            <options>
-                <wfprefix>Native3_</wfprefix>
-            </options>
-        </NativeData_complete>
 
         <TranslationalCalibration>
             <application>co.gphl.wf.workflows.WFTransCal</application>
@@ -381,6 +386,7 @@
                 <!-- EITHER file OR grid must be set.-->
                 <!--<grid>grid_axes_spec</grid>-->
                 <file>transcal_2stage.json</file>
+<!--                <file>transcal_2stage_0_252.json</file>-->
                 <!-- copy calibration result to configuration directory, -->
                 <!-- moving aside previous value -->
                 <updateblconfig/>
@@ -400,9 +406,9 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <!-- Not setting the value turns off the wedgeWidth widget -->
-            <interleave_order>gs</interleave_order>
+            <!-- <interleave_order>gs</interleave_order>-->
             <options>
-                <wfprefix>Dcalib2_</wfprefix>
+<!--                <wfprefix>Dcalib2_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal_ex</strategy>
                 <!-- Working subdirectory for workflow-side application data-->
@@ -430,9 +436,9 @@
             <!-- 'b' (Beam wavelength); 'd' (Detector position)-->
             <!-- NB position interleaving in NOT done for the moment. So 'gs' is a no-op -->
             <!-- Not setting the value turns off the wedgeWidth widget -->
-            <interleave_order>gs</interleave_order>
+            <!-- <interleave_order>gs</interleave_order>-->
             <options>
-                <wfprefix>Dcalib1_</wfprefix>
+<!--                <wfprefix>Dcalib1_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal</strategy>
                 <!-- Working subdirectory for workflow-side application data-->
