@@ -12,7 +12,6 @@
     <!-- 'configured': value from calibration and characterisation strategy file -->
     <!-- 'current': use current value -->
     <!-- 'frozen': use current value, and disallow changes in teh user interface -->
-    <!-- 'configured': value from calibration and characterisation strategy file -->
     <starting_beamline_energy>current</starting_beamline_energy>
 
     <!-- Default wedge width in degrees, for interleaved data collection -->

@@ -644,7 +644,7 @@ class GphlWorkflow(HardwareObject, object):
                     "decimals": 4,
                 }
             )
-        if self.getProperty("disable_energy_change", False):
+        if self.getProperty("starting_beamline_energy") == "frozen":
             # Use current energy and disallow changes
             ll0[0]["defaultValue"] = api.energy.getCurrentEnergy()
             ll0[0]["readOnly"] = True
@@ -877,7 +877,7 @@ class GphlWorkflow(HardwareObject, object):
         # Preset energy, detector setting and resolution before opening UI
         # Preset energy
         beamSetting = geometric_strategy.defaultBeamSetting
-        if beamSetting and not self.getProperty("disable_energy_change"):
+        if beamSetting and  self.getProperty("starting_beamline_energy") == "configured":
             # First set beam_energy and give it time to settle,
             # so detector distance will trigger correct resolution later
             default_energy = ConvertUtils.H_OVER_E / beamSetting.wavelength
