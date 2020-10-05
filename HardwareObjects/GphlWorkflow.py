@@ -1837,29 +1837,29 @@ class GphlWorkflow(HardwareObject, object):
             if sample_name.startswith(self.TEST_SAMPLE_PREFIX):
                 sample_name = sample_name[len(self.TEST_SAMPLE_PREFIX):]
 
-            sample_dir = api.gphl_connection.software_paths.get(
-                "gphl_test_samples"
-            )
-            if not sample_dir:
-                raise ValueError(
-                    "Test sample requires gphl_test_samples dir specified"
+                sample_dir = api.gphl_connection.software_paths.get(
+                    "gphl_test_samples"
                 )
-            sample_dir = os.path.join(sample_dir, sample_name)
-            if not os.path.isdir(sample_dir):
-                raise ValueError(
-                    "Sample data directory %s does not exist" % sample_dir
-                )
-            crystal_file = os.path.join(sample_dir, "crystal.nml")
-            if not os.path.isfile(crystal_file):
-                raise ValueError(
-                    "Emulator crystal data file %s does not exist" % crystal_file
-                )
-            # in spite of the simcal_crystal_list name this returns an OrderdDict
-            crystal_data = f90nml.read(crystal_file)["simcal_crystal_list"]
-            if isinstance(crystal_data, list):
-                crystal_data = crystal_data[0]
-            hklfile = os.path.join(sample_dir, "sample.hkli")
-            if not os.path.isfile(hklfile):
-                raise ValueError("Emulator hkli file %s does not exist" % hklfile)
+                if not sample_dir:
+                    raise ValueError(
+                        "Test sample requires gphl_test_samples dir specified"
+                    )
+                sample_dir = os.path.join(sample_dir, sample_name)
+                if not os.path.isdir(sample_dir):
+                    raise ValueError(
+                        "Sample data directory %s does not exist" % sample_dir
+                    )
+                crystal_file = os.path.join(sample_dir, "crystal.nml")
+                if not os.path.isfile(crystal_file):
+                    raise ValueError(
+                        "Emulator crystal data file %s does not exist" % crystal_file
+                    )
+                # in spite of the simcal_crystal_list name this returns an OrderdDict
+                crystal_data = f90nml.read(crystal_file)["simcal_crystal_list"]
+                if isinstance(crystal_data, list):
+                    crystal_data = crystal_data[0]
+                hklfile = os.path.join(sample_dir, "sample.hkli")
+                if not os.path.isfile(hklfile):
+                    raise ValueError("Emulator hkli file %s does not exist" % hklfile)
         #
         return crystal_data, hklfile
