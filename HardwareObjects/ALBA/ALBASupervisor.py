@@ -98,7 +98,7 @@ class ALBASupervisor(Device):
     def get_current_phase(self):
         try:
             _value = self.chan_phase.getValue()
-            self.logger.debug('get_current_phase: (value={0}, type={1})'.format(_value, type(_value)))
+            #self.logger.debug('get_current_phase: (value={0}, type={1})'.format(_value, type(_value)))
         except Exception as e:
             raise RuntimeError('Cannot get supervisor current phase:\n%s' % str(e))
         return _value
@@ -119,7 +119,7 @@ class ALBASupervisor(Device):
     def get_state(self):
         try:
             _value = self.chan_state.getValue()
-            self.logger.debug('get_state: (value={0}, type={1})'.format(_value, type(_value)))
+            #self.logger.debug('get_state: (value={0}, type={1})'.format(_value, type(_value)))
         except Exception as e:
             raise RuntimeError('Cannot get supervisor state:\n%s' % str(e))
         return _value
