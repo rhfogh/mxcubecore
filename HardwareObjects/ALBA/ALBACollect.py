@@ -29,18 +29,17 @@ Basic Flow:
         prepare_collection in ALBACollect                       <-- Repeated for each test image in case of characterization
           detector_hwobj.prepare_collection                     <-- Repeated for each test image in case of characterization
         collect_images                                               
-        data_collection_end
+           wait_collection_done
         collection_finished 
     data_collection_cleanup in ALBACollect (supersedes AbstractCollect method with same name)
     
 There are currently three routines used for when a collection fails
     data_collection_failed in ALBACollect 
-        calls stopCollect
-        calls AbstractCollect.data_collection_failed
+        calls stop_collect (is this explicit call necessary?)
     collection_failed in AbstractCollect is called from do_collect in case of failure 
 
-In case the user aborts data collection, stopCollect is called, then data_collection_cleanup
-    In that case, how do we prevent post processing?
+In case the user aborts data collection, stopCollect is called, then stop_collect then data_collection_cleanup
+    In that case, is post processing prevented?
     
 [Signals]
 - progressInit
@@ -51,7 +50,7 @@ In case the user aborts data collection, stopCollect is called, then data_collec
 - collectOscillationFailed
 """
 
-# RB 20190903: I think we should define data collection sweeps in a device server
+# RB 2020102: data collection sweeps to be done through a Sardana Macro
 
 from __future__ import print_function
 
@@ -305,7 +304,10 @@ class ALBACollect(AbstractCollect):
                 sweep_nb_images = mesh_nb_frames_per_line
                 mesh_line_exposure_time = mesh_nb_frames_per_line * exp_time
             else: 
-                self.data_collection_failed('Inconsistent total number of images and number of lines in Mesh scan')
+                msg = 'Inconsistent total number of images and number of lines in Mesh scan'
+                self.data_collection_failed(msg)
+                raise Exception( msg )
+            
             self.logger.debug("Running a raster collection ()")
             self.logger.debug(
                 "\tnumber of lines are: %s" %
@@ -322,26 +324,33 @@ class ALBACollect(AbstractCollect):
             # For mesh scans, the start parameter represents the center of the mesh
             omega_pos = omega_pos - ( mesh_nb_frames_per_line * img_range / 2.0 )
         else:
-            self.logger.debug("Running a collect (STANDARD)")
+            self.logger.debug( "Running a collect (STANDARD)" )
 
-        if self.check_scan_velocities(self.scan_velocities): # There are motors that cant work at required speed
-            self.data_collection_failed('Cant reach the required velocities')
+        if self.check_scan_velocities( self.scan_velocities ): # There are motors that cant work at required speed
+            msg = 'Cant reach the required velocities'
+            self.data_collection_failed( msg )
+            raise Exception( msg )
             
         try:
-            ready, init_pos, start_pos, end_pos , final_pos, omega_speed  = self.prepare_acquisition(omega_pos, sweep_nb_images, img_range, exp_time)
+            ready = self.prepare_acquisition()
+            # RB init_pos and final_pos include the ramp up and run out range for omega
+            init_pos, final_pos, total_dist, omega_speed = self.calc_omega_scan_values(
+                                                                omega_pos, sweep_nb_images 
+                                                           )
         except Exception as e:
             self.logger.error("Prepare_acquisition failed")
             self.logger.error('error %s' % str(e) )
-            logging.getLogger('user_level_log').error('error %s' % str(e.Description) )
-            self.data_collection_failed("Prepare_acquisition failed")
-            return
+            logging.getLogger('user_level_log').error('error %s' % repr( e ) )
+            self.data_collection_failed( "Prepare_acquisition failed" )
+            raise Exception( e )
 
-        self.logger.debug('  Sweep parameters omega: init %s start %s end %s final %s speed %s' % (init_pos, start_pos, end_pos, final_pos, omega_speed ) )
+
+        self.logger.debug('  Sweep parameters omega: init %s start %s total dist %s speed %s' % (init_pos, omega_pos, total_dist, omega_speed ) )
             
         if not ready:
-            self.data_collection_failed(msg)
+            self.data_collection_failed( msg )
             self.stop_collect() # This is the only place this function is called, defined in AbstractCollect, is it do anything
-            return
+            raise Exception( msg )
             
         # for progressBar brick
         self.emit("progressInit", "Collection", osc_seq['number_of_images'])
@@ -362,10 +371,10 @@ class ALBACollect(AbstractCollect):
                                    )
             self.detector_hwobj.start_collection()
             #TODO: set a try except to capture aborted data collections, if necessary
-            self.collect_images(omega_speed, start_pos, final_pos, nb_images, first_image_no)
+            self.collect_images(omega_speed, omega_pos, final_pos, nb_images, first_image_no)
         elif exp_type == 'Characterization' and nb_images > 1:   # image one by one
             for imgno in range(nb_images):
-                self.collect_prepare_omega(init_pos)
+                self.collect_prepare_omega(init_pos) # init_pos is calculated in prepare_acquisition but needs to be updated 
                 self.prepare_collection(
                                           start_angle=omega_pos, nb_images=1, first_image_no=first_image_no,
                                           img_range = img_range,
@@ -374,16 +383,16 @@ class ALBACollect(AbstractCollect):
                                           det_trigger = self.current_dc_parameters['detector_mode'][0]
                                        )
                 self.detector_hwobj.start_collection()
-                #TODO: set a try except to capture aborted data collections, if necessary
-                self.collect_images(omega_speed, start_pos, final_pos, 1, first_image_no)
+                self.collect_images(omega_speed, omega_pos, final_pos, 1, first_image_no)
                 first_image_no += 1
                 omega_pos += 90
+                init_pos, final_pos, total_dist, omega_speed = self.calc_omega_scan_values( omega_pos, nb_images )
+                
         elif exp_type == 'Mesh':   # combine all collections
             self.logger.debug("Running a raster collection")
             self.init_mesh_scan()
             # final_pos is end of omega range (not including safedelta)
             if omega_speed == 0: self.current_dc_parameters['detector_mode'] = ['INTERNAL_TRIGGER']
-            #TODO: set a try except to capture aborted data collections, if necessary
             for lineno in range(self.mesh_num_lines):
                 self.collect_prepare_omega(init_pos)
                 self.logger.debug("\t line %s out of %s" % ( lineno+1, self.mesh_num_lines ) )
@@ -399,7 +408,7 @@ class ALBACollect(AbstractCollect):
                                            det_trigger = self.current_dc_parameters['detector_mode'][0]
                                        )
                 self.detector_hwobj.start_collection()
-                self.collect_images(omega_speed, start_pos, final_pos, 1, first_image_no)
+                self.collect_images(omega_speed, omega_pos, final_pos, 1, first_image_no)
                 first_image_no += mesh_nb_frames_per_line
                 #TODO move omegaz/phiz by the mesh_vertical_discrete_step_size
                 self._motor_persistently_move( self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name], mesh_vertical_discrete_step_size, 'REL' )
@@ -415,15 +424,16 @@ class ALBACollect(AbstractCollect):
                 
             self.finalize_mesh_scan()
 
-        self.data_collection_end()
         self.collection_finished()
 
                 
     def collect_images(self, omega_speed, start_pos, final_pos, nb_images, first_image_no):
-        #
-        # Run a single wedge. 
-        #  For mesh scans, multiple wedges are required, so data_collection_end and collect_finished should be run outside this loop
-        #
+        """
+           Run a single wedge. 
+           Start position is the omega position where images should be collected. 
+           It is assumed omega is already at the initial position, which comes before the start position
+               and allows the mechanics to get up to speed
+        """
         self.logger.info("collect_images: Collecting images, by moving omega to %s" % final_pos)
         total_time = (final_pos - self.omega_hwobj.getPosition() ) / omega_speed 
         omega_ramp_time = math.fabs ( ( self.omega_hwobj.getPosition() - start_pos ) / omega_speed )
@@ -431,13 +441,15 @@ class ALBACollect(AbstractCollect):
         if omega_speed != 0:
             try: 
                 self._motor_persistently_move(self.omega_hwobj, final_pos)
-            except:
-                self.data_collection_failed('Omega position could not be set')
+            except Exception as e:
+                self.data_collection_failed('Initial omega position could not be reached')
+                raise Exception(e)
         else:
             try:
                 self.open_fast_shutter_for_interal_trigger()
-            except:
+            except Exception as e:
                 self.data_collection_failed('Cant open safety shutter for omega speed %.6f' % omega_speed)
+                raise Exception(e)
 
         time.sleep(omega_ramp_time)
         for scanmovemotorname in self.scan_move_motor_names:
@@ -447,41 +459,25 @@ class ALBACollect(AbstractCollect):
                                    (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
                                      self.scan_end_positions[scanmovemotorname], 
                                        self.scan_velocities[scanmovemotorname] ) )
-            except:
+            except Exception as e:
                 self.logger.error('Cannot move the helical motor %s to its end position' % scanmovemotorname)
                 self.data_collection_failed('Cannot move the helical motor %s to its end position' % scanmovemotorname)
+                raise Exception(e)
         self.wait_collection_done(nb_images, first_image_no, total_time)
-
-    def data_collection_end(self):
-        self.logger.debug("  ALBACollect data_collection_end")
-        #self.omega_hwobj.stop()
-        #for helmovemotorname in self.scan_move_motor_names:
-        #    self.scan_motors_hwobj[helmovemotorname].stop()
-        #self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.get_state() )
-        self._collecting = False
-
-        # Wait for omega to stop moving, it continues further than necessary
-        self.omega_hwobj.wait_end_of_move(timeout=40)
-        # Wait for any other motors to stop moving
-        for motorname in self.scan_move_motor_names:
-            self.scan_motors_hwobj[motorname].wait_end_of_move(timeout=40)
-
 
     def data_collection_failed(self, failed_msg):
         self.logger.info("ALBACollect data_collection_failed")
-        self.stopCollect()
-        self.current_dc_parameters["status"] = 'failed'
-
-        exc_type, exc_value, exc_tb = sys.exc_info()
-        # recovering sequence should go here TODO
-        self.logger.debug("  Initiating recovery sequence")
-        self.data_collection_end()
-        AbstractCollect.data_collection_failed() # Isnt this the same function calling itself?
-
+        logging.getLogger('user_level_log').error(failed_msg)
         
-    def prepare_acquisition(self, omega_start_pos, nb_images, img_range, exp_time):
+        self.logger.debug("  Initiating recovery sequence")
+        self.stopCollect() # is it necessary to call this, or is it called through events? If it is not, this method is not necessary
+
+        #AbstractCollect.data_collection_failed() # there is no data_collection_failed in AbstractCollect
+        
+    def prepare_acquisition(self):
         """
           checks shutters, moves supervisor to collect phase, prepares detector and calculates omega start values
+          omega_start_pos should be the value at which the collection starts
         """
 
         fileinfo = self.current_dc_parameters['fileinfo']
@@ -533,15 +529,23 @@ class ALBACollect(AbstractCollect):
             self.logger.info( "Cannot prepare the detector for acquisition" )
             self.data_collection_failed("Cannot prepare the detector for acquisition")
             self.stop_collect()
-            return
+            raise Exception( e )
 
         if not detok:
-            return False, 'Cannot prepare detector.'
+            msg = "Cannot prepare the detector for acquisition" 
+            self.logger.info( msg )
+            self.data_collection_failed( msg )
+            self.stop_collect()
+            raise Exception( msg )
 
+        return ( detok )
+
+    def calc_omega_scan_values( self, omega_start_pos, nb_images ):
+        """
+           Calculates the values at which the omega should start and end so that 
+           during collection it has a constant speed
+        """
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
-
-        # start_angle = osc_seq['start']
-        # nb_images = osc_seq['number_of_images']
 
         img_range = osc_seq['range']
         exp_time = osc_seq['exposure_time']
@@ -561,7 +565,7 @@ class ALBACollect(AbstractCollect):
         init_pos = omega_start_pos - safe_delta
         final_pos = omega_start_pos + total_dist + safe_delta #TODO adjust the margins to the minimum necessary
 
-        return ( detok, init_pos, omega_start_pos, ( omega_start_pos + total_dist ), final_pos, omega_speed )
+        return ( init_pos, final_pos, total_dist, omega_speed )
 
     def collect_prepare_omega(self, omega_pos):
         '''
@@ -571,22 +575,28 @@ class ALBACollect(AbstractCollect):
 
         try:
             self._motor_persistently_set_velocity(self.omega_hwobj, 60) # make sure omega is max speed before moving to start pos
-        except Exception:
+        except Exception as e :
             self.logger.error("Error setting omega velocity, state is %s" % str(self.omega_hwobj.getState()))
             self.logger.info("Omega velocity set to its nominal value")
             self.data_collection_failed('Omega position could not be set')
+            raise Exception( e )
 
         self.logger.info("Moving omega to initial position %s" % omega_pos)
         try:
             if math.fabs(self.omega_hwobj.getPosition() - omega_pos) > 0.0001:
                 self._motor_persistently_syncmove(self.omega_hwobj, omega_pos)
-        except Exception:
+        except Exception as e :
             self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
             self.data_collection_failed('Omega position could not be set')
+            raise Exception( e )
 
         return 
  
     def prepare_collection(self, start_angle, nb_images, first_image_no, img_range, exp_time, omega_speed, det_trigger):
+        """
+          sets up data collection. 
+          the start_angle is the position of omega when the first image starts to be collected
+        """
 
         total_dist = nb_images * img_range
         
@@ -615,16 +625,18 @@ class ALBACollect(AbstractCollect):
         self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
         try: 
             self._motor_persistently_set_velocity(self.omega_hwobj, omega_speed)
-        except: 
+        except Exception as e: 
             self.data_collection_failed("Cannot set the omega velocity to %s" % omega_speed) 
+            raise Exception( e )
         
         for scanmovemotorname in self.scan_move_motor_names:
             self.logger.info("Setting %s velocity to %.4f" % (scanmovemotorname, self.scan_velocities[scanmovemotorname]) )
             try:
                 self._motor_persistently_set_velocity(self.scan_motors_hwobj[scanmovemotorname], self.scan_velocities[scanmovemotorname])
-            except:
+            except Exception as e:
                 self.logger.info("Cant set the scan velocity of motor %s" % scanmovemotorname )
                 self.data_collection_failed("Cant set the scan velocity of motor %s" % scanmovemotorname) 
+                raise Exception( e )
                 
         self.detector_hwobj.set_detector_mode(det_trigger)
         if omega_speed != 0:
@@ -712,11 +724,21 @@ class ALBACollect(AbstractCollect):
         # nb_images = osc_seq['number_of_images']
         last_image_no = first_image_no + nb_images - 1
         self.logger.info("  Total acquisition time = %.2f s" % total_time )
+        self.logger.info("  last_image_no          = %d" % last_image_no )
 
         if nb_images > 1:
             self.wait_save_image(first_image_no)
         self.omega_hwobj.wait_end_of_move(timeout=720)
         self.wait_save_image(last_image_no)
+
+        # Wait for omega to stop moving, it continues further than necessary
+        self.omega_hwobj.wait_end_of_move(timeout=40)
+        # Wait for any other motors to stop moving
+        for motorname in self.scan_move_motor_names:
+            self.scan_motors_hwobj[motorname].wait_end_of_move(timeout=40)
+
+        # Make sure the detector is readyddddd (in stand by and not moving)
+        self.detector_hwobj.wait_ready()
 
     def wait_save_image(self, frame_number, timeout=25):
 
@@ -731,7 +753,7 @@ class ALBACollect(AbstractCollect):
 
         self.logger.debug("   waiting for image on disk: %s" % full_path)
 
-        while not os.path.exists(full_path) and self._collecting: # If the user aborts, self._collecting is false, stop waiting for the image
+        while not os.path.exists(full_path) and self.aborted_by_user: 
             # TODO: review next line for NFTS related issues.
             dirlist = os.listdir(basedir)  # forces directory flush ?
             if (time.time() - start_wait) > timeout:
@@ -744,8 +766,8 @@ class ALBACollect(AbstractCollect):
                     cam_state, acq_status, fault_error)
                 logging.getLogger('user_level_log').error("Incompleted data collection")
                 logging.getLogger('user_level_log').error(msg)
-                # raise RuntimeError(msg)
-                return False
+                raise RuntimeError(msg)
+                #return False
             #logging.getLogger('user_level_log').error("self._collecting %s" % str(self._collecting) )
             time.sleep(0.2)
 
@@ -823,10 +845,10 @@ class ALBACollect(AbstractCollect):
 
         self.logger.debug("Cleanup: moving omega to initial position %s" % self.omega_init_pos)
         try:
-            # RB: should we do this, isnt it better that the detetor keeps collecting to not loose images of a collection.Or increase wating time?
+            # RB: isnt it better that the detetor keeps collecting to not loose images of a collection.Or increase wating time?
             # In fact, this is done in stopCollect when a user specifically asks for an Abort
             #self.detector_hwobj.stop_collection() 
-            self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos) # The velocity has already been set to 60 in data_collection_end
+            self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos) 
         except:
             self.logger.error("Omega needs to be stopped before restoring initial position")
             self.omega_hwobj.stop()
@@ -834,9 +856,8 @@ class ALBACollect(AbstractCollect):
 
         self.scan_delete_motor_data()
         self.unconfigure_ni()
+        self.fastshut_hwobj.close() # RB: not sure if it closes when unconfiguring it, just in case
 
-        self._collecting = False
-        
         self.logger.debug("ALBA data_collection_cleanup finished")
 
     def check_directory(self, basedir):
@@ -885,7 +906,7 @@ class ALBACollect(AbstractCollect):
             
             if super_state == DevState.ON and cphase == "COLLECT":
                 break
-            if time.time() - t0 > timeout:
+            if time.time() - t0 > timeout or self.aborted_by_user:
                 msg = "Timeout sending supervisor to collect phase"
                 self.logger.debug(msg)
                 raise RuntimeError(msg)
@@ -1030,9 +1051,10 @@ class ALBACollect(AbstractCollect):
                 else: self.logger.info('Helical motor %s not added, position is None' % arg["1"][motorname])
                 if arg["2"][motorname] != None: self.scan_end_positions[motorname] = arg["2"][motorname]
                 else: self.logger.info('Helical motor %s not added, position is None' % arg["2"][motorname])
-        except:
+        except Exception as e :
              self.logger.error('FAILED TO SET HELICAL MOTOR POSITIONS')
              self.data_collection_failed("Cannot interpret helical motor start/end positions") #TODO: collect_failed?? or self.data_collection_failed?
+             raise Exception( e )
 
     def set_scan_move_motors(self, scan_start_pos, scan_end_pos, cutoff=0.005): #cutoff in microns
         self.logger.info('  Checking which motors should move for the helical data collection')
@@ -1222,11 +1244,20 @@ class ALBACollect(AbstractCollect):
     def stopCollect(self):
         """
            Apparently this method is called when the user aborts data collection
+           overrides AbstractCollect.stopCollect
            
            TODO: stop the supervisor from changing state 
         """
         self.logger.debug("ALBACollect stopCollect") 
+        self.aborted_by_user = True
+        self.stop_collect() # What does this do???
 
+    def stop_collect(self):
+        """
+        Stops data collection, either interrupted by user, or due to failure
+        overrides AbstractCollect.stop_collect
+        """
+        self.logger.debug("ALBACollect stop_collect") 
         self.logger.info("  Stopping all motors")
         self.detector_hwobj.stop_collection()
         self.omega_hwobj.stop()
@@ -1238,15 +1269,9 @@ class ALBACollect(AbstractCollect):
             self.scan_motors_hwobj[helmovemotorname].stop()
 
         self._collecting = False
-        #self.stop_collect() # What does this do???
 
-    def stop_collect(self):
-        """
-        Stops data collection
-        """
-        self.logger.debug("ALBACollect stop_collect") 
-        if self.data_collect_task is not None:
-            self.data_collect_task.kill(block = False)
+        #if self.data_collect_task is not None:
+        #    self.data_collect_task.kill(block = False)
 
 
     @task
@@ -1429,7 +1454,7 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('Setting motor velocity to %s, motor state is %s' % 
                 #                      ( new_velo, motor_hwobj.getState() ) 
                 #                 )
-                if motor_hwobj.getState() == 3:
+                if motor_hwobj.getState() == 3: # TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
                     motor_hwobj.set_velocity(new_velo)
                     self.logger.debug('Succesfully set motor velocity to %s, motor state is %s' % 
                                          ( new_velo, motor_hwobj.getState() ) 
@@ -1456,7 +1481,7 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('Setting motor position to %s, motor state is %s' % 
                 #                      ( new_pos, motor_hwobj.getState() ) 
                 #                 )
-                if motor_hwobj.getState() == 3:
+                if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
                     if mode == 'ABS':
                         motor_hwobj.syncMove(new_pos)
                     else: 
@@ -1486,7 +1511,7 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('Setting motor position to %s, motor state is %s' % 
                 #                      ( new_pos, motor_hwobj.getState() ) 
                 #                 )
-                if motor_hwobj.getState() == 3:
+                if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
                     if mode == 'ABS':
                          motor_hwobj.move(new_pos)
                     else: 
