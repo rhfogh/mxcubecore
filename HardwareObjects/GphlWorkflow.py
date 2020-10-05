@@ -1824,17 +1824,13 @@ class GphlWorkflow(HardwareObject, object):
         Returns:
             Optional[dict]
         """
-        default_sample_name = "emulate-4mxt"
 
         crystal_data = None
         hklfile = None
         sample = api.sample_changer.getLoadedSample()
         if sample:
             sample_name = sample.getName()
-        else:
-            sample_name = default_sample_name
-        if sample_name:
-            if sample_name.startswith(self.TEST_SAMPLE_PREFIX):
+            if sample_name and sample_name.startswith(self.TEST_SAMPLE_PREFIX):
                 sample_name = sample_name[len(self.TEST_SAMPLE_PREFIX):]
 
                 sample_dir = api.gphl_connection.software_paths.get(
