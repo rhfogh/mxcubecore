@@ -168,7 +168,7 @@
     <!-- Note that irtrelevant properties are simply ignored.-->
     <workflow_properties>
         <!-- Set to false to switch off pre-start checks for directory existence -->
-        <!--<co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>-->
+        <co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>
         <!--<co.gphl.wf.procRootCheck>false</co.gphl.wf.procRootCheck>-->
         <!-- Dummy sample properties. -->
         <!-- Choose values for these to make the
