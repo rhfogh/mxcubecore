@@ -169,6 +169,7 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
 
     def wait_ready(self):
         self.wait_move_distance_done()
+        self.wait_standby()
 
     def get_distance_limits(self):
         """Returns detector distance limits"""
