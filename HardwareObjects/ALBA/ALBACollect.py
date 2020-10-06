@@ -411,7 +411,8 @@ class ALBACollect(AbstractCollect):
                 self.collect_images(omega_speed, omega_pos, final_pos, 1, first_image_no)
                 first_image_no += mesh_nb_frames_per_line
                 #TODO move omegaz/phiz by the mesh_vertical_discrete_step_size
-                self._motor_persistently_move( self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name], mesh_vertical_discrete_step_size, 'REL' )
+                #self._motor_persistently_move( self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name], mesh_vertical_discrete_step_size, 'REL' )
+                self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name].moveRelative( mesh_vertical_discrete_step_size )
                 #TODO invert the direction of the collection
                 self.logger.debug('  scan_start_positions before swap= %s' % self.scan_start_positions )
                 self.logger.debug('  scan_end_positions before swap= %s' % self.scan_end_positions )
@@ -440,7 +441,8 @@ class ALBACollect(AbstractCollect):
         self.logger.info("    Total collection time = %s" % total_time)
         if omega_speed != 0:
             try: 
-                self._motor_persistently_move(self.omega_hwobj, final_pos)
+                #self._motor_persistently_move(self.omega_hwobj, final_pos)
+                self.omega_hwobj.move( final_pos )
             except Exception as e:
                 self.data_collection_failed('Initial omega position could not be reached')
                 raise Exception(e)
@@ -454,11 +456,12 @@ class ALBACollect(AbstractCollect):
         time.sleep(omega_ramp_time)
         for scanmovemotorname in self.scan_move_motor_names:
             try: 
-                self.scan_motors_hwobj[scanmovemotorname].move(self.scan_end_positions[scanmovemotorname])
-                self.logger.info('Moving motor %s from %.4f to final position %.4f at %.6f velocity' % 
-                                   (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
-                                     self.scan_end_positions[scanmovemotorname], 
-                                       self.scan_velocities[scanmovemotorname] ) )
+                # It might be faster (but more dangerous)  self.motor_hwobj.setValue(absolute_position)
+                self.scan_motors_hwobj[scanmovemotorname].move( self.scan_end_positions[scanmovemotorname] )
+                #self.logger.info('Moving motor %s from %.4f to final position %.4f at %.6f velocity' % 
+                #                  (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
+                #                     self.scan_end_positions[scanmovemotorname], 
+                #                       self.scan_velocities[scanmovemotorname] ) )
             except Exception as e:
                 self.logger.error('Cannot move the helical motor %s to its end position' % scanmovemotorname)
                 self.data_collection_failed('Cannot move the helical motor %s to its end position' % scanmovemotorname)
@@ -574,7 +577,8 @@ class ALBACollect(AbstractCollect):
         '''
 
         try:
-            self._motor_persistently_set_velocity(self.omega_hwobj, 60) # make sure omega is max speed before moving to start pos
+            #self._motor_persistently_set_velocity(self.omega_hwobj, 60) # make sure omega is max speed before moving to start pos
+            self.omega_hwobj.set_velocity( 60 )
         except Exception as e :
             self.logger.error("Error setting omega velocity, state is %s" % str(self.omega_hwobj.getState()))
             self.logger.info("Omega velocity set to its nominal value")
@@ -584,7 +588,8 @@ class ALBACollect(AbstractCollect):
         self.logger.info("Moving omega to initial position %s" % omega_pos)
         try:
             if math.fabs(self.omega_hwobj.getPosition() - omega_pos) > 0.0001:
-                self._motor_persistently_syncmove(self.omega_hwobj, omega_pos)
+                #self._motor_persistently_syncmove(self.omega_hwobj, omega_pos)
+                self.omega_hwobj.syncMove( omega_pos )
         except Exception as e :
             self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
             self.data_collection_failed('Omega position could not be set')
@@ -624,7 +629,8 @@ class ALBACollect(AbstractCollect):
         #            time.sleep(0.1)
         self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
         try: 
-            self._motor_persistently_set_velocity(self.omega_hwobj, omega_speed)
+            #self._motor_persistently_set_velocity(self.omega_hwobj, omega_speed)
+            self.omega_hwobj.set_velocity( omega_speed )
         except Exception as e: 
             self.data_collection_failed("Cannot set the omega velocity to %s" % omega_speed) 
             raise Exception( e )
@@ -632,7 +638,8 @@ class ALBACollect(AbstractCollect):
         for scanmovemotorname in self.scan_move_motor_names:
             self.logger.info("Setting %s velocity to %.4f" % (scanmovemotorname, self.scan_velocities[scanmovemotorname]) )
             try:
-                self._motor_persistently_set_velocity(self.scan_motors_hwobj[scanmovemotorname], self.scan_velocities[scanmovemotorname])
+                #self._motor_persistently_set_velocity(self.scan_motors_hwobj[scanmovemotorname], self.scan_velocities[scanmovemotorname])
+                self.scan_motors_hwobj[scanmovemotorname].set_velocity( self.scan_velocities[scanmovemotorname] )
             except Exception as e:
                 self.logger.info("Cant set the scan velocity of motor %s" % scanmovemotorname )
                 self.data_collection_failed("Cant set the scan velocity of motor %s" % scanmovemotorname) 
@@ -730,6 +737,9 @@ class ALBACollect(AbstractCollect):
             self.wait_save_image(first_image_no)
         self.omega_hwobj.wait_end_of_move(timeout=720)
         self.wait_save_image(last_image_no)
+        self.logger.info("  wait_collection_done last image found" )
+        for motorname in self.scan_move_motor_names:
+            self.logger.info("     Motor %s position = %.2f" % ( motornames, self.scan_motors_hwobj[motorname].position ) )
 
         # Wait for omega to stop moving, it continues further than necessary
         self.omega_hwobj.wait_end_of_move(timeout=40)
@@ -834,21 +844,24 @@ class ALBACollect(AbstractCollect):
             if self.omega_init_vel != None: # Sometimes, data collections fails before the initial velocities are set, eg when supervisor or diff DS are in alarm
                 self.logger.info('  Setting velocity of motor omega')
                 self.logger.info('     to initial velocity %.6f' % self.omega_init_vel ) 
-                self._motor_persistently_set_velocity( self.omega_hwobj, self.omega_init_vel )
+                #self._motor_persistently_set_velocity( self.omega_hwobj, self.omega_init_vel )
+                self.omega_hwobj.set_velocity( self.omega_init_vel )
         except:
             self.logger.info('  Setting velocity of motor omega to %.1f failed' % self.omega_init_vel)
             
         for motorname in self.scan_move_motor_names:
             self.logger.info('  Setting velocity of motor %s' % motorname )
             self.logger.info('     to initial velocity %.6f' % self.scan_init_velocities[motorname] ) 
-            self._motor_persistently_set_velocity( self.scan_motors_hwobj[motorname], self.scan_init_velocities[motorname] )
+            #self._motor_persistently_set_velocity( self.scan_motors_hwobj[motorname], self.scan_init_velocities[motorname] )
+            self.scan_motors_hwobj[motorname].set_velocity( self.scan_init_velocities[motorname] )
 
         self.logger.debug("Cleanup: moving omega to initial position %s" % self.omega_init_pos)
         try:
             # RB: isnt it better that the detetor keeps collecting to not loose images of a collection.Or increase wating time?
             # In fact, this is done in stopCollect when a user specifically asks for an Abort
             #self.detector_hwobj.stop_collection() 
-            self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos) 
+            #self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos) 
+            self.omega_hwobj.move( self.omega_init_pos ) 
         except:
             self.logger.error("Omega needs to be stopped before restoring initial position")
             self.omega_hwobj.stop()
