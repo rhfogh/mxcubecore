@@ -107,6 +107,10 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
+        # RF no longer needed
+        # #GB: globalize these from setup_data_collection() only to get stuff down to collect_data()
+        # self._last_queryed_collection_strategy_parameters = None
+
     def _init(self):
         super(GphlWorkflow, self)._init()
 
@@ -390,7 +394,7 @@ class GphlWorkflow(HardwareObject, object):
     def get_configuration_data(self, payload, correlation_id):
         return GphlMessages.ConfigurationData(self.file_paths["gphl_beamline_config"])
 
-    def query_collection_strategy(self, geometric_strategy, default_energy):
+    def query_collection_strategy(self, geometric_strategy, initial_energy):
         """Display collection strategy for user approval,
         and query parameters needed"""
 
@@ -443,7 +447,7 @@ class GphlWorkflow(HardwareObject, object):
             lines.extend(("-"*len(lines[0]), ""))
             # Data collection TODO: Use workflow info to distinguish
             beam_energies = OrderedDict()
-            energies = [default_energy, default_energy + 0.01, default_energy - 0.01]
+            energies = [initial_energy, initial_energy + 0.01, initial_energy - 0.01]
             for ii, tag in enumerate(data_model.get_beam_energy_tags()):
                 beam_energies[tag] = energies[ii]
             budget_use_fraction = 1.0
@@ -452,7 +456,7 @@ class GphlWorkflow(HardwareObject, object):
             # Characterisation
             lines = ["Characterisation strategy"]
             lines.extend(("="*len(lines[0]), ""))
-            beam_energies = OrderedDict((("Characterisation", default_energy),))
+            beam_energies = OrderedDict((("Characterisation", initial_energy),))
             budget_use_fraction = data_model.get_characterisation_budget_fraction()
 
         total_strategy_length = strategy_length * len(beam_energies)
@@ -850,7 +854,6 @@ class GphlWorkflow(HardwareObject, object):
         geometric_strategy = payload
 
         gphl_workflow_model = self._queue_entry.get_data_model()
-        collect_hwobj = api.collect
 
         # enqueue data collection group
         if gphl_workflow_model.lattice_selected:
@@ -876,33 +879,47 @@ class GphlWorkflow(HardwareObject, object):
 
         # Preset energy, detector setting and resolution before opening UI
         # Preset energy
-        beamSetting = geometric_strategy.defaultBeamSetting
-        if beamSetting and  self.getProperty("starting_beamline_energy") == "configured":
+        bst = geometric_strategy.defaultBeamSetting
+        if bst and self.getProperty("starting_beamline_energy") == "configured":
             # First set beam_energy and give it time to settle,
             # so detector distance will trigger correct resolution later
-            default_energy = ConvertUtils.H_OVER_E / beamSetting.wavelength
+            initial_energy = ConvertUtils.H_OVER_E / bst.wavelength
             # TODO NBNB put in wait-till ready to make sure value settles
-            api.energy.move_energy(default_energy)
+            api.energy.move_energy(initial_energy)
         else:
-            default_energy = api.energy.getCurrentEnergy()
+            initial_energy = api.energy.getCurrentEnergy()
 
-        # Preset detector distance and resolution
-        detectorSetting = geometric_strategy.defaultDetectorSetting
-        if detectorSetting:
-            # NBNB If this is ever set to editable, distance and resolution
-            # must be varied in sync
-            api.detector.set_distance(detectorSetting.axisSettings.get("Distance"))
-        # TODO NBNB put in wait-till-ready to make sure value settles
-        api.detector.wait_ready()
-        strategy_resolution = api.resolution.get_value()
+        # # Preset detector distance and resolution
+        # For now only needed to reuse the ID if the value does not change
+        # detectorSetting = geometric_strategy.defaultDetectorSetting
+        # if detectorSetting:
+        #     # NBNB If this is ever set to editable, distance and resolution
+        #     # must be varied in sync
+        #
+        #     #GB: it should not be done here, but if so than using api.detector_distance.move()
+        #     #api.detector.set_distance(detectorSetting.axisSettings.get("Distance"))
+        #     pass
+        #
+        # # TODO NBNB put in wait-till-ready to make sure value settles
+        #
+        # """GB: if this was ment to synchronize detector distance motor move,
+        # I guess it should wait_ready on detecor_distance motor, not on the detector itself
+        # api.detector.wait_ready()
+        # """
+
+        # NB - now pre-setting of detector has been removed, this gets
+        # the current resolution setting, whtever it is
+        initial_resolution = api.resolution.get_value()
         # Put resolution value in workflow model object
-        gphl_workflow_model.set_detector_resolution(strategy_resolution)
+        gphl_workflow_model.set_detector_resolution(initial_resolution)
 
-        # Get modified parameters and confirm acquisition
+        # Get modified parameters from UI and confirm acquisition
         # Run before centring, as it also does confirm/abort
-        parameters = self.query_collection_strategy(geometric_strategy, default_energy)
+        parameters = self.query_collection_strategy(geometric_strategy, initial_energy)
         if parameters is StopIteration:
             return StopIteration
+        #' RF no longer needed
+        # self._last_queryed_collection_strategy_parameters = parameters.copy()
         user_modifiable = geometric_strategy.isUserModifiable
         if user_modifiable:
             # Query user for new rotationSetting and make it,
@@ -923,36 +940,47 @@ class GphlWorkflow(HardwareObject, object):
         )
         # set to wavelength of first energy
         # necessary so that resolution setting below gives right detector distance
-        api.energy.move_wavelength(wavelengths[0].wavelength)
+        new_energy = list(beam_energies.items())[0][1]
+        if new_energy!= initial_energy:
+            logging.getLogger("GUI").info(
+                "GphlWorkflow: resetting energy from %7.3f to %7.3f keV"
+                % (initial_energy, new_energy)
+            )
+
+            api.energy.move_wavelength(wavelengths[0].wavelength)
         # TODO ensure that move is finished before resolution is set
 
-        # get BcsDetectorSetting
-        new_resolution = parameters.pop("resolution")
-        if new_resolution == strategy_resolution:
-            id_ = detectorSetting.id_
-        else:
+        # # get BcsDetectorSetting
+        # new_resolution = parameters.pop("resolution")
+        # if new_resolution == initial_resolution:
+        #     # Reuse object and value
+        #     id_ = detectorSetting.id_
+        # else:
+        #     id_ = None
             # TODO Clarify if set_position does not have a built-in wait
             # TODO whether you need towait for somethign else too, ...
 
-            api.resolution.move(new_resolution)
+            #GB api.resolution.move(new_resolution)
             # TODO it should be set_position, fix TineMotor (resolution at EMBL)
             # api.resolution.move(new_resolution)
-            api.detector.wait_ready()
+
+            #GB if this is used, consider synchronizing api.resolution which is moved, not the detector
+            #GB api.detector.wait_ready() 
             # NBNB Wait till value has settled
-            id_ = None
-        # orgxy = collect_hwobj.get_beam_centre_pix()
-        orgxy = collect_hwobj.get_beam_centre()
-        detectorSetting = GphlMessages.BcsDetectorSetting(
-            new_resolution, id_=id_, orgxy=orgxy, Distance=api.detector.get_distance()
-        )
-
-        # Set transmission - and get exact value for return message
-        # This value will not be modified by the collection queue
-        transmission = parameters["transmission"]
-        # NBNB allow time to settle
-        api.transmission.set_value(100 * transmission)
-        parameters["transmission"] = 0.01 * api.transmission.get_value()
-
+        #GB moved to point C
+        #GB orgxy = collect_hwobj.get_beam_centre_pix() #GB: behind this is a series of hacks hardcoding eiger pixel ...  
+        #GB orgxy = collect_hwobj.get_beam_centre()
+        #GB detectorSetting = GphlMessages.BcsDetectorSetting(
+        #GB   new_resolution, id_=id_, orgxy=orgxy, Distance=api.detector.get_distance()
+        #GB )
+        # 
+        # # Set transmission - and get exact value for return message
+        # # This value will not be modified by the collection queue
+        # transmission = parameters["transmission"]
+        # # NBNB allow time to settle
+        # 
+        # #GB api.transmission.set_value(100 * transmission)
+        # #GB parameters["transmission"] = 0.01 * api.transmission.get_value()
 
         # Set up centring and recentring
         goniostatTranslations = []
@@ -1059,6 +1087,30 @@ class GphlWorkflow(HardwareObject, object):
             )
             okp = tuple(int(settings[x]) for x in self.rotation_axis_roles)
             self.collect_centring_snapshots('%s_%s_%s' % okp)
+
+        #GB, RF
+        new_resolution = parameters.pop("resolution")
+        if new_resolution != initial_resolution:
+            logging.getLogger("GUI").info(
+                "GphlWorkflow: setting detector distance for resolution %7.3f A"
+                % new_resolution
+            )
+            api.resolution.move(new_resolution, timeout=60) #seconds: max move is ~2 meters, velicity 4 cm/sec
+        transmission = parameters["transmission"]
+        logging.getLogger("GUI").info(
+            "GphlWorkflow: setting transmission to %7.3f %%" % (100. * transmission)
+        )
+        api.transmission.set_value(100 * transmission)
+        orgxy = api.detector.get_beam_centre_pix()
+        resolution=api.resolution.get_value()
+        distance = api.detector_distance.get_position()
+        dds = geometric_strategy.defaultDetectorSetting
+        if distance == dds.axisSettings.get("Distance"):
+            id_ = dds._id
+        else:
+            id_ = None
+        detectorSetting = GphlMessages.BcsDetectorSetting(resolution, id_=id_, orgxy=orgxy, Distance=distance)
+        parameters["transmission"] = 0.01 * api.transmission.get_value()
 
         # Return SampleCentred message
         sampleCentred = GphlMessages.SampleCentred(
@@ -1216,6 +1268,15 @@ class GphlWorkflow(HardwareObject, object):
         snapshot_counts = dict()
         found_orientations = set()
         scans = collection_proposal.scans
+
+        # RF: This work is done lower down, around ine 1304
+        # energy = api.energy.getCurrentEnergy()
+        # parameters = self._last_queryed_collection_strategy_parameters
+        # resolution = parameters.pop("resolution")
+        # transmission = parameters.pop("transmission")
+        # distance = api.detector_distance.get_value()
+        ###GB memo for wedges: nexprame: number of frames per wedge; nimages: number of wedges
+
         for scan in scans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
@@ -1243,10 +1304,18 @@ class GphlWorkflow(HardwareObject, object):
 
             # HACK! value 0.0 is treated as 'do not set' when setting up queue
             # These have been set to the correct value earlier (setup_data_collection)
-            acq_parameters.detdistance = 0.0
-            acq_parameters.resolution = 0.0
-            acq_parameters.energy = 0.0
-            acq_parameters.transmission = 0.0
+ 
+            ##
+            wavelength = sweep.beamSetting.wavelength
+            acq_parameters.wavelength = wavelength
+            detdistance = sweep.detectorSetting.axisSettings["Distance"]
+            # not needed when detdistance is set :
+            # acq_parameters.resolution = resolution
+            acq_parameters.detdistance = detdistance
+            # transmission is not passed from the workflow (yet)
+            # it defaults to current value (?), so no need to set it
+            # acq_parameters.transmission = transmission*100.0
+            
 
             # acq_parameters.shutterless = self._has_shutterless()
             # acq_parameters.detector_mode = self._get_roi_modes()

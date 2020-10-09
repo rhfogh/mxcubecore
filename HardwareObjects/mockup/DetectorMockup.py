@@ -60,6 +60,9 @@ class DetectorMockup(AbstractDetector, HardwareObject):
     def get_beam_centre(self):
         return  self._beam_centre
 
+    # NBNB HACK this should be soreted out with the abstract classes
+    get_beam_centre_pix = get_beam_centre
+
     def _set_beam_centre(self, beam_centre):
         # Needed for GPhL collection emulation
         self._beam_centre = beam_centre
