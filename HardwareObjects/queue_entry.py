@@ -847,17 +847,12 @@ class SampleCentringQueueEntry(BaseQueueEntry):
         # Since setting one motor can change the position of another
         # (on ESRF ID30B setting kappa and kappa_phi changes the translation motors)
         # the order is important.
-        dd = {}
-        if kappa is not None:
-            dd["kappa"] = kappa
-        if kappa_phi is not None:
-            dd["kappa_phi"] = kappa_phi
-        if dd:
+        if kappa is not None or kappa_phi is not None:
             if (
                 not hasattr(self.diffractometer_hwobj, "in_kappa_mode")
                 or self.diffractometer_hwobj.in_kappa_mode()
             ):
-                self.diffractometer_hwobj.move_motors(dd)
+                self.diffractometer_hwobj.move_kappa_and_phi(kappa, kappa_phi)
 
         motor_positions = data_model.get_other_motor_positions()
         dd = dict(
@@ -872,7 +867,6 @@ class SampleCentringQueueEntry(BaseQueueEntry):
             "Please center a new or select an existing point and press continue."
         )
         self.get_queue_controller().pause(True)
-        pos = None
 
         shapes = list(self.shape_history.get_selected_shapes())
         if shapes:
@@ -898,6 +892,9 @@ class SampleCentringQueueEntry(BaseQueueEntry):
         self.sample_changer_hwobj = self.beamline_setup.sample_changer_hwobj
         self.diffractometer_hwobj = self.beamline_setup.diffractometer_hwobj
         self.shape_history = self.beamline_setup.shape_history_hwobj
+        self.diffractometer_hwobj.set_phase(
+            self.diffractometer_hwobj.PHASE_CENTRING
+        )
 
     def post_execute(self):
         # If centring is executed once then we dont have to execute it again
@@ -976,6 +973,9 @@ class DataCollectionQueueEntry(BaseQueueEntry):
         self.diffractometer_hwobj = self.beamline_setup.diffractometer_hwobj
         self.shape_history = self.beamline_setup.shape_history_hwobj
         self.session = self.beamline_setup.session_hwobj
+        self.diffractometer_hwobj.set_phase(
+            self.diffractometer_hwobj.PHASE_COLLECTION
+        )
 
         try:
             self.parallel_processing_hwobj = self.beamline_setup.parallel_processing_hwobj

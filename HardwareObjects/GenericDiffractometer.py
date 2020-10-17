@@ -1291,8 +1291,29 @@ class GenericDiffractometer(HardwareObject):
                 + "is not available, only works for Minikappa and SmartMagnet head"
             )
 
-    def move_kappa_and_phi(self, kappa, kappa_phi):
-        return
+
+    def move_kappa_and_phi(self, kappa=None, kappa_phi=None, timeout=60):
+        """
+        Descript. :
+        """
+        try:
+            return self.move_kappa_and_phi_procedure(kappa, kappa_phi)
+        except Exception:
+            logging.exception("Could not move kappa and kappa_phi")
+        self.wait_device_ready(timeout=timeout)
+
+    def move_kappa_and_phi_procedure(self, new_kappa=None, new_kappa_phi=None):
+        """
+        This is default behaviour, override locally
+        Descript. :
+        """
+
+        if new_kappa is not None or new_kappa_phi is not None:
+            motor_positions = {
+                "kappa":new_kappa,
+                "kappa_phi":new_kappa_phi
+            }
+            self.move_motors(motor_positions)
 
     def close_kappa(self):
         """

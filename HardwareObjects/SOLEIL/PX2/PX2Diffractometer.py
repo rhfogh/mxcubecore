@@ -1031,15 +1031,6 @@ class PX2Diffractometer(GenericDiffractometer):
         )
         self.move_to_motors_positions_procedure.link(self.move_motors_done)
 
-    def move_kappa_and_phi(self, kappa=None, kappa_phi=None, wait=False):
-        """
-        Descript. :
-        """
-        try:
-            return self.move_kappa_and_phi_procedure(kappa, kappa_phi, wait=wait)
-        except BaseException:
-            logging.exception("Could not move kappa and kappa_phi")
-
     @task
     def move_kappa_and_phi_procedure(self, new_kappa=None, new_kappa_phi=None):
         """

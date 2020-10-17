@@ -1089,18 +1089,19 @@ class GphlWorkflow(HardwareObject, object):
             self.collect_centring_snapshots('%s_%s_%s' % okp)
 
         #GB, RF
+        transmission = parameters["transmission"]
+        logging.getLogger("GUI").info(
+            "GphlWorkflow: setting transmission to %7.3f %%" % (100. * transmission)
+        )
+        api.transmission.set_value(100 * transmission)
         new_resolution = parameters.pop("resolution")
         if new_resolution != initial_resolution:
             logging.getLogger("GUI").info(
                 "GphlWorkflow: setting detector distance for resolution %7.3f A"
                 % new_resolution
             )
-            api.resolution.move(new_resolution, timeout=60) #seconds: max move is ~2 meters, velicity 4 cm/sec
-        transmission = parameters["transmission"]
-        logging.getLogger("GUI").info(
-            "GphlWorkflow: setting transmission to %7.3f %%" % (100. * transmission)
-        )
-        api.transmission.set_value(100 * transmission)
+            # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
+            api.resolution.move(new_resolution, timeout=60)
         orgxy = api.detector.get_beam_centre_pix()
         resolution=api.resolution.get_value()
         distance = api.detector_distance.get_position()
@@ -1109,7 +1110,11 @@ class GphlWorkflow(HardwareObject, object):
             id_ = dds._id
         else:
             id_ = None
-        detectorSetting = GphlMessages.BcsDetectorSetting(resolution, id_=id_, orgxy=orgxy, Distance=distance)
+        detectorSetting = GphlMessages.BcsDetectorSetting(
+            resolution, id_=id_, orgxy=orgxy, Distance=distance
+        )
+        # Do this at the end, for maxiumum time to settle
+        api.transmission.wait_ready(20)
         parameters["transmission"] = 0.01 * api.transmission.get_value()
 
         # Return SampleCentred message

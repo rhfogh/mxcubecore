@@ -604,12 +604,6 @@ class EMBLMiniDiff(GenericDiffractometer):
                 "Move to centred position disabled in BeamLocation phase."
             )
 
-    def move_kappa_and_phi(self, kappa=None, kappa_phi=None, wait=False):
-        try:
-            return self.move_kappa_and_phi_procedure(kappa, kappa_phi)
-        except BaseException:
-            logging.exception("Could not move kappa and kappa_phi")
-
     @task
     def move_kappa_and_phi_procedure(self, new_kappa=None, new_kappa_phi=None):
         kappa = self.motor_hwobj_dict["kappa"].get_position()

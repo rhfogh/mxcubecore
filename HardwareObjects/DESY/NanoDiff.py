@@ -1046,14 +1046,15 @@ class NanoDiff(HardwareObject):
                 "Move to centred position disabled in BeamLocation phase."
             )
 
-    def move_kappa_and_phi(self, kappa, kappa_phi, wait=False):
+    def move_kappa_and_phi(self, kappa, kappa_phi, timeout=60):
         """
         Descript. :
         """
         try:
-            return self.move_kappa_and_phi_procedure(kappa, kappa_phi, wait=wait)
+            return self.move_kappa_and_phi_procedure(kappa, kappa_phi)
         except BaseException:
             logging.exception("Could not move kappa and kappa_phi")
+        self.wait_device_ready(timeout)
 
     @task
     def move_kappa_and_phi_procedure(self, new_kappa, new_kappa_phi):
