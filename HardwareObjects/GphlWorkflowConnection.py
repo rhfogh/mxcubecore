@@ -280,6 +280,15 @@ class GphlWorkflowConnection(HardwareObject, object):
         if "prefix" in workflow_options:
             workflow_options["prefix"] = path_template.base_prefix
         workflow_options["wdir"] = self.software_paths["GPHL_WDIR"]
+
+        rootsubdir = workflow_options.pop('rootsubdir', None)
+        if rootsubdir is not None:
+            image_root = os.path.abspath(api.session.get_base_image_directory())
+            rootsubdir = path_template.directory[len(image_root):]
+            if rootsubdir.startswith(os.path.sep):
+                rootsubdir = rootsubdir[1:]
+            workflow_options["rootsubdir"] = rootsubdir
+
         # Hardcoded - location for log output
         command_list.extend(
             ConvertUtils.java_property(
@@ -1244,11 +1253,15 @@ class GphlWorkflowConnection(HardwareObject, object):
         grs = goniostatRotation
         javaUuid = jvm.java.util.UUID.fromString(ConvertUtils.text_type(grs.id_))
         axisSettings = dict(((x, float(y)) for x, y in grs.axisSettings.items()))
-        # NBNB The final None is necessary because there is no non-deprecated
-        # constructor that takes two UUIDs. Eventually the deprecated
-        # constructor will disappear and we can remove the None
+        # # NBNB The final None is necessary because there is no non-deprecated
+        # # constructor that takes two UUIDs. Eventually the deprecated
+        # # constructor will disappear and we can remove the None
+        # return jvm.astra.messagebus.messages.instrumentation.GoniostatRotationImpl(
+        #     axisSettings, javaUuid, None
+        # )
+        # Replaced 20201019 on advice of PK
         return jvm.astra.messagebus.messages.instrumentation.GoniostatRotationImpl(
-            axisSettings, javaUuid, None
+            axisSettings
         )
 
     def _BeamstopSetting_to_java(self, beamStopSetting):

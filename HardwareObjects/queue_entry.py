@@ -847,7 +847,33 @@ class SampleCentringQueueEntry(BaseQueueEntry):
         # Since setting one motor can change the position of another
         # (on ESRF ID30B setting kappa and kappa_phi changes the translation motors)
         # the order is important.
-        if kappa is not None or kappa_phi is not None:
+
+        if kappa is None:
+            d_kappa = 0
+        else:
+            d_kappa = (
+                self.diffractometer_hwobj.current_motor_positions["kappa"] - kappa
+            )
+            d_kappa = min([abs(d_kappa), abs(d_kappa - 360), abs(d_kappa + 360)])
+        if kappa_phi is None:
+            d_kappa_phi = 0
+        else:
+            d_kappa_phi = (
+                self.diffractometer_hwobj.current_motor_positions["kappa_phi"]
+                - kappa_phi
+            )
+            d_kappa_phi = min(
+                [abs(d_kappa_phi), abs(d_kappa_phi - 360), abs(d_kappa_phi + 360)]
+            )
+
+        if d_kappa or d_kappa_phi:
+            # Only move if either kappa or phi are changing
+            ARBITRARY_TOLERANCE = 0.5
+            if d_kappa > ARBITRARY_TOLERANCE or d_phi > ARBITRARY_TOLERANCE:
+                # The ppint is that it is very rare to centre at an orientation
+                # different from the current one, and when you do you you want
+                # thelihgts ruened on etc.
+                self.diffractometer_hwobj.set_phase("Centring", timeout = 20)
             if (
                 not hasattr(self.diffractometer_hwobj, "in_kappa_mode")
                 or self.diffractometer_hwobj.in_kappa_mode()
@@ -892,9 +918,6 @@ class SampleCentringQueueEntry(BaseQueueEntry):
         self.sample_changer_hwobj = self.beamline_setup.sample_changer_hwobj
         self.diffractometer_hwobj = self.beamline_setup.diffractometer_hwobj
         self.shape_history = self.beamline_setup.shape_history_hwobj
-        self.diffractometer_hwobj.set_phase(
-            self.diffractometer_hwobj.PHASE_CENTRING
-        )
 
     def post_execute(self):
         # If centring is executed once then we dont have to execute it again
@@ -973,9 +996,6 @@ class DataCollectionQueueEntry(BaseQueueEntry):
         self.diffractometer_hwobj = self.beamline_setup.diffractometer_hwobj
         self.shape_history = self.beamline_setup.shape_history_hwobj
         self.session = self.beamline_setup.session_hwobj
-        self.diffractometer_hwobj.set_phase(
-            self.diffractometer_hwobj.PHASE_COLLECTION
-        )
 
         try:
             self.parallel_processing_hwobj = self.beamline_setup.parallel_processing_hwobj

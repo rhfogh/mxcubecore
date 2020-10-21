@@ -685,7 +685,7 @@ class GphlWorkflow(HardwareObject, object):
                 field_list.append(
                     {
                         "variableName": "centre_at_start",
-                        "uiLabel": "(Re)centre crystal before acquisition start?",
+                        "uiLabel": "(Re)centre all orientations before acquisition start?",
                         "type": "boolean",
                         "defaultValue": bool(self.getProperty("centre_at_start")),
                     }
@@ -722,6 +722,17 @@ class GphlWorkflow(HardwareObject, object):
                         "defaultValue": bool(self.getProperty("centre_before_scan")),
                     }
                 )
+
+        elif len(orientations) == 1:
+            # Characterisation only
+            field_list.append(
+                {
+                    "variableName": "recentre_before_start",
+                    "uiLabel": "Recentre crystal before starting?",
+                    "type": "boolean",
+                    "defaultValue": bool(self.getProperty("recentre_before_start")),
+                }
+            )
 
         # Add third column of non-edited values
         field_list[-1]["NEW_COLUMN"] = "True"
@@ -836,6 +847,7 @@ class GphlWorkflow(HardwareObject, object):
             ):
                 # This defaults to False if parameter is not queried
                 result[tag] = bool(params.get(tag))
+            result["recentre_before_start"] =  bool(params.get(tag, True))
 
             # Register the dose (about to be) consumed
             energy = list(beam_energies.values())[0]
@@ -994,17 +1006,56 @@ class GphlWorkflow(HardwareObject, object):
 
         # Decide whether to centre before individual sweeps
         centre_at_start = parameters.pop("centre_at_start", False)
+        crystal_pre_centred = not(parameters.pop("recentre_before_start", False))
         centre_before_sweep = parameters.pop("centre_before_sweep", False)
         centre_before_scan = parameters.pop("centre_before_scan", False)
         gphl_workflow_model.set_centre_before_sweep(centre_before_sweep)
         gphl_workflow_model.set_centre_before_scan(centre_before_scan)
-        if not (centre_before_sweep or centre_before_scan or transcal_parameters):
+        if not (
+            centre_before_sweep
+            or centre_before_scan
+            or transcal_parameters
+            or crystal_pre_centred
+        ):
             centre_at_start = True
 
         found_sweep_setting_ids = set()
         for sweep in geometric_strategy.get_ordered_sweeps():
             sweepSetting = sweep.goniostatSweepSetting
-            if sweepSetting.id_ not in found_sweep_setting_ids:
+            if crystal_pre_centred and not found_sweep_setting_ids:
+                # First orientation, and we want to use the existing centring
+                motor_positions = api.diffractometer.get_motor_positions()
+                rot = dict(
+                    (role, motor_positions.get(role))
+                    for role in self.rotation_axis_roles
+                )
+                new_rotation = GphlMessages.GoniostatRotation(**rot)
+                tra = dict(
+                    (role, motor_positions.get(role))
+                    for role in self.translation_axis_roles
+                )
+                translation = GphlMessages.GoniostatTranslation(
+                    rotation=new_rotation,
+                    requestedRotationId=sweepSetting.id_,
+                    **tra
+                )
+                goniostatTranslations.append(translation)
+                logging.getLogger("HWR").debug(
+                    "Using pre-existing centring for first orientation"
+                )
+                recen_parameters["ref_xyz"] = tuple(
+                    translation.axisSettings[x]
+                    for x in self.translation_axis_roles
+                )
+                recen_parameters["ref_okp"] = tuple(
+                    new_rotation.axisSettings[x] for x in self.rotation_axis_roles
+                )
+                logging.getLogger("HWR").debug(
+                    "Recentring set-up. Parameters are: %s",
+                    sorted(recen_parameters.items()),
+                )
+
+            elif sweepSetting.id_ not in found_sweep_setting_ids:
                 # Handle centring on first appearance of SweepSetting
                 found_sweep_setting_ids.add(sweepSetting.id_)
 

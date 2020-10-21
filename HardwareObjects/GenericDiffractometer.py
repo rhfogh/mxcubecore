@@ -615,6 +615,9 @@ class GenericDiffractometer(HardwareObject):
         ) / self.pixels_per_mm_x
 
         return self.current_motor_positions
+    #
+    def get_motor_positions(self):
+        return self.get_positions()
 
     def get_omega_position(self):
         return self.motor_hwobj_dict["phi"].get_position()
