@@ -425,6 +425,7 @@ class ALBACollect(AbstractCollect):
                 
             self.finalize_mesh_scan()
 
+        #TODO: collection_finished should only be called in case of success, check if this is the case
         self.collection_finished()
 
                 
@@ -456,8 +457,11 @@ class ALBACollect(AbstractCollect):
         time.sleep(omega_ramp_time)
         for scanmovemotorname in self.scan_move_motor_names:
             try: 
-                # It might be faster (but more dangerous)  self.motor_hwobj.setValue(absolute_position)
-                self.scan_motors_hwobj[scanmovemotorname].move( self.scan_end_positions[scanmovemotorname] )
+                # It might be faster (but more dangerous)  
+                self.scan_motors_hwobj[scanmovemotorname].position_channel.setValue( self.scan_end_positions[scanmovemotorname] )
+                # the safer option:
+                #self.scan_motors_hwobj[scanmovemotorname].move( self.scan_end_positions[scanmovemotorname] )
+                
                 #self.logger.info('Moving motor %s from %.4f to final position %.4f at %.6f velocity' % 
                 #                  (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
                 #                     self.scan_end_positions[scanmovemotorname], 
@@ -739,7 +743,7 @@ class ALBACollect(AbstractCollect):
         self.wait_save_image(last_image_no)
         self.logger.info("  wait_collection_done last image found" )
         for motorname in self.scan_move_motor_names:
-            self.logger.info("     Motor %s position = %.2f" % ( motornames, self.scan_motors_hwobj[motorname].position ) )
+            self.logger.info("     Motor %s position = %.2f" % ( motorname, self.scan_motors_hwobj[motorname].getPosition() ) )
 
         # Wait for omega to stop moving, it continues further than necessary
         self.omega_hwobj.wait_end_of_move(timeout=40)
@@ -1456,92 +1460,92 @@ class ALBACollect(AbstractCollect):
             dc_pars = self.current_dc_parameters
             self.autoprocessing_hwobj.trigger_auto_processing(dc_pars)
 
-    def _motor_persistently_set_velocity(self, motor_hwobj, new_velo, Timeout = 10):
-        starttime = time.time()
-        if new_velo is None:
-            self.logger.debug('Could not set motor velocity to %s' % 
-                                      new_velo ) 
-            return
-        while time.time()-starttime < Timeout:
-            try: 
-                #self.logger.debug('Setting motor velocity to %s, motor state is %s' % 
-                #                      ( new_velo, motor_hwobj.getState() ) 
-                #                 )
-                if motor_hwobj.getState() == 3: # TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    motor_hwobj.set_velocity(new_velo)
-                    self.logger.debug('Succesfully set motor velocity to %s, motor state is %s' % 
-                                         ( new_velo, motor_hwobj.getState() ) 
-                                     )
-                    break
-            except:
-                self.logger.debug('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      ( new_velo, motor_hwobj.getState() ) 
-                                 )
-                time.sleep(0.2)                                 
-        else:
-            self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                     ( new_velo, motor_hwobj.getState() ) 
-                             )
+    #def _motor_persistently_set_velocity(self, motor_hwobj, new_velo, Timeout = 10):
+        #starttime = time.time()
+        #if new_velo is None:
+            #self.logger.debug('Could not set motor velocity to %s' % 
+                                      #new_velo ) 
+            #return
+        #while time.time()-starttime < Timeout:
+            #try: 
+                ##self.logger.debug('Setting motor velocity to %s, motor state is %s' % 
+                ##                      ( new_velo, motor_hwobj.getState() ) 
+                ##                 )
+                #if motor_hwobj.getState() == 3: # TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
+                    #motor_hwobj.set_velocity(new_velo)
+                    #self.logger.debug('Succesfully set motor velocity to %s, motor state is %s' % 
+                                         #( new_velo, motor_hwobj.getState() ) 
+                                     #)
+                    #break
+            #except:
+                #self.logger.debug('Could not set motor velocity to %s, motor state is %s, trying again' % 
+                                      #( new_velo, motor_hwobj.getState() ) 
+                                 #)
+                #time.sleep(0.2)                                 
+        #else:
+            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
+                                     #( new_velo, motor_hwobj.getState() ) 
+                             #)
           
-    def _motor_persistently_syncmove(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
-        starttime = time.time()
-        if new_pos is None:
-            self.logger.debug('Could not set motor position to %s' % 
-                                      new_pos ) 
-            return
-        while time.time()-starttime < Timeout:
-            try: 
-                #self.logger.debug('Setting motor position to %s, motor state is %s' % 
-                #                      ( new_pos, motor_hwobj.getState() ) 
-                #                 )
-                if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    if mode == 'ABS':
-                        motor_hwobj.syncMove(new_pos)
-                    else: 
-                        motor_hwobj.syncMoveRelative(new_pos)
-                    self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
-                                          ( new_pos, motor_hwobj.getState() ) 
-                                     )
-                    break
-            except:
-                self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      ( new_pos, motor_hwobj.getState() ) 
-                                 )
-                time.sleep(0.2)
-        else: 
-            self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                     ( new_pos, motor_hwobj.getState() ) 
-                             )
+    #def _motor_persistently_syncmove(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
+        #starttime = time.time()
+        #if new_pos is None:
+            #self.logger.debug('Could not set motor position to %s' % 
+                                      #new_pos ) 
+            #return
+        #while time.time()-starttime < Timeout:
+            #try: 
+                ##self.logger.debug('Setting motor position to %s, motor state is %s' % 
+                ##                      ( new_pos, motor_hwobj.getState() ) 
+                ##                 )
+                #if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
+                    #if mode == 'ABS':
+                        #motor_hwobj.syncMove(new_pos)
+                    #else: 
+                        #motor_hwobj.syncMoveRelative(new_pos)
+                    #self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
+                                          #( new_pos, motor_hwobj.getState() ) 
+                                     #)
+                    #break
+            #except:
+                #self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
+                                      #( new_pos, motor_hwobj.getState() ) 
+                                 #)
+                #time.sleep(0.2)
+        #else: 
+            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
+                                     #( new_pos, motor_hwobj.getState() ) 
+                             #)
 
-    def _motor_persistently_move(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
-        starttime = time.time()
-        if new_pos is None:
-            self.logger.debug('Could not set motor position to %s' % 
-                                      new_pos ) 
-            return
-        while time.time()-starttime < Timeout:
-            try: 
-                #self.logger.debug('Setting motor position to %s, motor state is %s' % 
-                #                      ( new_pos, motor_hwobj.getState() ) 
-                #                 )
-                if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    if mode == 'ABS':
-                         motor_hwobj.move(new_pos)
-                    else: 
-                         motor_hwobj.moveRelative(new_pos)
-                    self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
-                                          ( new_pos, motor_hwobj.getState() ) 
-                                     )
-                    break
-            except:
-                self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      ( new_pos, motor_hwobj.getState() ) 
-                                 )
-                time.sleep(0.2)
-        else: 
-            self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                      ( new_pos, motor_hwobj.getState() ) 
-                             )
+    #def _motor_persistently_move(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
+        #starttime = time.time()
+        #if new_pos is None:
+            #self.logger.debug('Could not set motor position to %s' % 
+                                      #new_pos ) 
+            #return
+        #while time.time()-starttime < Timeout:
+            #try: 
+                ##self.logger.debug('Setting motor position to %s, motor state is %s' % 
+                ##                      ( new_pos, motor_hwobj.getState() ) 
+                ##                 )
+                #if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
+                    #if mode == 'ABS':
+                         #motor_hwobj.move(new_pos)
+                    #else: 
+                         #motor_hwobj.moveRelative(new_pos)
+                    #self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
+                                          #( new_pos, motor_hwobj.getState() ) 
+                                     #)
+                    #break
+            #except:
+                #self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
+                                      #( new_pos, motor_hwobj.getState() ) 
+                                 #)
+                #time.sleep(0.2)
+        #else: 
+            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
+                                      #( new_pos, motor_hwobj.getState() ) 
+                             #)
 
 # The following methods are copied to improve error logging, the functionality is the same
     def create_directories(self, *args):
