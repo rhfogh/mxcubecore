@@ -847,7 +847,9 @@ class GphlWorkflow(HardwareObject, object):
             ):
                 # This defaults to False if parameter is not queried
                 result[tag] = bool(params.get(tag))
-            result["recentre_before_start"] =  bool(params.get(tag, True))
+            result["recentre_before_start"] =  bool(
+                params.get("recentre_before_start", True)
+            )
 
             # Register the dose (about to be) consumed
             energy = list(beam_energies.values())[0]
@@ -1024,6 +1026,7 @@ class GphlWorkflow(HardwareObject, object):
             sweepSetting = sweep.goniostatSweepSetting
             if crystal_pre_centred and not found_sweep_setting_ids:
                 # First orientation, and we want to use the existing centring
+                found_sweep_setting_ids.add(sweepSetting.id_)
                 motor_positions = api.diffractometer.get_motor_positions()
                 rot = dict(
                     (role, motor_positions.get(role))
