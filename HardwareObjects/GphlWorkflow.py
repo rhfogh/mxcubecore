@@ -870,6 +870,8 @@ class GphlWorkflow(HardwareObject, object):
         gphl_workflow_model = self._queue_entry.get_data_model()
 
         # enqueue data collection group
+        # NBNB  We are using names starting with 'GPhL' to CONTROL the UI
+        # TODO this should be done more elegantly
         if gphl_workflow_model.lattice_selected:
             # Data collection TODO: Use workflow info to distinguish
             new_dcg_name = "GPhL Data Collection"
@@ -1747,8 +1749,12 @@ class GphlWorkflow(HardwareObject, object):
 
         queue_manager = self._queue_entry.get_queue_controller()
 
+        task_label = "Centring (kappa=%0.1f,phi=%0.1f)" % (
+            motor_settings.get("kappa"),
+            motor_settings.get("kappa_phi"),
+        )
         centring_model = queue_model_objects.SampleCentring(
-            name="Centring (GPhL)", motor_positions=motor_settings
+            name=task_label, motor_positions=motor_settings
         )
         self._add_to_queue(self._data_collection_group, centring_model)
         centring_entry = queue_manager.get_entry_with_model(centring_model)

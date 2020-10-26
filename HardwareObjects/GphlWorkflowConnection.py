@@ -281,7 +281,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             workflow_options["prefix"] = path_template.base_prefix
         workflow_options["wdir"] = self.software_paths["GPHL_WDIR"]
 
-        rootsubdir = workflow_options.pop('rootsubdir', None)
+        rootsubdir = workflow_options.pop("rootsubdir", None)
         if rootsubdir is not None:
             image_root = os.path.abspath(api.session.get_base_image_directory())
             rootsubdir = path_template.directory[len(image_root):]

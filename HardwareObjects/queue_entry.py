@@ -869,7 +869,7 @@ class SampleCentringQueueEntry(BaseQueueEntry):
         if d_kappa or d_kappa_phi:
             # Only move if either kappa or phi are changing
             ARBITRARY_TOLERANCE = 0.5
-            if d_kappa > ARBITRARY_TOLERANCE or d_phi > ARBITRARY_TOLERANCE:
+            if d_kappa > ARBITRARY_TOLERANCE or d_kappa_phi > ARBITRARY_TOLERANCE:
                 # The ppint is that it is very rare to centre at an orientation
                 # different from the current one, and when you do you you want
                 # thelihgts ruened on etc.
