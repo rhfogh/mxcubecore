@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import lucid3
-import Image
+from PIL import Image
 import numpy as np
 
 
@@ -9,8 +9,11 @@ import numpy as np
 def find_loop(filename, *args, **kwargs):
     im = Image.open(filename)
     out = im.transpose(Image.FLIP_LEFT_RIGHT)
-    data = np.array(out)
-    coords = lucid3.find_loop(data, *args, **kwargs)
+    # lucid3 does not support arrays as input
+    #data = np.array(out)
+    #coords = lucid3.find_loop(data, *args, **kwargs)
+    out.save(filename, "PNG")
+    coords = lucid3.find_loop(filename, *args, **kwargs)
     print(coords)
     x, y = coords[1:]
     if x > 0 and y > 0:
