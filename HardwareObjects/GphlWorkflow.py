@@ -504,7 +504,10 @@ class GphlWorkflow(HardwareObject, object):
         )
 
         # For calculating dose-budget transmission
-        std_dose_rate = self.get_nominal_dose_rate(energy=beam_energies.values()[0])
+        std_dose_rate = (
+            api.flux.dose_rate_per_photon_per_mmsq(energy=beam_energies.values()[0])
+            * api.flux.get_average_flux_density(transmission=100.)
+        )
         if std_dose_rate:
             dose_budget = self.get_dose_budget(
                 resolution, relative_sensitivity=relative_sensitivity
@@ -542,8 +545,10 @@ class GphlWorkflow(HardwareObject, object):
                     experiment_time = total_strategy_length / rotation_rate
 
                     if resolution:
-                        std_dose_rate = self.get_nominal_dose_rate(energy=energy)
-
+                        std_dose_rate = (
+                            api.flux.dose_rate_per_photon_per_mmsq(energy=energy)
+                            * api.flux.get_average_flux_density(transmission=100.)
+                        )
                         dose_budget = self.get_dose_budget(
                             resolution, relative_sensitivity=relative_sensitivity
                         )
@@ -853,12 +858,14 @@ class GphlWorkflow(HardwareObject, object):
 
             # Register the dose (about to be) consumed
             energy = list(beam_energies.values())[0]
-            std_dose_rate = self.get_nominal_dose_rate(energy=energy)
+            std_dose_rate = (
+                api.flux.dose_rate_per_photon_per_mmsq(energy=energy)
+                * api.flux.get_average_flux_density(
+                    transmission=float(params.get("transmission"))
+                )
+            )
             dose_consumed = (
-                float(params.get("transmission"))
-                * float(params.get("experiment_time"))
-                * std_dose_rate
-                / 100
+                float(params.get("experiment_time")) * std_dose_rate
             ) + data_model.get_dose_consumed()
             data_model.set_dose_consumed(dose_consumed)
         #
@@ -1922,7 +1929,7 @@ class GphlWorkflow(HardwareObject, object):
     def get_dose_budget(self, resolution, decay_limit=None, relative_sensitivity=1.0):
         """Get resolution-dependent dose budget using configured values"""
         decay_limit = decay_limit or self.getProperty("default_decay_limit", 0.25)
-        max_budget = self.getProperty("", 20)
+        max_budget = self.getProperty("maximum_dose_budget", 20)
         result = -2 * math.log(decay_limit) * resolution * resolution
         #
         return min(result, max_budget) / relative_sensitivity

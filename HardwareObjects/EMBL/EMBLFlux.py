@@ -608,3 +608,6 @@ class EMBLFlux(AbstractFlux):
             result = self.get_flux_result(self.measured_flux_list[0]["intensity"], transmission)
             dose_rate = result("dose_rate")
         return dose_rate
+
+
+    # TODO add proper  get_average_flux_density(self, transmission=None) function

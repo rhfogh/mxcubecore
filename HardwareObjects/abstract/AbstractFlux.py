@@ -19,8 +19,9 @@
 
 from scipy.interpolate import interp1d
 
-from HardwareRepository.BaseHardwareObjects import HardwareObject
+import api
 
+from HardwareRepository.BaseHardwareObjects import HardwareObject
 
 __credits__ = ["MXCuBE collaboration"]
 __category__ = "General"
@@ -64,4 +65,25 @@ class AbstractFlux(HardwareObject):
         self.emit("fluxValueChanged", self._value)
 
     def get_total_absorbed_dose(self):
-        return self.get_flux()
+        # FIXME calculate correct value, or refactor away function
+        # return self.get_flux()
+        return 0.0
+
+    def get_average_flux_density(self, transmission=None):
+        """Get average flux density over the beam area in photons / mm^2
+        for a given transmisison setting
+
+        Args:
+            transmission (float): # Target transmission in % (defaults to current value)
+
+        Returns (photons / mm^2) : average flux density over beam area
+
+        """
+
+        beam_size = api.beam_info.get_beam_size()
+        result = api.flux.get_flux() / (beam_size[0] * beam_size[1])
+        if transmission  is not None:
+            result = result * transmission / api.transmission.get_value()
+        #
+        return result
+
