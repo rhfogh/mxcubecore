@@ -505,8 +505,9 @@ class GphlWorkflow(HardwareObject, object):
 
         # For calculating dose-budget transmission
         std_dose_rate = (
-            api.flux.dose_rate_per_photon_per_mmsq(energy=beam_energies.values()[0])
+            api.flux.dose_rate_per_photon_per_mmsq(beam_energies.values()[0])
             * api.flux.get_average_flux_density(transmission=100.)
+            * 1.0e-6 # convert to MGy/s
         )
         if std_dose_rate:
             dose_budget = self.get_dose_budget(
@@ -546,8 +547,9 @@ class GphlWorkflow(HardwareObject, object):
 
                     if resolution:
                         std_dose_rate = (
-                            api.flux.dose_rate_per_photon_per_mmsq(energy=energy)
+                            api.flux.dose_rate_per_photon_per_mmsq(energy)
                             * api.flux.get_average_flux_density(transmission=100.)
+                            * 1.0e-6 # convert to MGy/s
                         )
                         dose_budget = self.get_dose_budget(
                             resolution, relative_sensitivity=relative_sensitivity
@@ -859,10 +861,11 @@ class GphlWorkflow(HardwareObject, object):
             # Register the dose (about to be) consumed
             energy = list(beam_energies.values())[0]
             std_dose_rate = (
-                api.flux.dose_rate_per_photon_per_mmsq(energy=energy)
+                api.flux.dose_rate_per_photon_per_mmsq(energy)
                 * api.flux.get_average_flux_density(
                     transmission=float(params.get("transmission"))
                 )
+                * 1.0e-6 # convert to MGy/s
             )
             dose_consumed = (
                 float(params.get("experiment_time")) * std_dose_rate
@@ -1933,31 +1936,6 @@ class GphlWorkflow(HardwareObject, object):
         result = -2 * math.log(decay_limit) * resolution * resolution
         #
         return min(result, max_budget) / relative_sensitivity
-
-    def get_nominal_dose_rate(self, energy=None):
-        """
-        Get dose rate in MGy/s for a standard crystal at current settings.
-        Assumes square, top-hat beam so that the flux is evenly spread
-        over the rectangulat area of the beam.
-
-        :param energy: float Energy for calculation of dose rate, in keV.
-        :return: float
-        """
-
-        energy = energy or api.energy.get_value()()
-
-        # NB   Calculation assumes beam sizes in mm
-        beam_size = api.beam_info.get_beam_size()
-
-        # Result in kGy/s
-        result = (
-                api.flux.dose_rate_per_photon_per_mmsq(energy)
-                * api.flux.get_flux()
-                / beam_size[0]
-                / beam_size[1]
-                / 1000000.  # Converts to MGy/s
-        )
-        return result
 
     def get_emulation_crystal_data(self):
         """If sample is a test data set for emulation, get crystal data
