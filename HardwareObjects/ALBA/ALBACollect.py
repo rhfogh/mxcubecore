@@ -948,8 +948,8 @@ class ALBACollect(AbstractCollect):
         self.wait_supervisor_ready()
         self.logger.debug("Sending supervisor to sample view phase")
         self.close_fast_shutter()
-        if not self.supervisor_hwobj.is_fast_shutter_in_collect_position():
-            self.close_safety_shutter()
+        #if not self.supervisor_hwobj.is_fast_shutter_in_collect_position():
+        self.close_safety_shutter()
             
         self.supervisor_hwobj.go_sample_view()
 
