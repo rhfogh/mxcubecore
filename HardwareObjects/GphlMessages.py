@@ -33,6 +33,22 @@ __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
 
+# Data Structures
+
+ParsedMessage = namedtuple(
+    "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
+)
+
+StrategyData = namedtuple(
+    "StrategyData", ("name", "type", "nsweeps", "ndegrees", "ntmax", "beam_energy_tags")
+)
+# name(str): space-free, intelligible name
+# type(str): one of ("Native", "SAD", "MAD", "Characterisation", "Calibration")
+# nsweeps(int): Number of sweeps. several may share an orientation
+# ndegrees(float): strategy base length, in degrees
+# ntmax(int): number of tmax; total length in ndegrees + ntmax * theta_max
+# beam_energy_tags(tuple(str)): Tags for beam energies (also defines their number)
+
 
 # Enumerations
 
@@ -178,9 +194,6 @@ CRYSTAL_SYSTEM_MAP = dict(zip("amothhc", CRYSTAL_SYSTEMS))
 
 POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
 
-ParsedMessage = namedtuple(
-    "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
-)
 
 # TEMPORARY. Stand-in for HardwareObject states
 @enum.unique

@@ -398,6 +398,11 @@ class GphlWorkflow(HardwareObject, object):
         """Display collection strategy for user approval,
         and query parameters needed"""
 
+        StrategyData = GphlMessages.StrategyData
+
+        # NBNB TODO refactor this, make new function that can eb used from other
+        # startign points.
+
         data_model = self._queue_entry.get_data_model()
 
         allowed_widths = geometric_strategy.allowedWidths
@@ -587,16 +592,6 @@ class GphlWorkflow(HardwareObject, object):
                 "defaultValue": info_text,
             },
             {
-                "variableName": "resolution",
-                "uiLabel": "Detector resolution (A)",
-                "type": "floatstring",
-                "defaultValue": resolution,
-                "lowerBound": 0.0,
-                "upperBound": 9.0,
-                "decimals": 3,
-                "update_function": update_function,
-            },
-            {
                 "variableName": "imageWidth",
                 "uiLabel": "Oscillation range",
                 "type": "combo",
@@ -616,29 +611,39 @@ class GphlWorkflow(HardwareObject, object):
                 "update_function": update_function,
             },
             {
-                "variableName": "budget_use_fraction",
-                "uiLabel": "% of dose budget to use",
-                "type": "floatstring",
-                "defaultValue": budget_use_fraction * 100.0,
-                "lowerBound": 0.0,
-                "upperBound": 300.0,
-                "update_function": update_function,
-                "decimals": 1,
+                "variableName": "experiment_lengh",
+                "uiLabel": "Experiment length (°)",
+                "type": "text",
+                "defaultValue": str(int(total_strategy_length)),
+                "readOnly": True,
             },
+            {
+                "variableName": "experiment_time",
+                "uiLabel": "Experiment duration (s)",
+                "type": "floatstring",
+                "defaultValue": experiment_time,
+                "decimals": 1,
+                "readOnly": True,
+            },
+            {
+                "variableName": "rotation_rate",
+                "uiLabel": "Rotation speed (°/s)",
+                "type": "floatstring",
+                "defaultValue": (float(default_image_width / default_exposure)),
+                "decimals": 1,
+                "readOnly": True,
+            },
+            # {
+            #     "variableName": "budget_use_fraction",
+            #     "uiLabel": "% of dose budget to use",
+            #     "type": "floatstring",
+            #     "defaultValue": budget_use_fraction * 100.0,
+            #     "lowerBound": 0.0,
+            #     "upperBound": 300.0,
+            #     "update_function": update_function,
+            #     "decimals": 1,
+            # },
         ]
-        if (
-            data_model.lattice_selected
-            or "calibration" in data_model.get_type().lower()
-        ):
-            field_list.append(
-                {
-                    "variableName": "snapshot_count",
-                    "uiLabel": "Number of snapshots",
-                    "type": "combo",
-                    "defaultValue": str(data_model.get_snapshot_count()),
-                    "textChoices": ["0", "1", "2", "4"],
-                }
-            )
 
         field_list[-1]["NEW_COLUMN"] = "True"
 
@@ -662,6 +667,20 @@ class GphlWorkflow(HardwareObject, object):
         else:
             ll0[0]["update_function"] = update_function
         field_list.extend(ll0)
+
+        if (
+            data_model.lattice_selected
+            or "calibration" in data_model.get_type().lower()
+        ):
+            field_list.append(
+                {
+                    "variableName": "snapshot_count",
+                    "uiLabel": "Number of snapshots",
+                    "type": "combo",
+                    "defaultValue": str(data_model.get_snapshot_count()),
+                    "textChoices": ["0", "1", "2", "4"],
+                }
+            )
 
         if (
             data_model.lattice_selected
@@ -745,38 +764,47 @@ class GphlWorkflow(HardwareObject, object):
         field_list[-1]["NEW_COLUMN"] = "True"
         field_list.extend(
             [
+                {
+                    "variableName": "resolution",
+                    "uiLabel": "Target resolution (A)",
+                    "type": "floatstring",
+                    "defaultValue": resolution,
+                    "lowerBound": 0.0,
+                    "upperBound": 9.0,
+                    "decimals": 3,
+                    "update_function": update_function,
+                },
+                {
+                    "variableName": "decay_limit",
+                    "uiLabel": "Min. signal at edge (%)",
+                    "type": "floatstring",
+                    "defaultValue": 100.0 * api.gphl_workflow.getProperty(
+                        "default_decay_limit", 0.25
+                    ),
+                    "lowerBound": 0.1,
+                    "upperBound": 0.5,
+                    "decimals": 1,
+                    "readOnly": True,
+                },
+
                 # NB Transmission is in % in UI, but in 0-1 in workflow
                 {
-                    "variableName": "experiment_lengh",
-                    "uiLabel": "Experiment length (°)",
-                    "type": "text",
-                    "defaultValue": str(int(total_strategy_length)),
-                    "readOnly": True,
-                },
-                {
-                    "variableName": "experiment_time",
-                    "uiLabel": "Experiment duration (s)",
-                    "type": "floatstring",
-                    "defaultValue": experiment_time,
-                    "decimals": 1,
-                    "readOnly": True,
-                },
-                {
-                    "variableName": "rotation_rate",
-                    "uiLabel": "Rotation speed (°/s)",
-                    "type": "floatstring",
-                    "defaultValue": (float(default_image_width / default_exposure)),
-                    "decimals": 1,
-                    "readOnly": True,
-                },
-                {
                     "variableName": "dose_budget",
-                    "uiLabel": "Nominal dose budget (MGy)",
+                    "uiLabel": "Total dose budget (MGy)",
                     "type": "floatstring",
                     "defaultValue": full_dose_budget,
                     "lowerBound": 0.0,
-                    "decimals": 1,
+                    "decimals": 2,
                     "readOnly": True,
+                },
+                {
+                    "variableName": "char_dose_budget",
+                    "uiLabel": "Char. dose budget (MGy)",
+                    "type": "floatstring",
+                    "defaultValue": full_dose_budget * budget_use_fraction,
+                    "lowerBound": 0.0,
+                    "decimals": 2,
+                    "update_function": update_function,
                 },
                 {
                     "variableName": "transmission",
@@ -786,7 +814,7 @@ class GphlWorkflow(HardwareObject, object):
                     "lowerBound": 0.0,
                     "upperBound": 100.0,
                     "decimals": 1,
-                    "readOnly": True,
+                    "update_function": update_function,
                 },
             ]
         )
