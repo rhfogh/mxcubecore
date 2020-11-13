@@ -394,83 +394,18 @@ class GphlWorkflow(HardwareObject, object):
     def get_configuration_data(self, payload, correlation_id):
         return GphlMessages.ConfigurationData(self.file_paths["gphl_beamline_config"])
 
-    def query_collection_strategy(self, geometric_strategy, initial_energy):
-        """Display collection strategy for user approval,
-        and query parameters needed"""
+    def extra_info_text(self, geometric_strategy):
 
-        StrategyData = GphlMessages.StrategyData
-
-        # NBNB TODO refactor this, make new function that can eb used from other
-        # startign points.
-
-        data_model = self._queue_entry.get_data_model()
-
-        allowed_widths = geometric_strategy.allowedWidths
-        if allowed_widths:
-            default_width_index = geometric_strategy.defaultWidthIdx or 0
-        else:
-            allowed_widths = [
-                float(x) for x in self.getProperty("default_image_widths").split()
-            ]
-            val = allowed_widths[0]
-            allowed_widths.sort()
-            default_width_index = allowed_widths.index(val)
-            logging.getLogger("HWR").info(
-                "No allowed image widths returned by strategy - use defaults"
-            )
-
-        # NBNB TODO userModifiable
-
-        # NBNB The geometric strategy is only given for ONE beamsetting
-        # The strategy is (for now) repeated identical for all wavelengths
-        # When this changes, more info will become available
-
-        axis_names = self.rotation_axis_roles
+        lines = []
 
         orientations = OrderedDict()
-        strategy_length = 0
         for sweep in geometric_strategy.get_ordered_sweeps():
-            strategy_length += sweep.width
             rotation_id = sweep.goniostatSweepSetting.id_
             sweeps = orientations.setdefault(rotation_id, [])
             sweeps.append(sweep)
 
-        relative_sensitivity = data_model.get_relative_rad_sensitivity()
 
-        test_crystal_data, junk = self.get_emulation_crystal_data()
-        if test_crystal_data:
-            resolution = test_crystal_data.get("res_limit_def")
-        else:
-            resolution = api.resolution.get_value()
-
-        full_dose_budget = self.get_dose_budget(
-            resolution, relative_sensitivity=relative_sensitivity
-        )
-
-        if data_model.lattice_selected or "calibration" in data_model.get_type().lower():
-            lines = ["%s strategy" % api.gphl_connection.get_workflow_name()]
-            lines.extend(("-"*len(lines[0]), ""))
-            # Data collection TODO: Use workflow info to distinguish
-            beam_energies = OrderedDict()
-            energies = [initial_energy, initial_energy + 0.01, initial_energy - 0.01]
-            for ii, tag in enumerate(data_model.get_beam_energy_tags()):
-                beam_energies[tag] = energies[ii]
-            budget_use_fraction = 1.0
-
-        else:
-            # Characterisation
-            lines = ["Characterisation strategy"]
-            lines.extend(("="*len(lines[0]), ""))
-            beam_energies = OrderedDict((("Characterisation", initial_energy),))
-            budget_use_fraction = data_model.get_characterisation_budget_fraction()
-
-        total_strategy_length = strategy_length * len(beam_energies)
-        if len(beam_energies) > 1:
-            lines.append(
-                "Experiment length: %s * %6.1f°" % (len(beam_energies), strategy_length)
-            )
-        else:
-            lines.append("Experiment length: %6.1f°" % strategy_length)
+        axis_names = self.rotation_axis_roles
 
         for rotation_id, sweeps in orientations.items():
             goniostatRotation = sweeps[0].goniostatSweepSetting
@@ -496,17 +431,196 @@ class GphlWorkflow(HardwareObject, object):
             for ss1 in ll1[1:]:
                 lines.append(spacer + ss1)
 
-        info_text = "\n".join(lines)
+        result = "\n".join(lines)
+        return result
+
+
+    def query_collection_strategy(self, geometric_strategy, initial_energy):
+        """Display collection strategy for user approval,
+        and query parameters needed"""
+
+        # Generate StrategyData object for passing on.
+        StrategyData = GphlMessages.StrategyData
+        # "StrategyData", (
+        #     "label", # (str) Space-free identifier. Should derive from other atttributes
+        #     "type", # (str): ("Native", "SAD", "MAD", "Characterisation", "Calibration")
+        #     "nsweeps", # Number of sweeps. several may share an orientation
+        #     "variant", # (str): Sub_variant (e.g. "eq", "ax"). Defaults to ""
+        #     "norientations", # Number of different orientations
+        #     "ndegrees", # base strategy length, in degrees
+        #     "ntmax", # number of theta_max added to base length
+        #     "group", #     (str): strategy grouping: Calibration, User, or Expert
+        #     "interleave_order", # (str) default to "", use "gsb" for MAD
+        #     "beam_energy_tags", # (tuple(str)): Tags for beam energies
+        #     "allowed_widths", # (list(float)) allowed image widths, in degrees
+        # )
+
+        # NBNB TODO refactor this, make new function that can be used from other
+        # starting points.
+
+        data_model = self._queue_entry.get_data_model()
+
+        # HACKs to generate StrategyData
+        sdata = {}
+        sdata["label"] = label = data_model.get_type()
+        ll0 = label.split("-", 1)
+        sdata["variant"] = ll0[1] if len(ll0) > 1 else ""
+        # NB we should extract extract nsweeps from ll0[0] later
+        group = "User"
+        for tag in ("SAD", "MAD", "Native"):
+            if tag in label:
+                type_ = tag
+                break
+        else:
+            if "Cal" in label:
+                group = "Calibration"
+                if "Trans" in label:
+                    type_ = "TransCal"
+                else:
+                    type_ = "DiffractCal"
+            elif label.startswith("Char"):
+                group = "Characterisation"
+                type_ = "Char"
+        sdata["group"] = group
+        sdata["type"] = type_
+        sdata["nsweeps"] = len(geometric_strategy.get_ordered_sweeps())
+        allowed_widths = list(geometric_strategy.allowedWidths)
+        if allowed_widths:
+            default_width = allowed_widths.pop(geometric_strategy.defaultWidthIdx or 0)
+            allowed_widths = (default_width,) + tuple(allowed_widths)
+        else:
+            allowed_widths = tuple(
+                float(x) for x in self.getProperty("default_image_widths").split()
+            )
+            logging.getLogger("HWR").info(
+                "No allowed image widths returned by strategy - use defaults"
+            )
+        sdata["allowed_widths"] = allowed_widths
+        sdata["interleave_order"] = data_model.get_interleave_order()
+        beam_energy_tags = sdata["beam_energy_tags"] = data_model.get_beam_energy_tags()
+
+
+        # NBNB TODO userModifiable
+
+        # NBNB The geometric strategy is only given for ONE beamsetting
+        # The strategy is (for now) repeated identical for all wavelengths
+
+        # We cannot handle ntmax. nsweeps properly till we refactor, so fr now:
+        sdata["ntmax"] = 0
+        strategy_length = sum(
+            sweep.width for sweep in geometric_strategy.get_ordered_sweeps()
+        )
+
+        orientations = OrderedDict()
+        for sweep in geometric_strategy.get_ordered_sweeps():
+            strategy_length += sweep.width
+            rotation_id = sweep.goniostatSweepSetting.id_
+            sweeps = orientations.setdefault(rotation_id, [])
+            sweeps.append(sweep)
+
+        total_strategy_length = strategy_length * len(beam_energy_tags)
+        sdata["ndegrees"] = total_strategy_length
+        sdata["norientations"] = len(sweeps)
+        #
+        print ('@~@~ sdata')
+        for tpl in sorted(sdata.items()):
+            print("%s: %s" % tpl)
+        strategy_data = StrategyData(**sdata)
+        print ('@~@~ ', strategy_data)
+
+        info_text = self.extra_info_text(geometric_strategy)
+
+        result = self.do_query_collection(
+            strategy_data, initial_energy=initial_energy, extra_info_text=info_text
+        )
+
+        # Register the dose (about to be) consumed
+        energy = list(result["beam_energies"].values())[0]
+        std_dose_rate = (
+            api.flux.dose_rate_per_photon_per_mmsq(energy)
+            * api.flux.get_average_flux_density(
+                transmission=result.get("transmission")
+            )
+            * 1.0e-6 # convert to MGy/s
+        )
+
+        dose_consumed = (
+            result.get("experiment_time") * std_dose_rate
+        ) + data_model.get_dose_consumed()
+        data_model.set_dose_consumed(dose_consumed)
+        #
+        return result
+
+
+    def do_query_collection(
+        self, strategy_data, initial_energy=None, extra_info_text=""
+    ):
+        """Pop up collection popup and et parameters
+
+        Args:
+            strategy_data (StrategyData): Strategy description NemdTuple
+            extra_info_text (str): extra info to put in top info field
+
+        Returns:
+
+        """
+        # Define staregin values
+
+        data_model = self._queue_entry.get_data_model()
+        initial_energy - initial_energy or api.energy.getCurrentEnergy()
+
+        test_crystal_data, junk = self.get_emulation_crystal_data()
+        if test_crystal_data:
+            resolution = test_crystal_data.get("res_limit_def")
+        else:
+            resolution = api.resolution.get_value()
+        theta_max_deg = math.degrees(
+            math.asin(0.5 *ConvertUtils.h_over_e/(initial_energy * resolution))
+        )
+        strategy_length = strategy_data.ndegrees + strategy_data.ntmax * theta_max_deg
+        decay_limit = data_model.get_decay_limit()
+
+        full_dose_budget = self.resolution2dose_budget(
+            resolution,
+            decay_limit=decay_limit,
+            relative_sensitivity=data_model.get_relative_rad_sensitivity()
+        )
+
+        if strategy_data.type == "Char":
+            # Characterisation
+            beam_energies = OrderedDict((("Characterisation", initial_energy),))
+            budget_use_fraction = data_model.get_characterisation_budget_fraction()
+
+        else:
+            # Data collection TODO: Use workflow info to distinguish
+            beam_energies = OrderedDict()
+            energies = [initial_energy, initial_energy + 0.01, initial_energy - 0.01]
+            for ii, tag in enumerate(strategy_data.beam_energy_tags):
+                beam_energies[tag] = energies[ii]
+            budget_use_fraction = 1.0
 
         acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
-        # For now return default values
 
-        default_image_width = float(allowed_widths[default_width_index])
+        allowed_widths = list(strategy_data.allowed_widths)
+        default_image_width = allowed_widths[0]
+        allowed_widths.sort()
         default_exposure = acq_parameters.exp_time
         exposure_limits = api.detector.get_exposure_time_limits()
-        experiment_time = (
-                total_strategy_length * default_exposure / default_image_width
-        )
+        experiment_time = strategy_length * default_exposure / default_image_width
+
+        lines = ["Strategy: %s" % strategy_data.label]
+        lines.extend(("-"*len(lines[0]), ""))
+        nenergies = len(strategy_data.beam_energy_tags)
+        if nenergies > 1:
+            lines.append(
+                "Experiment length: %s * %6.1f°"
+                % (len(nenergies), strategy_length / nenergies)
+            )
+        else:
+            lines.append("Experiment length: %6.1f°" % strategy_length)
+        if extra_info_text:
+            lines.append(extra_info_text)
+        info_text = "\n".join(lines)
 
         # For calculating dose-budget transmission
         std_dose_rate = (
@@ -514,30 +628,49 @@ class GphlWorkflow(HardwareObject, object):
             * api.flux.get_average_flux_density(transmission=100.)
             * 1.0e-6 # convert to MGy/s
         )
+        update_function = None
+        transmission = acq_parameters.transmission
+        print (
+            '@~@~ std_dose_rate',
+            std_dose_rate,
+            beam_energies.values(),
+            api.flux.dose_rate_per_photon_per_mmsq(beam_energies.values()[0]),
+            api.flux.get_average_flux_density(transmission=100.),
+            acq_parameters.transmission
+        )
+
+        # Define update function(s)
+
         if std_dose_rate:
-            dose_budget = self.get_dose_budget(
-                resolution, relative_sensitivity=relative_sensitivity
+            dose_budget = self.resolution2dose_budget(
+                resolution,
+                decay_limit=decay_limit,
+                relative_sensitivity=data_model.get_relative_rad_sensitivity()
             )
+            print ('@~@~ dose_budget', dose_budget, data_model.get_dose_consumed())
             dose_budget -= data_model.get_dose_consumed()
             if dose_budget > 0:
                 transmission = 100 * dose_budget * budget_use_fraction / (
                     experiment_time * std_dose_rate
                 )
+                print('@~@~', transmission, dose_budget, budget_use_fraction,experiment_time,  std_dose_rate)
                 transmission = min(transmission, 100.0)
+                print ('@~@~ transmission 2', transmission)
             else:
                 transmission = 0.0
+                print ('@~@~ bad', dose_budget, transmission)
 
             def update_function(
                 field_widget,
                 # experiment_length=total_strategy_length,
                 # relative_sensitivity=relative_sensitivity,
             ):
-                """Function to update rotation_rate and budget_used fields
-                In parameter popup"""
+                """Function to update dependent values in parameter popup"""
                 parameters = field_widget.get_parameters_map()
                 exposure_time = float(parameters.get("exposure", 0))
                 image_width = float(parameters.get("imageWidth", 0))
                 resolution = float(parameters.get("resolution", 0))
+                decay_limit = float(parameters.get("exposure", 25))
                 budget_use_fraction = (
                     float(parameters.get("budget_use_fraction", 0)) / 100.0
                 )
@@ -545,10 +678,12 @@ class GphlWorkflow(HardwareObject, object):
                 if not energy:
                     energy = api.energy.get_value()
 
+                print ('@~@~ update', resolution, image_width, exposure_time)
+
                 transmission = dose_budget = 0.0
                 if image_width and exposure_time:
                     rotation_rate = image_width / exposure_time
-                    experiment_time = total_strategy_length / rotation_rate
+                    experiment_time = strategy_length / rotation_rate
 
                     if resolution:
                         std_dose_rate = (
@@ -556,13 +691,18 @@ class GphlWorkflow(HardwareObject, object):
                             * api.flux.get_average_flux_density(transmission=100.)
                             * 1.0e-6 # convert to MGy/s
                         )
-                        dose_budget = self.get_dose_budget(
-                            resolution, relative_sensitivity=relative_sensitivity
+                        dose_budget = self.resolution2dose_budget(
+                            resolution,
+                            decay_limit=decay_limit,
+                            relative_sensitivity=data_model.get_relative_rad_sensitivity()
                         )
                         use_dose_budget  = (
                             dose_budget * budget_use_fraction
                             - data_model.get_dose_consumed()
                         )
+                        print ('@~@~ calc', std_dose_rate, dose_budget, budget_use_fraction,  use_dose_budget,
+                               data_model.get_dose_consumed())
+
                         if use_dose_budget > 0:
                             transmission = 100 * use_dose_budget / (
                                 experiment_time * std_dose_rate
@@ -570,6 +710,7 @@ class GphlWorkflow(HardwareObject, object):
                             transmission = min(transmission, 100.0)
                         else:
                             transmission = 0.0
+                        print ('@~@~ done teansmission', transmission)
 
 
                 dd0 = {
@@ -580,9 +721,8 @@ class GphlWorkflow(HardwareObject, object):
                 }
                 field_widget.set_values(dd0)
 
-        else:
-            update_function = None
-            transmission = acq_parameters.transmission
+
+        # Define UI fields
 
         field_list = [
             {
@@ -590,6 +730,13 @@ class GphlWorkflow(HardwareObject, object):
                 "uiLabel": "Data collection plan",
                 "type": "textarea",
                 "defaultValue": info_text,
+            },
+            {
+                "variableName": "strategy",
+                "uiLabel": "",
+                "type": "dblcombo",
+                "defaultValue": strategy_data.label,
+                "textChoices": [strategy_data.label],
             },
             {
                 "variableName": "imageWidth",
@@ -614,7 +761,7 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "experiment_lengh",
                 "uiLabel": "Experiment length (°)",
                 "type": "text",
-                "defaultValue": str(int(total_strategy_length)),
+                "defaultValue": str(int(strategy_length)),
                 "readOnly": True,
             },
             {
@@ -701,29 +848,17 @@ class GphlWorkflow(HardwareObject, object):
                 }
             )
 
-        if (
-            data_model.lattice_selected
-            or "calibration" in data_model.get_type().lower()
-        ):
+        if strategy_data.norientations == 1:
 
-
-            if len(orientations) > 1:
-                field_list.append(
-                    {
-                        "variableName": "centre_at_start",
-                        "uiLabel": "(Re)centre all orientations before acquisition start?",
-                        "type": "boolean",
-                        "defaultValue": bool(self.getProperty("centre_at_start")),
-                    }
-                )
-                field_list.append(
-                    {
-                        "variableName": "centre_before_sweep",
-                        "uiLabel": "(Re)centre crystal when orientation changes?",
-                        "type": "boolean",
-                        "defaultValue": bool(self.getProperty("centre_before_sweep")),
-                    }
-                )
+            if strategy_data.type == "Char":
+                    field_list.append(
+                        {
+                            "variableName": "recentre_before_start",
+                            "uiLabel": "Recentre crystal before starting?",
+                            "type": "boolean",
+                            "defaultValue": bool(self.getProperty("recentre_before_start")),
+                        }
+                    )
             else:
                 defval = (
                     bool(self.getProperty("centre_at_start"))
@@ -739,6 +874,24 @@ class GphlWorkflow(HardwareObject, object):
                     }
                 )
 
+        else:
+            field_list.append(
+                {
+                    "variableName": "centre_at_start",
+                    "uiLabel": "(Re)centre all orientations before acquisition start?",
+                    "type": "boolean",
+                    "defaultValue": bool(self.getProperty("centre_at_start")),
+                }
+            )
+            field_list.append(
+                {
+                    "variableName": "centre_before_sweep",
+                    "uiLabel": "(Re)centre crystal when orientation changes?",
+                    "type": "boolean",
+                    "defaultValue": bool(self.getProperty("centre_before_sweep")),
+                }
+            )
+
             if data_model.get_interleave_order():
                 field_list.append(
                     {
@@ -749,18 +902,6 @@ class GphlWorkflow(HardwareObject, object):
                     }
                 )
 
-        elif len(orientations) == 1:
-            # Characterisation only
-            field_list.append(
-                {
-                    "variableName": "recentre_before_start",
-                    "uiLabel": "Recentre crystal before starting?",
-                    "type": "boolean",
-                    "defaultValue": bool(self.getProperty("recentre_before_start")),
-                }
-            )
-
-        # Add third column of non-edited values
         field_list[-1]["NEW_COLUMN"] = "True"
         field_list.extend(
             [
@@ -778,9 +919,7 @@ class GphlWorkflow(HardwareObject, object):
                     "variableName": "decay_limit",
                     "uiLabel": "Min. signal at edge (%)",
                     "type": "floatstring",
-                    "defaultValue": 100.0 * api.gphl_workflow.getProperty(
-                        "default_decay_limit", 0.25
-                    ),
+                    "defaultValue": decay_limit,
                     "lowerBound": 0.1,
                     "upperBound": 0.5,
                     "decimals": 1,
@@ -819,6 +958,8 @@ class GphlWorkflow(HardwareObject, object):
             ]
         )
 
+
+        # pop up and get values
         self._return_parameters = gevent.event.AsyncResult()
         responses = dispatcher.send(
             "gphlParametersNeeded", self, field_list, self._return_parameters
@@ -831,11 +972,16 @@ class GphlWorkflow(HardwareObject, object):
         params = self._return_parameters.get()
         self._return_parameters = None
 
+
+        # Convert UI output to result
         if params is StopIteration:
             result = StopIteration
 
         else:
             result = {}
+
+            result["interleaveOrder"] = strategy_data.interleave_order
+
             tag = "imageWidth"
             value = params.get(tag)
             if value:
@@ -868,9 +1014,6 @@ class GphlWorkflow(HardwareObject, object):
             if value:
                 result[tag] = int(value)
 
-            if geometric_strategy.isInterleaved:
-                result["interleaveOrder"] = data_model.get_interleave_order()
-
             for tag in beam_energies:
                 beam_energies[tag] = float(params.get(tag, 0))
             result["beam_energies"] = beam_energies
@@ -885,20 +1028,6 @@ class GphlWorkflow(HardwareObject, object):
             result["recentre_before_start"] =  bool(
                 params.get("recentre_before_start", True)
             )
-
-            # Register the dose (about to be) consumed
-            energy = list(beam_energies.values())[0]
-            std_dose_rate = (
-                api.flux.dose_rate_per_photon_per_mmsq(energy)
-                * api.flux.get_average_flux_density(
-                    transmission=float(params.get("transmission"))
-                )
-                * 1.0e-6 # convert to MGy/s
-            )
-            dose_consumed = (
-                float(params.get("experiment_time")) * std_dose_rate
-            ) + data_model.get_dose_consumed()
-            data_model.set_dose_consumed(dose_consumed)
         #
         return result
 
@@ -1957,11 +2086,20 @@ class GphlWorkflow(HardwareObject, object):
 
     # Utility functions
 
-    def get_dose_budget(self, resolution, decay_limit=None, relative_sensitivity=1.0):
+    def resolution2dose_budget(self, resolution, decay_limit, relative_sensitivity=1.0):
+        """
+
+        Args:
+            resolution (float): resolution in A
+            decay_limit (float): min. intensity at resolution edge at experiment end (%)
+            relative_sensitivity (float) : relative radiation sensitivity of crystal
+
+        Returns (float): Dose budget (MGy)
+
+        """
         """Get resolution-dependent dose budget using configured values"""
-        decay_limit = decay_limit or self.getProperty("default_decay_limit", 0.25)
         max_budget = self.getProperty("maximum_dose_budget", 20)
-        result = -2 * math.log(decay_limit) * resolution * resolution
+        result = -2 * math.log(decay_limit / 100.) * resolution * resolution
         #
         return min(result, max_budget) / relative_sensitivity
 

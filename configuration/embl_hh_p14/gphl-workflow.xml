@@ -19,9 +19,9 @@
 
     <!-- Percentage of dose budget to use in characterisation.  -->
     <characterisation_budget_percent>5</characterisation_budget_percent>
-    <!-- Lowest relative diffraction intensity allowed - used to set dose budgets -->
-    <default_decay_limit>0.25</default_decay_limit>
-    <!-- Maximum dose budget to use, in MGy-->
+    <!-- Lowest percent diffraction intensity allowed - used to set dose budgets -->
+    <default_decay_limit>25</default_decay_limit>
+    <!-- Maximum allowed dose budget when converting from resolution, in MGy-->
     <maximum_dose_budget>20</maximum_dose_budget>
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
     <default_snapshot_count>0</default_snapshot_count>

@@ -40,15 +40,20 @@ ParsedMessage = namedtuple(
 )
 
 StrategyData = namedtuple(
-    "StrategyData", ("name", "type", "nsweeps", "ndegrees", "ntmax", "beam_energy_tags")
+    "StrategyData", (
+        "label", # (str) Space-free identifier. Should derive from other atttributes
+        "type", # (str): ("Native", "SAD", "MAD", "Characterisation", "Calibration")
+        "nsweeps", # Number of sweeps. several may share an orientation
+        "variant", # (str): Sub_variant (e.g. "eq", "ax"). Defaults to ""
+        "norientations", # Number of different orientations
+        "ndegrees", # base strategy length, in degrees
+        "ntmax", # number of theta_max added to base length
+        "group", #     (str): strategy grouping: Calibration, User, or Expert
+        "interleave_order", # (str) default to "", use "gsb" for MAD
+        "beam_energy_tags", # (tuple(str)): Tags for beam energies
+        "allowed_widths", # (list(float)) allowed image widths, in degrees
+    )
 )
-# name(str): space-free, intelligible name
-# type(str): one of ("Native", "SAD", "MAD", "Characterisation", "Calibration")
-# nsweeps(int): Number of sweeps. several may share an orientation
-# ndegrees(float): strategy base length, in degrees
-# ntmax(int): number of tmax; total length in ndegrees + ntmax * theta_max
-# beam_energy_tags(tuple(str)): Tags for beam energies (also defines their number)
-
 
 # Enumerations
 
