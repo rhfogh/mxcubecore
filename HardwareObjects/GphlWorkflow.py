@@ -63,6 +63,13 @@ __author__ = "Rasmus H Fogh"
 # Used to pass to priorInformation when no wavelengths are set (DiffractCal)
 DUMMY_WAVELENGTH = 999.999
 
+# Additional sample/diffraction plan data for GPhL emulation samples.
+EMULATION_DATA = {
+    "3n0s":{
+        "radiationSensitivity":0.9,
+    }
+}
+
 
 class GphlWorkflow(HardwareObject, object):
     """Global Phasing workflow runner.
@@ -70,7 +77,7 @@ class GphlWorkflow(HardwareObject, object):
 
     STATES = GphlMessages.States
 
-    TEST_SAMPLE_PREFIX = "emulate-"
+    TEST_SAMPLE_PREFIX = "emulate"
 
     def __init__(self, name):
         super(GphlWorkflow, self).__init__(name)
@@ -522,11 +529,9 @@ class GphlWorkflow(HardwareObject, object):
         sdata["ndegrees"] = total_strategy_length
         sdata["norientations"] = len(sweeps)
         #
-        print ('@~@~ sdata')
         for tpl in sorted(sdata.items()):
             print("%s: %s" % tpl)
         strategy_data = StrategyData(**sdata)
-        print ('@~@~ ', strategy_data)
 
         info_text = self.extra_info_text(geometric_strategy)
 
@@ -710,7 +715,7 @@ class GphlWorkflow(HardwareObject, object):
                             transmission = min(transmission, 100.0)
                         else:
                             transmission = 0.0
-                        print ('@~@~ done teansmission', transmission)
+                        print ('@~@~ done transmission', transmission)
 
 
                 dd0 = {
@@ -2103,6 +2108,84 @@ class GphlWorkflow(HardwareObject, object):
         #
         return min(result, max_budget) / relative_sensitivity
 
+    def get_emulation_samples(self):
+        """ Get list of lims_sample informatoin dictionaries for mock/emulation
+
+        Returns: LIST[DICT]
+
+        """
+        crystal_file_name = "crystal.nml"
+        result = []
+        sample_dir = api.gphl_connection.software_paths.get(
+            "gphl_test_samples"
+        )
+        serial = 0
+        if sample_dir and os.path.isdir(sample_dir):
+            for path, dirnames, filenames in sorted(os.walk(sample_dir)):
+                if crystal_file_name in filenames:
+                    data = {}
+                    sample_name = os.path.basename(path)
+                    indata = f90nml.read(os.path.join(path, crystal_file_name))[
+                        "simcal_crystal_list"
+                    ]
+                    space_group = indata.get("sg_name")
+                    cell_lengths = indata.get("cell_dim")
+                    cell_angles = indata.get("cell_angles")
+                    resolution = indata.get("res_limit_def")
+
+                    location = (serial // 10 + 1, serial % 10 + 1)
+                    serial += 1
+                    data["containerSampleChangerLocation"]  = str(location[0])
+                    data["sampleLocation"]  = str(location[1])
+
+                    data["sampleName"] = sample_name
+                    if cell_lengths:
+                        for ii, tag in enumerate(("cellA", "cellB", "cellC")):
+                            data[tag] = cell_lengths[ii]
+                    if cell_angles:
+                        for ii, tag in enumerate(("cellAlpha", "cellBeta", "cellGamma")):
+                            data[tag] = cell_angles[ii]
+                    if space_group:
+                        data["crystalSpaceGroup"] = space_group
+
+                    data["experimentType"] = "Default"
+                    data["proteinAcronym"] = self.TEST_SAMPLE_PREFIX
+                    data["smiles"] = None
+                    data["sampleId"] = 100000 + serial
+
+
+                    # ISPyB docs:
+                    # experimentKind: enum('Default','MAD','SAD','Fixed','OSC',
+                    # 'Ligand binding','Refinement', 'MAD - Inverse Beam','SAD - Inverse Beam',
+                    # 'MXPressE','MXPressF','MXPressO','MXPressP','MXPressP_SAD','MXPressI','MXPressE_SAD','MXScore','MXPressM',)
+                    #
+                    # Use "Mad, "SAD", "OSC"
+                    dfp = data["diffractionPlan"] = {
+                        # "diffractionPlanId": 457980,
+                        "experimentKind": "Default",
+                        "numberOfPositions": 0,
+                        "observedResolution": 0.0,
+                        "preferredBeamDiameter": 0.0,
+                        "radiationSensitivity": 1.0,
+                        "requiredCompleteness": 0.0,
+                        "requiredMultiplicity": 0.0,
+                        # "requiredResolution": 0.0,
+                    }
+                    dfp["requiredResolution"] = resolution
+                    dfp["diffractionPlanId"] = 5000000 + serial
+
+                    dd0 = EMULATION_DATA.get(sample_name, {})
+                    for tag, val in dd0.items():
+                        if tag in data:
+                            data[tag] = val
+                        elif tag in dfp:
+                            dfp[tag] = val
+                    #
+                    result.append(data)
+        #
+        return result
+
+
     def get_emulation_crystal_data(self):
         """If sample is a test data set for emulation, get crystal data
 
@@ -2116,7 +2199,7 @@ class GphlWorkflow(HardwareObject, object):
         if sample:
             sample_name = sample.getName()
             if sample_name and sample_name.startswith(self.TEST_SAMPLE_PREFIX):
-                sample_name = sample_name[len(self.TEST_SAMPLE_PREFIX):]
+                sample_name = sample_name[len(self.TEST_SAMPLE_PREFIX)+1:]
 
                 sample_dir = api.gphl_connection.software_paths.get(
                     "gphl_test_samples"

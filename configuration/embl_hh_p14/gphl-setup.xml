@@ -31,7 +31,7 @@
         <!--<java_binary>ssh -i /home/rhfogh/.ssh/wf_test_id -o StrictHostKeyChecking=no lonsdale java</java_binary>-->
 
         <!-- Location of GPhL release, containing program binaries (or their wrapper scripts) -->
-        <GPHL_INSTALLATION>{GPHL_RELEASE}/autoPROC/bin/linux64</GPHL_INSTALLATION>
+        <GPHL_INSTALLATION>{GPHL_RELEASE}/exe</GPHL_INSTALLATION>
 
         <!-- Gphl workflow Java classpath. -->
         <!--Should point to all contents of workflow application directory-->

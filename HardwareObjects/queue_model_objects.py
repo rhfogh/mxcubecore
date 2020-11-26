@@ -416,6 +416,8 @@ class Sample(TaskNode):
 
         if hasattr(lims_sample, "diffractionPlan"):
             self.diffraction_plan = lims_sample.diffractionPlan
+        else:
+            self.diffraction_plan = lims_sample.get("diffractionPlan")
 
         name = ""
 
