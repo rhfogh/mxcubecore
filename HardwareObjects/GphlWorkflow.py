@@ -162,7 +162,7 @@ class GphlWorkflow(HardwareObject, object):
         if "Mockup" in detector.__class__.__name__:
             # We are in mock  mode
             # - set detector centre to match instrumentaiton.nml
-            # NB htis sould be done with isinstnce, but that seems to fail,
+            # NB this sould be done with isinstance, but that seems to fail,
             # probably because of import path mix-ups.
             detector._set_beam_centre(
                 (instrument_data["det_org_x"], instrument_data["det_org_y"])
