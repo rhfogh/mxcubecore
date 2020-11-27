@@ -39,22 +39,6 @@ ParsedMessage = namedtuple(
     "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
 )
 
-StrategyData = namedtuple(
-    "StrategyData", (
-        "label", # (str) Space-free identifier. Should derive from other atttributes
-        "type", # (str): ("Native", "SAD", "MAD", "Characterisation", "Calibration")
-        "nsweeps", # Number of sweeps. several may share an orientation
-        "variant", # (str): Sub_variant (e.g. "eq", "ax"). Defaults to ""
-        "norientations", # Number of different orientations
-        "ndegrees", # base strategy length, in degrees
-        "ntmax", # number of theta_max added to base length
-        "group", #     (str): strategy grouping: Calibration, User, or Expert
-        "interleave_order", # (str) default to "", use "gsb" for MAD
-        "beam_energy_tags", # (tuple(str)): Tags for beam energies
-        "allowed_widths", # (list(float)) allowed image widths, in degrees
-    )
-)
-
 # Enumerations
 
 MESSAGE_INTENTS = {"DOCUMENT", "COMMAND", "EVENT"}
