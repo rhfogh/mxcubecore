@@ -1819,7 +1819,7 @@ class GphlWorkflow(TaskNode):
 
         self._dose_budget = None
         self._decay_limit = workflow_hwobj.getProperty("default_decay_limit", 25)
-        self._characterisation_budget_fraction = 1.0
+        self._characterisation_budget_fraction = 0.05
         self._relative_rad_sensitivity = 1.0
         self._dose_consumed = 0.0
 

@@ -407,50 +407,8 @@ class GphlWorkflow(HardwareObject, object):
 
         data_model = self._queue_entry.get_data_model()
 
-        allowed_widths = geometric_strategy.allowedWidths
-        if allowed_widths:
-            default_width_index = geometric_strategy.defaultWidthIdx or 0
-        else:
-            allowed_widths = [
-                float(x) for x in self.getProperty("default_image_widths").split()
-            ]
-            val = allowed_widths[0]
-            allowed_widths.sort()
-            default_width_index = allowed_widths.index(val)
-            logging.getLogger("HWR").info(
-                "No allowed image widths returned by strategy - use defaults"
-            )
-
-        # NBNB TODO userModifiable
-
-        # NBNB The geometric strategy is only given for ONE beamsetting
-        # The strategy is (for now) repeated identical for all wavelengths
-        # When this changes, more info will become available
-
+        # Make info_text and do some setting up
         axis_names = self.rotation_axis_roles
-
-        orientations = OrderedDict()
-        strategy_length = 0
-        for sweep in geometric_strategy.get_ordered_sweeps():
-            strategy_length += sweep.width
-            rotation_id = sweep.goniostatSweepSetting.id_
-            sweeps = orientations.setdefault(rotation_id, [])
-            sweeps.append(sweep)
-
-        relative_sensitivity = data_model.get_relative_rad_sensitivity()
-
-        test_crystal_data, junk = self.get_emulation_crystal_data()
-        if test_crystal_data:
-            resolution = test_crystal_data.get("res_limit_def")
-        else:
-            resolution = api.resolution.get_value()
-
-        full_dose_budget = self.resolution2dose_budget(
-            resolution,
-            decay_limit=data_model.get_decay_limit(),
-            relative_sensitivity=relative_sensitivity
-        )
-
         if data_model.lattice_selected or "calibration" in data_model.get_type().lower():
             lines = ["%s strategy" % api.gphl_connection.get_workflow_name()]
             lines.extend(("-"*len(lines[0]), ""))
@@ -460,6 +418,7 @@ class GphlWorkflow(HardwareObject, object):
             for ii, tag in enumerate(data_model.get_beam_energy_tags()):
                 beam_energies[tag] = energies[ii]
             budget_use_fraction = 1.0
+            dose_label = "Total dose (MGy)"
 
         else:
             # Characterisation
@@ -467,8 +426,16 @@ class GphlWorkflow(HardwareObject, object):
             lines.extend(("="*len(lines[0]), ""))
             beam_energies = OrderedDict((("Characterisation", initial_energy),))
             budget_use_fraction = data_model.get_characterisation_budget_fraction()
+            dose_label = "Charcterisation dose (MGy)"
 
-        total_strategy_length = strategy_length * len(beam_energies)
+        orientations = OrderedDict()
+        strategy_length = 0
+        for sweep in geometric_strategy.get_ordered_sweeps():
+            strategy_length += sweep.width
+            rotation_id = sweep.goniostatSweepSetting.id_
+            sweeps = orientations.setdefault(rotation_id, [])
+            sweeps.append(sweep)
+
         if len(beam_energies) > 1:
             lines.append(
                 "Experiment length: %s * %6.1f°" % (len(beam_energies), strategy_length)
@@ -502,95 +469,143 @@ class GphlWorkflow(HardwareObject, object):
 
         info_text = "\n".join(lines)
 
-        acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
-        # For now return default values
+        # Set up  image width pulldown
+        allowed_widths = geometric_strategy.allowedWidths
+        if allowed_widths:
+            default_width_index = geometric_strategy.defaultWidthIdx or 0
+        else:
+            allowed_widths = [
+                float(x) for x in self.getProperty("default_image_widths").split()
+            ]
+            val = allowed_widths[0]
+            allowed_widths.sort()
+            default_width_index = allowed_widths.index(val)
+            logging.getLogger("HWR").info(
+                "No allowed image widths returned by strategy - use defaults"
+            )
 
+        # set starting and unchanging values of pareameters
+        acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
+
+        resolution = api.resolution.get_value()
+
+        dose_budget = self.resolution2dose_budget(
+            resolution,
+            decay_limit=data_model.get_decay_limit(),
+            relative_sensitivity=data_model.get_relative_rad_sensitivity()
+        )
         default_image_width = float(allowed_widths[default_width_index])
         default_exposure = acq_parameters.exp_time
         exposure_limits = api.detector.get_exposure_time_limits()
+        total_strategy_length = strategy_length * len(beam_energies)
         experiment_time = (
                 total_strategy_length * default_exposure / default_image_width
+        )
+        proposed_dose  = max(
+            dose_budget * budget_use_fraction - data_model.get_dose_consumed(),
+            0.0
         )
 
         # For calculating dose-budget transmission
         std_dose_rate = (
-            api.flux.dose_rate_per_photon_per_mmsq(beam_energies.values()[0])
+            api.flux.dose_rate_per_photon_per_mmsq(initial_energy)
             * api.flux.get_average_flux_density(transmission=100.)
             * 1.0e-6 # convert to MGy/s
         )
-        if std_dose_rate:
-            dose_budget = self.resolution2dose_budget(
-                resolution,
-                decay_limit=data_model.get_decay_limit(),
-                relative_sensitivity=relative_sensitivity
-            )
-            dose_budget -= data_model.get_dose_consumed()
-            if dose_budget > 0:
-                transmission = 100 * dose_budget * budget_use_fraction / (
-                    experiment_time * std_dose_rate
-                )
-                transmission = min(transmission, 100.0)
-            else:
-                transmission = 0.0
+        transmission = acq_parameters.transmission
 
-            def update_function(
-                field_widget,
-                # experiment_length=total_strategy_length,
-                # relative_sensitivity=relative_sensitivity,
-            ):
-                """Function to update rotation_rate and budget_used fields
-                In parameter popup"""
-                parameters = field_widget.get_parameters_map()
-                exposure_time = float(parameters.get("exposure", 0))
-                image_width = float(parameters.get("imageWidth", 0))
-                resolution = float(parameters.get("resolution", 0))
-                budget_use_fraction = (
-                    float(parameters.get("budget_use_fraction", 0)) / 100.0
-                )
-                energy = float(parameters.get(list(beam_energies)[0], 0))
-                if not energy:
-                    energy = api.energy.get_value()
+        # define update functions
 
-                transmission = dose_budget = 0.0
-                if image_width and exposure_time:
-                    rotation_rate = image_width / exposure_time
-                    experiment_time = total_strategy_length / rotation_rate
-
-                    if resolution:
-                        std_dose_rate = (
-                            api.flux.dose_rate_per_photon_per_mmsq(energy)
-                            * api.flux.get_average_flux_density(transmission=100.)
-                            * 1.0e-6 # convert to MGy/s
-                        )
-                        dose_budget = self.resolution2dose_budget(
-                            resolution,
-                            decay_limit=data_model.get_decay_limit(),
-                            relative_sensitivity=relative_sensitivity
-                        )
-                        use_dose_budget  = (
-                            dose_budget * budget_use_fraction
-                            - data_model.get_dose_consumed()
-                        )
-                        if use_dose_budget > 0:
-                            transmission = 100 * use_dose_budget / (
-                                experiment_time * std_dose_rate
-                            )
-                            transmission = min(transmission, 100.0)
-                        else:
-                            transmission = 0.0
+        def update_function(field_widget):
+            """When image_width or exposure_time change,
+             update rotation_rate, experiment_time and wither use_dose or transmission
+            In parameter popup"""
+            parameters = field_widget.get_parameters_map()
+            exposure_time = float(parameters.get("exposure", 0))
+            image_width = float(parameters.get("imageWidth", 0))
+            use_dose = float(parameters.get("use_dose", 0))
+            transmission = float(parameters.get("transmission", 0))
 
 
+            if image_width and exposure_time:
+                rotation_rate = image_width / exposure_time
+                experiment_time = total_strategy_length / rotation_rate
                 dd0 = {
                     "rotation_rate": rotation_rate,
                     "experiment_time": experiment_time,
-                    "dose_budget": dose_budget,
-                    "transmission": transmission,
                 }
+
+                if std_dose_rate:
+                    if use_dose:
+                        transmission = 100 * use_dose / (std_dose_rate * experiment_time)
+                        if transmission > 100:
+                            transmission = 100
+                            use_dose = (
+                                transmission * std_dose_rate * experiment_time / 100
+                            )
+                            dd0["use_dose"] = use_dose
+                            dd0["transmission"] = transmission
+                        else:
+                            dd0["transmission"] = transmission
+                    elif transmission:
+                        use_dose = transmission * std_dose_rate * experiment_time / 100
+                        dd0["use_dose"] = use_dose
                 field_widget.set_values(dd0)
 
-        else:
-            update_function = None
-            transmission = acq_parameters.transmission
+        def update_transmission(field_widget):
+            """When use_dose changes, update transmission and/or exposure_time
+            In parameter popup"""
+            parameters = field_widget.get_parameters_map()
+            exposure_time = float(parameters.get("exposure", 0))
+            image_width = float(parameters.get("imageWidth", 0))
+            if image_width and exposure_time and std_dose_rate:
+                rotation_rate = image_width / exposure_time
+                experiment_time = total_strategy_length / rotation_rate
+                use_dose = transmission * std_dose_rate * experiment_time / 100
+                field_widget.set_values({"use_dose":use_dose})
+
+        def update_dose(field_widget):
+            """When use_dose changes, update transmission and/or exposure_time
+            In parameter popup"""
+            parameters = field_widget.get_parameters_map()
+            exposure_time = float(parameters.get("exposure", 0))
+            image_width = float(parameters.get("imageWidth", 0))
+            use_dose = float(parameters.get("use_dose", 0))
+
+
+            if image_width and exposure_time:
+                rotation_rate = image_width / exposure_time
+                experiment_time = total_strategy_length / rotation_rate
+                dd0 = {}
+                if std_dose_rate and use_dose:
+                    transmission = 100 * use_dose / (std_dose_rate * experiment_time)
+                    if transmission > 100:
+                        transmission = 100
+                        experiment_time = use_dose / (transmission * std_dose_rate)
+                        rotation_rate = total_strategy_length / experiment_time
+                        exposure_time = image_width / rotation_rate
+                        dd0["experiment_time"] = experiment_time
+                        dd0["rotation_rate"] = rotation_rate
+                        dd0["exposure_time"] = exposure_time
+                    dd0["transmission"] = transmission
+                field_widget.set_values(dd0)
+
+        # if std_dose_rate:
+        #     dose_budget = self.resolution2dose_budget(
+        #         resolution,
+        #         decay_limit=data_model.get_decay_limit(),
+        #         relative_sensitivity=relative_sensitivity
+        #     )
+        #     dose_budget -= data_model.get_dose_consumed()
+        #     if dose_budget > 0:
+        #         transmission = 100 * dose_budget * budget_use_fraction / (
+        #             experiment_time * std_dose_rate
+        #         )
+        #         transmission = min(transmission, 100.0)
+        #     else:
+        #         transmission = 0.0
+        # else:
+        #     update_function = None
 
         field_list = [
             {
@@ -598,16 +613,6 @@ class GphlWorkflow(HardwareObject, object):
                 "uiLabel": "Data collection plan",
                 "type": "textarea",
                 "defaultValue": info_text,
-            },
-            {
-                "variableName": "resolution",
-                "uiLabel": "Detector resolution (A)",
-                "type": "floatstring",
-                "defaultValue": resolution,
-                "lowerBound": 0.0,
-                "upperBound": 9.0,
-                "decimals": 3,
-                "update_function": update_function,
             },
             {
                 "variableName": "imageWidth",
@@ -629,29 +634,29 @@ class GphlWorkflow(HardwareObject, object):
                 "update_function": update_function,
             },
             {
-                "variableName": "budget_use_fraction",
-                "uiLabel": "% of dose budget to use",
+                "variableName": "experiment_lengh",
+                "uiLabel": "Experiment length (°)",
+                "type": "text",
+                "defaultValue": str(int(total_strategy_length)),
+                "readOnly": True,
+            },
+            {
+                "variableName": "experiment_time",
+                "uiLabel": "Experiment duration (s)",
                 "type": "floatstring",
-                "defaultValue": budget_use_fraction * 100.0,
-                "lowerBound": 0.0,
-                "upperBound": 300.0,
-                "update_function": update_function,
+                "defaultValue": experiment_time,
                 "decimals": 1,
+                "readOnly": True,
+            },
+            {
+                "variableName": "rotation_rate",
+                "uiLabel": "Rotation speed (°/s)",
+                "type": "floatstring",
+                "defaultValue": (float(default_image_width / default_exposure)),
+                "decimals": 1,
+                "readOnly": True,
             },
         ]
-        if (
-            data_model.lattice_selected
-            or "calibration" in data_model.get_type().lower()
-        ):
-            field_list.append(
-                {
-                    "variableName": "snapshot_count",
-                    "uiLabel": "Number of snapshots",
-                    "type": "combo",
-                    "defaultValue": str(data_model.get_snapshot_count()),
-                    "textChoices": ["0", "1", "2", "4"],
-                }
-            )
 
         field_list[-1]["NEW_COLUMN"] = "True"
 
@@ -668,12 +673,13 @@ class GphlWorkflow(HardwareObject, object):
                     "decimals": 4,
                 }
             )
-        if self.getProperty("starting_beamline_energy") == "frozen":
-            # Use current energy and disallow changes
-            ll0[0]["defaultValue"] = api.energy.getCurrentEnergy()
-            ll0[0]["readOnly"] = True
-        else:
-            ll0[0]["update_function"] = update_function
+        ll0[0]["readOnly"] = True
+        # if self.getProperty("starting_beamline_energy") == "frozen":
+        #     # Use current energy and disallow changes
+        #     ll0[0]["defaultValue"] = api.energy.getCurrentEnergy()
+        #     ll0[0]["readOnly"] = True
+        # else:
+        #     ll0[0]["update_function"] = update_function
         field_list.extend(ll0)
 
         if (
@@ -756,41 +762,51 @@ class GphlWorkflow(HardwareObject, object):
 
         # Add third column of non-edited values
         field_list[-1]["NEW_COLUMN"] = "True"
+        reslimits = api.resolution.get_limits()
+        if None in reslimits:
+            reslimits = (0.5, 5.0)
+        if std_dose_rate:
+            use_dose_start = proposed_dose
+            use_dose_frozen = False
+        else:
+            use_dose_start = 0
+            use_dose_frozen = True
+            logging.getLogger("user_level_log").warning(
+                "Dose rate cannot be calculated - dose bookkeeping disabled"
+            )
         field_list.extend(
             [
-                # NB Transmission is in % in UI, but in 0-1 in workflow
                 {
-                    "variableName": "experiment_lengh",
-                    "uiLabel": "Experiment length (°)",
-                    "type": "text",
-                    "defaultValue": str(int(total_strategy_length)),
-                    "readOnly": True,
-                },
-                {
-                    "variableName": "experiment_time",
-                    "uiLabel": "Experiment duration (s)",
+                    "variableName": "resolution",
+                    "uiLabel": "Detector resolution (A)",
                     "type": "floatstring",
-                    "defaultValue": experiment_time,
-                    "decimals": 1,
-                    "readOnly": True,
-                },
-                {
-                    "variableName": "rotation_rate",
-                    "uiLabel": "Rotation speed (°/s)",
-                    "type": "floatstring",
-                    "defaultValue": (float(default_image_width / default_exposure)),
-                    "decimals": 1,
-                    "readOnly": True,
+                    "defaultValue": resolution,
+                    "lowerBound": reslimits[0],
+                    "upperBound": reslimits[1],
+                    "decimals": 3,
+                    # "update_function": update_function,
                 },
                 {
                     "variableName": "dose_budget",
-                    "uiLabel": "Nominal dose budget (MGy)",
+                    "uiLabel": "Total dose budget (MGy)",
                     "type": "floatstring",
-                    "defaultValue": full_dose_budget,
+                    "defaultValue": dose_budget,
                     "lowerBound": 0.0,
                     "decimals": 1,
                     "readOnly": True,
                 },
+                {
+                    "variableName": "use_dose",
+                    "uiLabel": dose_label,
+                    "type": "floatstring",
+                    "defaultValue": use_dose_start,
+                    "lowerBound": 0.0,
+                    "decimals": 1,
+                    "update_function": update_dose,
+                    "readOnly": use_dose_frozen,
+
+                },
+                # NB Transmission is in % in UI, but in 0-1 in workflow
                 {
                     "variableName": "transmission",
                     "uiLabel": "Transmission (%)",
@@ -799,10 +815,23 @@ class GphlWorkflow(HardwareObject, object):
                     "lowerBound": 0.0,
                     "upperBound": 100.0,
                     "decimals": 1,
-                    "readOnly": True,
+                    "update_function": update_transmission,
                 },
             ]
         )
+        if (
+            data_model.lattice_selected
+            or "calibration" in data_model.get_type().lower()
+        ):
+            field_list.append(
+                {
+                    "variableName": "snapshot_count",
+                    "uiLabel": "Number of snapshots",
+                    "type": "combo",
+                    "defaultValue": str(data_model.get_snapshot_count()),
+                    "textChoices": ["0", "1", "2", "4"],
+                }
+            )
 
         self._return_parameters = gevent.event.AsyncResult()
         responses = dispatcher.send(
@@ -872,18 +901,11 @@ class GphlWorkflow(HardwareObject, object):
             )
 
             # Register the dose (about to be) consumed
-            energy = list(beam_energies.values())[0]
-            std_dose_rate = (
-                api.flux.dose_rate_per_photon_per_mmsq(energy)
-                * api.flux.get_average_flux_density(
-                    transmission=float(params.get("transmission"))
-                )
-                * 1.0e-6 # convert to MGy/s
-            )
-            dose_consumed = (
-                float(params.get("experiment_time")) * std_dose_rate
-            ) + data_model.get_dose_consumed()
-            data_model.set_dose_consumed(dose_consumed)
+            if std_dose_rate:
+                dose_consumed = (
+                    float(params.get("experiment_time")) * std_dose_rate
+                ) + data_model.get_dose_consumed()
+                data_model.set_dose_consumed(dose_consumed)
         #
         return result
 
@@ -1565,6 +1587,11 @@ class GphlWorkflow(HardwareObject, object):
         params = self._return_parameters.get()
         if params is StopIteration:
             return StopIteration
+        if self.getProperty("starting_beamline_energy") == "current":
+            logging.getLogger("user_level_log").warning(
+                "Please set acquisition energy and resolution and press Continue."
+            )
+            self._queue_entry.get_queue_controller().pause(True)
 
         ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
         if ll0[0] == "*":
