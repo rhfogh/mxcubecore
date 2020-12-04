@@ -40,7 +40,6 @@
         <!-- Directory with workflow config input, e.g. instrumentation.nml -->
 	<gphl_beamline_config>{GPHL_SETUP}/beamline_config_embl_hh_p14_202002</gphl_beamline_config>
 
-        <!-- Directory with workflow config input, e.g. instrumentation.nml -->
         <!--<gphl_test_samples>{GPHL_SETUP}/gphl_test_samples</gphl_test_samples>-->
         <gphl_test_samples>{GPHL_SETUP}test_samples</gphl_test_samples>
 
@@ -54,14 +53,14 @@
 
         <!-- Location of GPhL .license directory -->
         <!-- defaults to GPHL_INSTALLATION-->
-        <!-- Only needed if you do NOT use the wrapper script : -->
+        <!-- Only needed if you do NOT use the gphl installation wrapper scripts in .../exe : -->
         <co.gphl.wf.bdg_licence_dir>{GPHL_RELEASE}</co.gphl.wf.bdg_licence_dir>
 
         <!-- Location of executable XDS binary. Mandatory-->
         <co.gphl.wf.xds.bin>/mx-beta/bin/xds_par</co.gphl.wf.xds.bin>
         <!--<co.gphl.wf.xds.bin>/mnt/scratch/rhfogh/gphl_release/XDS/xds_par</co.gphl.wf.xds.bin>-->
 
-        <!-- <Location of individual binaries are optional. -->
+        <!-- <Location of individual binaries or wrappers are optional. -->
         <!-- They default to within GPHL_INSTALLATION -->
 
         <!-- Location of stratcal binary -->

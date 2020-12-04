@@ -43,7 +43,6 @@
         <!-- Directory with workflow config input, e.g. instrumentation.nml -->
         <gphl_beamline_config>gphl_beamline_config</gphl_beamline_config>
 
-        <!-- Directory with workflow config input, e.g. instrumentation.nml -->
         <!--<gphl_test_samples>{GPHL_SETUP}/gphl_test_samples</gphl_test_samples>-->
         <gphl_test_samples>test_samples</gphl_test_samples>
 
@@ -57,14 +56,14 @@
 
         <!-- Location of GPhL .license directory -->
         <!-- defaults to GPHL_INSTALLATION-->
-        <!-- Only needed if you do NOT use the wrapper script : -->
+        <!-- Only needed if you do NOT use the gphl installation wrapper scripts in .../exe : -->
 <!--        <co.gphl.wf.bdg_licence_dir>{GPHL_RELEASE}/gphl_release/latest</co.gphl.wf.bdg_licence_dir>-->
 
         <!-- Location of executable XDS binary. Mandatory-->
 <!--        <co.gphl.wf.xds.bin>/public/xtal/Xds/XDS-INTEL64_Linux_x86_64/xds_par</co.gphl.wf.xds.bin>-->
         <co.gphl.wf.xds.bin>{GPHL_RELEASE}/XDS/xds_par</co.gphl.wf.xds.bin>
 
-        <!-- <Location of individual binaries are optional. -->
+        <!-- <Location of individual binaries or wrappers are optional. -->
         <!-- They default to within GPHL_INSTALLATION -->
 
         <!-- Location of stratcal binary -->
@@ -94,7 +93,6 @@
 
         <!-- processing for stratcal acqisitions. In practice, this will almost always
          be a wrapper script that sets up the environment properly. -->
-        <!--<co.gphl.wf.diffractcal.bin>{GPHL_SETUP}/scripts/aP_wf_rotcal</co.gphl.wf.diffractcal.bin>-->
 <!--        <co.gphl.wf.process.bin>scripts/aP_wf_process</co.gphl.wf.process.bin>-->
 
     </software_properties>
