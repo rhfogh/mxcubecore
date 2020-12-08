@@ -1546,8 +1546,6 @@ class GphlWorkflow(HardwareObject, object):
         # First letter must match first letter of BravaisLattice
         crystal_system = choose_lattice.crystalSystem
 
-        print ('@~@~ lattices crystal_system', lattices, crystal_system)
-
         # Color green (figuratively) if matches lattices,
         # or otherwise if matches crystalSystem
 
@@ -1899,9 +1897,6 @@ class GphlWorkflow(HardwareObject, object):
         crystal_system = workflow_model.get_crystal_system()
         if crystal_system:
             crystal_system = crystal_system.upper()
-
-        print ('@~@~ crystal_system, pointGroup, space_group',
-               crystal_system, workflow_model.get_point_group(), space_group)
 
         # NB Expected resolution is deprecated.
         # It is set to the current resolution value, for now

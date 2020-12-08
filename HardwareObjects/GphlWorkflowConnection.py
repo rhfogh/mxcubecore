@@ -701,8 +701,12 @@ class GphlWorkflowConnection(HardwareObject, object):
         lattice_format = py4jChooseLattice.getFormat().toString()
         solutions = py4jChooseLattice.getSolutions()
         lattices = py4jChooseLattice.getLattices()
+        crystalSystem = py4jChooseLattice.getCrystalSystem().getXdsChar()
         return GphlMessages.ChooseLattice(
-            lattice_format=lattice_format, solutions=solutions, lattices=lattices
+            lattice_format=lattice_format,
+            solutions=solutions,
+            lattices=lattices,
+            crystalSystem=crystalSystem
         )
 
     def _CollectionProposal_to_python(self, py4jCollectionProposal):
