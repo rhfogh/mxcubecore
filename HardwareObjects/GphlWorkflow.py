@@ -900,6 +900,7 @@ class GphlWorkflow(HardwareObject, object):
                 params.get("recentre_before_start", True)
             )
 
+            data_model.set_dose_budget(float(params.get("dose_budget",  0)))
             # Register the dose (about to be) consumed
             if std_dose_rate:
                 data_model.set_dose_consumed(float(params.get("use_dose", 0)))
@@ -985,6 +986,8 @@ class GphlWorkflow(HardwareObject, object):
                 "User modification of sweep settings not implemented. Ignored"
             )
 
+        gphl_workflow_model.set_exposure_time(parameters.get("exposure" or 0.0))
+        gphl_workflow_model.set_image_width(parameters.get("imageWidth" or 0.0))
         # Set transmission, detector_disance/resolution to final (unchanging) values
         # Also set energy to first energy value, necessary to get resolution consistent
 
@@ -1517,7 +1520,12 @@ class GphlWorkflow(HardwareObject, object):
         data_collection_entry = queue_manager.get_entry_with_model(
             self._data_collection_group
         )
-        queue_manager.execute_entry(data_collection_entry)
+
+        dispatcher.send("gphlStartAcquisition", self, gphl_workflow_model)
+        try:
+            queue_manager.execute_entry(data_collection_entry)
+        finally:
+            dispatcher.send("gphlDoneAcquisition", self, gphl_workflow_model)
         self._data_collection_group = None
 
         if data_collection_entry.status == QUEUE_ENTRY_STATUS.FAILED:

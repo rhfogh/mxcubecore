@@ -1822,6 +1822,8 @@ class GphlWorkflow(TaskNode):
         self._characterisation_budget_fraction = 0.05
         self._relative_rad_sensitivity = 1.0
         self._dose_consumed = 0.0
+        self._exposure_time = 0.0
+        self._image_width = 0.0
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1921,12 +1923,24 @@ class GphlWorkflow(TaskNode):
     def set_decay_limit(self, value):
         self._decay_limit = value
 
-    # Dose already consumed, tyupicaly in characterisation
+    # Dose already consumed, typically in characterisation
     def get_dose_consumed(self):
         return self._dose_consumed
 
     def set_dose_consumed(self, value):
         self._dose_consumed = value
+
+    def get_exposure_time(self):
+        return self._exposure_time
+
+    def set_exposure_time(self, value):
+        self._exposure_time = value
+
+    def get_image_width(self):
+        return self._image_width
+
+    def set_image_width(self, value):
+        self._image_width = value
 
     # Fraction of dose budget intended for characterisation.
     def get_characterisation_budget_fraction(self):
