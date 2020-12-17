@@ -24,7 +24,7 @@
     <!-- Maximum allowed dose budget when converting from resolution, in MGy-->
     <maximum_dose_budget>20</maximum_dose_budget>
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
-    <default_snapshot_count>0</default_snapshot_count>
+    <default_snapshot_count>2</default_snapshot_count>
 
     <characterisation_strategies>
         Characterisation_6_5
