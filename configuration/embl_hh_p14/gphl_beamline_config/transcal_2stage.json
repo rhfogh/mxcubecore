@@ -1,6 +1,6 @@
 [
     { 
-      "#": "Settings for running TransCal on a mini-Kappa (short protocol, without SOC)",
+      "#": "Settings (omega, kappa, phi) for running TransCal on a mini-Kappa (short protocol, without SOC)",
       "settings": [
         0,   0,       0,
         0,   0,     180,
@@ -17,7 +17,7 @@
     },
     
     {
-      "#": "Settings for running TransCal on a mini-Kappa (medium-length protocol)",
+      "#": "Settings(omega, kappa, phi) for running TransCal on a mini-Kappa (medium-length protocol)",
     
       "settings": [
         0.00,     0.00,   -90.00,

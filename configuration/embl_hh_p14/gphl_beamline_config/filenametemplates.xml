@@ -44,6 +44,19 @@ The following restrictions must be adhered to:
 
 -->
 
+<!-- File name patterns for the image files produced by the workflow,
+including the sweep identifiers and run numbers required for multi-sweep daa sets
+
+Must be adjusted to beamline practices; in particular as regards overall length
+and the number of digits in the image numbre mask.
+
+Each individual component and separator is specified together with its width
+
+NB the specification system is more powerful than is required for the present examples,
+ and allows for mapping between workflow and BCS-internal naming styles.
+
+ See Workflow documentation for further details if required.-->
+
 
 <xml-fragment
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -51,40 +64,8 @@ The following restrictions must be adhered to:
     xmlns:c="SDCP/Core"
 >
 
-    <c:filenamePattern xsi:type="c:FilenamePattern">
-        <exid>GDA</exid>
-        
-        <element xsi:type="tet:Parameter">
-        <maxWidth>43</maxWidth>
-        <name>prefix</name>
-        <type>string</type>
-        </element>
-        
-        <element xsi:type="tet:Separator">
-            <value>_</value>
-        </element>
-        
-        <element xsi:type="tet:Parameter">
-            <maxWidth>2</maxWidth>
-            <name>run</name>
-            <type>unsignedInt</type>
-        </element>
-        
-        <element xsi:type="tet:Separator">
-            <value>_</value>
-        </element>
-
-        <element xsi:type="tet:ImageNumberMask">
-            <maxWidth>4</maxWidth>
-            <minWidth>
-                <width>4</width>
-                <leftJustify>false</leftJustify>
-                <padding>0</padding>
-            </minWidth>
-        </element>
-
-    </c:filenamePattern>
-
+    <!-- filename pattern for single-orientation, single-wavelength  -->
+    <!-- Used for characterisation -->
     <c:filenamePattern xsi:type="c:FilenamePattern">
         <exid>generic</exid>
 
@@ -119,7 +100,7 @@ The following restrictions must be adhered to:
 
     </c:filenamePattern>
 
-    <!-- Non-inverse-beam filename pattern -->
+    <!-- Non-inverse-beam multi-orientation filename pattern -->
     <c:filenamePattern xsi:type="c:FilenamePattern">
         <exid>interleaved</exid>
 
@@ -178,7 +159,7 @@ The following restrictions must be adhered to:
 
     </c:filenamePattern>
 
-    <!-- Inverse beam interleaved filename pattern -->
+    <!-- Inverse beam interleaved multi-orientation filename pattern -->
     <c:filenamePattern xsi:type="c:FilenamePattern">
         <exid>ib_interleaved</exid>
 
@@ -243,7 +224,7 @@ The following restrictions must be adhered to:
 
     </c:filenamePattern>
 
-    <!-- single-wavelength multi-orientation -->
+    <!-- single-wavelength multi-orientation - used for diffractometer calibration -->
     <c:filenamePattern xsi:type="c:FilenamePattern">
         <exid>multiorientation</exid>
 
@@ -296,84 +277,5 @@ The following restrictions must be adhered to:
         </element>
 
     </c:filenamePattern>
-
-
-    <c:filenamePatternMapping xsi:type="c:FilenamePatternMapping">
-    
-        <entry>
-            <tgtName>prefix</tgtName>
-            <srcRange>0</srcRange>
-            <srcRange>6</srcRange>
-        </entry>
-        
-        <entry>
-            <tgtName>run</tgtName>
-            <srcRange>7</srcRange>
-            <srcRange>8</srcRange>
-        </entry>
-        
-        <mapsFrom>interleaved</mapsFrom>
-        <mapsTo>GDA</mapsTo>
-        
-    </c:filenamePatternMapping>
-
-    <c:filenamePatternMapping xsi:type="c:FilenamePatternMapping">
-    
-        <entry>
-            <tgtName>prefix</tgtName>
-            <srcRange>0</srcRange>
-            <srcRange>7</srcRange>
-        </entry>
-        
-        <entry>
-            <tgtName>run</tgtName>
-            <srcRange>8</srcRange>
-            <srcRange>9</srcRange>
-        </entry>
-        
-        <mapsFrom>ib_interleaved</mapsFrom>
-        <mapsTo>GDA</mapsTo>
-        
-    </c:filenamePatternMapping>
-
-    <c:filenamePatternMapping xsi:type="c:FilenamePatternMapping">
-    
-        <entry>
-            <tgtName>prefix</tgtName>
-            <srcRange>0</srcRange>
-            <srcRange>1</srcRange>
-        </entry>
-        
-        <entry>
-            <tgtName>run</tgtName>
-            <srcRange>2</srcRange>
-            <srcRange>3</srcRange>
-        </entry>
-        
-        <mapsFrom>generic</mapsFrom>
-        <mapsTo>GDA</mapsTo>
-        
-    </c:filenamePatternMapping>
-
-    <c:filenamePatternMapping xsi:type="c:FilenamePatternMapping">
-    
-        <entry>
-            <tgtName>prefix</tgtName>
-            <srcRange>0</srcRange>
-            <srcRange>4</srcRange>
-        </entry>
-        
-        <entry>
-            <tgtName>run</tgtName>
-            <srcRange>5</srcRange>
-            <srcRange>6</srcRange>
-        </entry>
-        
-        <mapsFrom>multiorientation</mapsFrom>
-        <mapsTo>GDA</mapsTo>
-        
-    </c:filenamePatternMapping>
-
-
 
 </xml-fragment>

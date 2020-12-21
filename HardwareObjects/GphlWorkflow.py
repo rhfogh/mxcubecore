@@ -190,17 +190,11 @@ class GphlWorkflow(HardwareObject, object):
         else:
             invocation_properties = {}
 
-        if self.hasObject("all_workflow_options"):
-            all_workflow_options = self["all_workflow_options"].getProperties().copy()
-            if "beamline" in all_workflow_options:
-                pass
-            elif api.gphl_connection.hasObject("ssh_options"):
-                # We are running workflow through ssh - set beamline url
-                all_workflow_options["beamline"] = "py4j:%s:" % socket.gethostname()
-            else:
-                all_workflow_options["beamline"] = "py4j::"
+        if api.gphl_connection.hasObject("ssh_options"):
+            # We are running workflow through ssh - set beamline url
+            all_workflow_options = {"beamline":"py4j:%s:" % socket.gethostname()}
         else:
-            all_workflow_options = {}
+            all_workflow_options = {"beamline":"py4j::"}
 
         acq_workflow_options = all_workflow_options.copy()
         acq_workflow_options.update(self["acq_workflow_options"].getProperties())
@@ -1992,7 +1986,7 @@ class GphlWorkflow(HardwareObject, object):
         """
         """Get resolution-dependent dose budget using configured values"""
         max_budget = self.getProperty("maximum_dose_budget", 20)
-        result = -2 * math.log(decay_limit / 100.) * resolution * resolution
+        result = 2 * resolution * resolution * math.log(100. / decay_limit)
         #
         return min(result, max_budget) / relative_sensitivity
 

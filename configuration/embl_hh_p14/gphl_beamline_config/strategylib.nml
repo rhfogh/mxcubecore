@@ -1,3 +1,11 @@
+! Fortran namelist file defining fixed strategies.
+! Note that the data are organised in objects, referred to internally by the 'xyz_id' fields
+!
+! See namelist specification and examples below for details
+!
+! The 'group_no' field serves to specify acquisition order of sweeps;
+! sweeps with the same group number must share teh same orientation
+
 &sdcp_goniostat_setting_list
 id= 'gset01'
 scan_axis_name= 'phi'

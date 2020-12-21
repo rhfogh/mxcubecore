@@ -108,21 +108,6 @@
         </test_crystal>
     </test_crystals>
 
-    <!--  Workflow options common to all workflows - can be overridden for individual workflows-->
-    <all_workflow_options>
-        <!-- URL for beamline connection, as seen from the workflow application -->
-        <!-- The default value is 'py4j::' if the workflow is run on the same computer -->
-        <!-- and 'py4j:%s:' % socket.gethostname() if workflow is run remotely via ssh -->
-        <!-- <beamline>py4j:fourier.globalphasing.com:</beamline> -->
-        <!-- <beamline>py4j::</beamline> -->
-        <!-- Location of persistence layer (workflow application data files -->
-        <!-- The main data file is : <wdir>/<persistname>.xml -->
-        <persistname>persistence</persistname>
-        <!-- wdir: Directory for workflow application data and logs, -->
-        <!-- Automatically set to <appdir>/<gphl_subdir-->
-        <!--<wdir>Set Automatically</wdir>-->
-    </all_workflow_options>
-
     <acq_workflow_options>
         <!-- appdir: Processing root directory. -->
         <!-- Set automatically to  Session.get_process_directory()-->
@@ -140,9 +125,7 @@
         <charpattern>generic</charpattern>
     </acq_workflow_options>
 
-    <mx_workflow_options>
-        <!-- Default prefix filename prefix - overwritten from user input -->
-        <prefix>place_holder</prefix>
+    <mx_workflow_options>p
         <!-- Filename pattern name for inverse-beam collections -->
         <ibpattern>ib_interleaved</ibpattern>
         <!-- Pattern name for normal collections -->

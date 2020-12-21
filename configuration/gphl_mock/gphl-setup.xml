@@ -21,6 +21,23 @@
         <!--<ConfigFile>/path/to/ssh/config/file</ConfigFile>-->
     <!--</ssh_options>-->
 
+
+    <!-- Location of Persistence layer: -->
+    <!-- Subdirectory under Session.get_process_directory() for GPhL persistence data-->
+    <gphl_subdir>GPHL</gphl_subdir>
+    <!-- root name of persistence layer file; suffix'.xml. is added -->
+    <gphl_persistname>persistence</gphl_persistname>
+
+
+    <!-- Hosts and ports for py4j java-python gateway, all OPTIONAL-->
+    <!-- If not set will use py4j default values, which are as given below-->
+    <!-- NB python_host is set automatically to localhost or socket.gethostname()-->
+    <!-- NB java_host is not needed as all communication is effectively one-way -->
+    <!--<connection_parameters>-->
+    <!--<python_port>25334</python_port>-->
+    <!--<java_port>25333</java_port>-->
+    <!--</connection_parameters>-->
+
     <!-- NB Non-absolute file names are interpreted relative to one of the  -->
     <!-- HardwareRepository directories on the lookup path -->
 
@@ -96,17 +113,5 @@
 <!--        <co.gphl.wf.process.bin>scripts/aP_wf_process</co.gphl.wf.process.bin>-->
 
     </software_properties>
-
-    <!-- Subdirectory under Session.get_process_directory() for GPhL persistence data-->
-    <gphl_subdir>GPHL</gphl_subdir>
-
-    <!-- Hosts and ports for py4j java-python gateway, all OPTIONAL-->
-    <!-- If not set will use py4j default values, which are as given below-->
-    <!-- NB python_host is set automatically to localhost or socket.gethostname()-->
-    <!-- NB java_host is not needed as all communication is effectively one-way -->
-    <!--<connection_parameters>-->
-        <!--<python_port>25334</python_port>-->
-        <!--<java_port>25333</java_port>-->
-    <!--</connection_parameters>-->
 
 </object>
