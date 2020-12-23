@@ -282,13 +282,13 @@ class GphlWorkflowConnection(HardwareObject, object):
         workflow_options["persistname"] = self.getProperty(
             "gphl_persistname", "persistence"
         )
-
         # Set the workflow root subdirectory  parameter from the base image directory
         image_root = os.path.abspath(api.session.get_base_image_directory())
         rootsubdir = path_template.directory[len(image_root):]
         if rootsubdir.startswith(os.path.sep):
             rootsubdir = rootsubdir[1:]
-        workflow_options["rootsubdir"] = rootsubdir
+        if rootsubdir:
+            workflow_options["rootsubdir"] = rootsubdir
 
         # Hardcoded - location for log output
         command_list.extend(
