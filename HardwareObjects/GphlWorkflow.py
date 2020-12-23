@@ -486,7 +486,7 @@ class GphlWorkflow(HardwareObject, object):
                 "No allowed image widths returned by strategy - use defaults"
             )
 
-        # set starting and unchanging values of pareameters
+        # set starting and unchanging values of parameters
         acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
 
         resolution = api.resolution.get_value()

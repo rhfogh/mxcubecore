@@ -33,6 +33,9 @@
         TEST_Characterisation_12_5
     </characterisation_strategies>
 
+    <!-- Set to any non-zero value to activate developer parts of UI -->
+<!--    <advanced_mode>true</advanced_mode>-->
+
     <!-- NBNB COMMENT OUT boolean properties to set them to False -->
     <!-- NB Adds a sample centring at first acquisition for each orientation -->
     <!-- May not work well if you interleave! -->
