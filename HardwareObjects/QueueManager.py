@@ -178,7 +178,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         self.set_current_entry(entry)
         self._current_queue_entries.append(entry)
 
-        logging.getLogger("queue_exec").info("Calling execute on: " + str(entry))
+        logging.getLogger("queue_exec").info("Executing: " + str(entry))
         # logging.getLogger('queue_exec').info('Using model: ' + str(entry.get_data_model()))
 
         if self.is_paused():
@@ -238,6 +238,11 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         :returns: None
         :rtype: NoneType
         """
+
+        # rhfogh 20200104: Must be done at start of function,
+        # lest new entries start executing while we are stopping
+        self._is_stopped = True
+
         if self._queue_entry_list:
             for qe in self._current_queue_entries:
                 try:
@@ -256,7 +261,7 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         self.emit("queue_stopped", (None,))
         self.emit("statusMessage", ("status", "", "Queue stopped"))
         # self.emit('centringAllowed', (True, ))
-        self._is_stopped = True
+        # self._is_stopped = True
 
     def set_pause(self, state):
         """

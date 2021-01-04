@@ -1378,6 +1378,7 @@ class GphlWorkflow(HardwareObject, object):
         # distance = api.detector_distance.get_value()
         ###GB memo for wedges: nexprame: number of frames per wedge; nimages: number of wedges
 
+        sweeps = set()
         for scan in scans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
@@ -1452,19 +1453,7 @@ class GphlWorkflow(HardwareObject, object):
                 )
             ss0 = filename_params.get("run")
             path_template.run_number = int(ss0) if ss0 else 1
-            prefix = filename_params.get("prefix", "")
-            ib_component = filename_params.get("inverse_beam_component_sign", "")
-            ll0 = []
-            if prefix:
-                ll0.append(prefix)
-            if ib_component:
-                ll0.append(ib_component)
-            path_template.base_prefix = "_".join(ll0)
-            beam_setting_index = filename_params.get("beam_setting_index") or ""
-            path_template.mad_prefix = beam_setting_index
-            path_template.wedge_prefix = (
-                filename_params.get("gonio_setting_index") or ""
-            )
+            path_template.base_prefix = filename_params.get("prefix", "")
             path_template.start_num = acq_parameters.first_image
             path_template.num_files = acq_parameters.num_images
 
@@ -1489,15 +1478,13 @@ class GphlWorkflow(HardwareObject, object):
 
             count = snapshot_counts.get(sweep, snapshot_count)
             acq_parameters.take_snapshots = count
-            if (
-                ib_component
-                or beam_setting_index
-                or not gphl_workflow_model.lattice_selected
-            ):
+            if (sweep in sweeps or not gphl_workflow_model.lattice_selected):
                 # Only snapshots first time a sweep is encountered
                 # When doing inverse beam or wavelength interleaving
                 # or canned strategies
                 snapshot_counts[sweep] = 0
+
+            sweeps.add(sweep)
 
 
             data_collection = queue_model_objects.DataCollection([acq], crystal)

@@ -123,7 +123,7 @@
         <samplesubdir/>
         <!-- Insert subdirectory under beamline root directory and appdir-->
         <!-- The former is Session.get_base_image_directory(), set in ABI -->
-        <rootsubdir>replaced/by/user/value</rootsubdir>
+<!--        <rootsubdir>whatever</rootsubdir>-->
         <!-- File name pattern for characterisation data collection -->
         <charpattern>generic</charpattern>
     </acq_workflow_options>
