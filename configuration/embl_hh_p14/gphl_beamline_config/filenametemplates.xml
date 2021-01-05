@@ -2,61 +2,18 @@
 
 <!--
 
-This XML snippet is used to load instances of SDCP::Core::FilenamePattern into datamodel
-instances.
+This file specifies how file names are constructed at the beamline and internally
+in the GPhL workflow for different types of acquisitoin, and how the two map.
+The file names are generated separately in
+MXCuBE and the workflow, so the two name patterns have to match.
 
-Refer to the TemplateElementTypes class diagram.
-
-The following restrictions must be adhered to:
-
-  (1) The root element MUST be
-     
-       <xml-fragment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ...>
-     
-      It MUST be called "xml-fragment" and it MUST assign the prefix "xsi" to
-      the standard XML Schema instance namespace. It also must also declare namespaces
-      for all the types that are used: those take the form of the relative path
-      in the data model only. The prefix "tag:globalphasing.com,YYYY-MM-DD:schemata:"
-      will be added when this file is read.
-     
-  (2) XML elements within the top-level elements MUST follow the order of their
-      declaration in the UML data model (elements corresponding to inherited
-      properties come before locally-defined ones). XML elements whose values
-      are absent (allowed where the property's lower bound is 0) should be
-      omitted, not given null or empty values.
-      
-  (3) Each <element> contained within a <filenamePattern> element MUST contain
-      a "xsi:type" attribute. The localname of the value of this attribute MUST
-      be the unqualified name of one of the non-abstract subtypes of
-      Types::TemplateElementTypes::NameTemplateElement.
-      
-  (4) Elements that are direct children of the document root:
-  
-        (i) MUST contain the appropriate xsi:type attribute
-        (ii) may be called anything, but the recommended name is the
-        same as the value of the xsi:type attribute with the first letter
-        of the local part lower cased.
-        
-        In the future, a proper XSD type for the root element of this
-        file may be defined: when this happens the xsi:type attribute
-        will become unnecessary, and the element name will be used for
-        implicit typing instead.
+The mapping system is generic and powerful enough to handle almost anything -
+see Workflow documentation for further details if required.
 
 -->
 
-<!-- File name patterns for the image files produced by the workflow,
-including the sweep identifiers and run numbers required for multi-sweep daa sets
-
-Must be adjusted to beamline practices; in particular as regards overall length
-and the number of digits in the image numbre mask.
-
-Each individual component and separator is specified together with its width
-
-NB the specification system is more powerful than is required for the present examples,
- and allows for mapping between workflow and BCS-internal naming styles.
-
- See Workflow documentation for further details if required. -->
-
+<!-- For the simplest case within MCXCuBE the only thing(s) to edit are the
+ width of the prefix, run_number, and image_number fields in the MXCuBE pattern -->
 
 <xml-fragment
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -64,8 +21,31 @@ NB the specification system is more powerful than is required for the present ex
     xmlns:c="SDCP/Core"
 >
 
+    <!-- Beamline file format.
+
+    Edit to represent the normal filename format at the beamline
+
+    NB This filenamePattern *must* be the first in the file
+    -->
+
+    <!-- The filename template is <prefix>_<run_number>_<image_number>.<suffix>
+
+     MXCuBE poarameters mad_prefix, wedge_prefix, and reference_image_prefix are not
+     used by GPhL, and so have no place in the template.
+     They are treated as part of the prefix.
+
+     GPhL will add characters to the prefix to distinguish different sweeps, e.g.
+     <prefix>_G2B1B is goniostat orientation 2, beam energy 1, inverse beam sweep B
+     The GPhL-generated prefix will be passed back to MXCuBE and used.
+     GPhL truncates the resulting prefix to fit within teh MXCuBE length limits.
+
+      -->
+
+    <!-- The maxumum filename length is
+    prefixMaxWidth + runMaxWidth + imageNumberMaxWidth + 2 -->
+
     <c:filenamePattern xsi:type="c:FilenamePattern">
-        <exid>GDA</exid>
+        <exid>Beamline</exid>
 
         <element xsi:type="tet:Parameter">
         <maxWidth>43</maxWidth>
@@ -88,9 +68,9 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:ImageNumberMask">
-            <maxWidth>4</maxWidth>
+            <maxWidth>5</maxWidth>
             <minWidth>
-                <width>4</width>
+                <width>5</width>
                 <leftJustify>false</leftJustify>
                 <padding>0</padding>
             </minWidth>
@@ -98,11 +78,22 @@ NB the specification system is more powerful than is required for the present ex
 
     </c:filenamePattern>
 
+    <!-- GPhL filename generation
+
+    In normal operation the *only* thing to be changed below this point
+    is to change the imageNumberMask width values to match the
+    imageNumberMask width value in the beamline pattern.
+
+    Note that the workflow will truncate all fields to with within the maximum widths
+    of teh Beamline pattern
+
+    -->
+
+    <!-- Standard non-interleaved single-orientation acquisition -->
     <c:filenamePattern xsi:type="c:FilenamePattern">
         <exid>generic</exid>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>43</maxWidth>
             <name>prefix</name>
             <type>string</type>
         </element>
@@ -112,7 +103,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>2</maxWidth>
             <name>run_number</name>
             <type>unsignedInt</type>
         </element>
@@ -137,7 +127,6 @@ NB the specification system is more powerful than is required for the present ex
         <exid>interleaved</exid>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>36</maxWidth>
             <name>prefix</name>
             <type>string</type>
         </element>
@@ -151,7 +140,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>1</maxWidth>
             <name>gonio_setting_index</name>
             <type>unsignedInt</type>
         </element>
@@ -161,7 +149,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>1</maxWidth>
             <name>beam_setting_index</name>
             <type>unsignedInt</type>
         </element>
@@ -171,7 +158,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>2</maxWidth>
             <name>run_number</name>
             <type>unsignedInt</type>
         </element>
@@ -196,7 +182,6 @@ NB the specification system is more powerful than is required for the present ex
         <exid>ib_interleaved</exid>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>37</maxWidth>
             <name>prefix</name>
             <type>string</type>
         </element>
@@ -210,7 +195,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>1</maxWidth>
             <name>gonio_setting_index</name>
             <type>unsignedInt</type>
         </element>
@@ -220,13 +204,11 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>1</maxWidth>
             <name>beam_setting_index</name>
             <type>unsignedInt</type>
         </element>
         
         <element xsi:type="tet:Parameter">
-            <maxWidth>1</maxWidth>
             <name>inverse_beam_component_sign</name>
             <type>string</type>
         </element>
@@ -236,7 +218,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>2</maxWidth>
             <name>run_number</name>
             <type>unsignedInt</type>
         </element>
@@ -261,7 +242,6 @@ NB the specification system is more powerful than is required for the present ex
         <exid>multiorientation</exid>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>38</maxWidth>
             <name>prefix</name>
             <type>string</type>
         </element>
@@ -290,7 +270,6 @@ NB the specification system is more powerful than is required for the present ex
         </element>
 
         <element xsi:type="tet:Parameter">
-            <maxWidth>2</maxWidth>
             <name>run_number</name>
             <type>unsignedInt</type>
         </element>
@@ -311,6 +290,16 @@ NB the specification system is more powerful than is required for the present ex
     </c:filenamePattern>
 
 
+    <!-- MXCuBE-GPhL format mapping.
+
+     Does *not* need to be modified in normal operation
+
+     The mappings define how the GPhL file formats are converted to teh Beamline format.
+     Note that the ranges are determined in terms of *fields*, starting at field 0,
+     So that e.g. range 7-8 contains a singel field, the 8th field in the list.
+
+     -->
+
     <c:filenamePatternMapping xsi:type="c:FilenamePatternMapping">
 
         <entry>
@@ -326,7 +315,7 @@ NB the specification system is more powerful than is required for the present ex
         </entry>
 
         <mapsFrom>interleaved</mapsFrom>
-        <mapsTo>GDA</mapsTo>
+        <mapsTo>Beamline</mapsTo>
 
     </c:filenamePatternMapping>
 
@@ -345,7 +334,7 @@ NB the specification system is more powerful than is required for the present ex
         </entry>
 
         <mapsFrom>ib_interleaved</mapsFrom>
-        <mapsTo>GDA</mapsTo>
+        <mapsTo>Beamline</mapsTo>
 
     </c:filenamePatternMapping>
 
@@ -364,7 +353,7 @@ NB the specification system is more powerful than is required for the present ex
         </entry>
 
         <mapsFrom>generic</mapsFrom>
-        <mapsTo>GDA</mapsTo>
+        <mapsTo>Beamline</mapsTo>
 
     </c:filenamePatternMapping>
 
@@ -383,10 +372,9 @@ NB the specification system is more powerful than is required for the present ex
         </entry>
 
         <mapsFrom>multiorientation</mapsFrom>
-        <mapsTo>GDA</mapsTo>
+        <mapsTo>Beamline</mapsTo>
 
     </c:filenamePatternMapping>
-
-
+    
 
 </xml-fragment>
