@@ -51,6 +51,9 @@
         <!-- Location of GPhL release, containing program binaries (or their wrapper scripts) -->
         <GPHL_INSTALLATION>{GPHL_RELEASE}/exe</GPHL_INSTALLATION>
 
+        <!-- Location of CCP4 release binaries - required ot pass on to some wrapper scripts -->
+        <!-- <GPHL_CCP4_PATH>/mnt/scratch/rhfogh/GPhL/ccp4-7.1/bin</GPHL_CCP4_PATH> -->
+
         <!-- Gphl workflow Java classpath. -->
         <!--Should point to all contents of workflow application directory-->
         <gphl_java_classpath>{GPHL_SETUP}/workflow/gphl_java_classes/wfjars/*</gphl_java_classpath>
@@ -58,7 +61,7 @@
         <!-- Directory with workflow config input, e.g. instrumentation.nml -->
 	    <gphl_beamline_config>{GPHL_SETUP}/beamline_config_embl_hh_p14_202002</gphl_beamline_config>
 
-        <!-- Used ONLY for mock mode spectrum diffractoin simulation -->
+        <!-- Used ONLY for mock mode spectrum diffraction simulation -->
         <gphl_test_samples>{GPHL_SETUP}test_samples</gphl_test_samples>
 
         <!-- Location of installation used for processing queue (not reachable from BCS computer. -->
@@ -106,6 +109,10 @@
         script that sets up the environment properly. -->
         <co.gphl.wf.diffractcal.bin>{GPHL_SETUP}/scripts/aP_wf_rotcal</co.gphl.wf.diffractcal.bin>
 <!--        <co.gphl.wf.diffractcal.bin>scripts/aP_wf_rotcal</co.gphl.wf.diffractcal.bin>-->
+
+        <!-- processing for stratcal acquisitions. In practice, this will almost always
+         be a wrapper script that sets up the environment properly. -->
+<!--        <co.gphl.wf.process.bin>scripts/aP_wf_process</co.gphl.wf.process.bin>-->
 
     </software_properties>
 

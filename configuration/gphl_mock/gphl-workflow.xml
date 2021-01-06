@@ -1,40 +1,37 @@
 <object class="GphlWorkflow">
 
     <!-- Directory for (optional) output of instrument calbration results-->
-    <!-- combined with instcfgout parameter (see below); see also <newinstr> -->
+    <!-- combined with instcfgout parameter (see below); see also <newinstr> option -->
     <!--<instcfgout_dir>/MXCuBE/mxcube</instcfgout_dir>-->
 
-    <!-- default image width selection if None are given by the workflow-->
-    <!-- First value is the default; values are sorted before use -->
+    <!-- UI popup specification: -->
+
+    <!-- default values for image width popup; may be overridden by the workflow -->
+    <!-- The first value is the default; values are sorted before use -->
     <default_image_widths> 0.1 0.05 0.2</default_image_widths>
 
-    <!-- Set starting value for beam energy. Values are:  -->
-    <!-- 'configured': value from calibration and characterisation strategy file -->
+
+    <!-- Characterisation strategies popup. -->
+    <!-- names refer to stategies in  strategylib.nml -->
+    <characterisation_strategies>
+        Characterisation_6_5
+<!--        TEST_Characterisation_12_3-->
+<!--        TEST_Characterisation_12_4-->
+<!--        TEST_Characterisation_12_5-->
+    </characterisation_strategies>
+
+    <!-- Contorl of UI default value setting -->
+
+    <!-- How to set starting value for beam energy. Values are:  -->
+    <!-- 'configured': set value from calibration and characterisation strategy file -->
     <!-- 'current': use current value -->
     <starting_beamline_energy>current</starting_beamline_energy>
 
     <!-- Default wedge width in degrees, for interleaved data collection -->
     <default_wedge_width>15</default_wedge_width>
 
-    <!-- Percentage of dose budget to use in characterisation.  -->
-    <characterisation_budget_percent>5</characterisation_budget_percent>
-    <!-- Lowest limit for percent diffraction intensity at highest resolutiln
-     after the end of the experiment. Used to set dose budgets -->
-    <default_decay_limit>25</default_decay_limit>
-    <!-- Maximum allowed dose budget when converting from resolution, in MGy-->
-    <maximum_dose_budget>20</maximum_dose_budget>
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
     <default_snapshot_count>2</default_snapshot_count>
-
-    <characterisation_strategies>
-        Characterisation_6_5
-        TEST_Characterisation_12_3
-        TEST_Characterisation_12_4
-        TEST_Characterisation_12_5
-    </characterisation_strategies>
-
-    <!-- Set to any non-zero value to activate developer parts of UI -->
-<!--    <advanced_mode>true</advanced_mode>-->
 
     <!-- NBNB COMMENT OUT boolean properties to set them to False -->
     <!-- NB Adds a sample centring at first acquisition for each orientation -->
@@ -53,7 +50,28 @@
     <!-- Sets default value only -->
     <!--    <recentre_before_start>True</recentre_before_start>-->
 
-    <!-- Describes the test crystals used for diffractometer calibration -->
+    <!-- Control of suggestions for radiatio-dependent dose budget: -->
+
+    <!-- Parameters to control proposal total dose budget -->
+    <!-- The proposed budget is calculated so that radiation damage is predicted -->
+    <!-- to reduce the intensity at the highest expected redolution to this percentaged -->
+    <!-- after the end of the experiment (i.e. value 25 means final intensity -->
+    <!-- at the highest resolution is 25% of t starting intensity -->
+    <!-- Assuming an in increase in B factor of 1 A^2/MGy -->
+    <!-- The formula used is dose_budget =
+          2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
+    <default_decay_limit>25</default_decay_limit>
+
+    <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
+    <maximum_dose_budget>20</maximum_dose_budget>
+
+    <!-- Percentage of dose budget to propose for use in characterisation.  -->
+    <characterisation_budget_percent>5</characterisation_budget_percent>
+
+
+    <!-- Popup of test crystal parameters for Diffreaction calibration -->
+    <!-- The cell dimensions will be used for aP_wf_rotcal calculation -->
+
     <test_crystals>
         <test_crystal>
             <name>Thaumatin</name>
@@ -112,27 +130,43 @@
     </test_crystals>
 
     <acq_workflow_options>
-        <!-- appdir: Processing root directory. -->
-        <!-- Set automatically to  Session.get_process_directory()-->
-        <!--<appdir>Set Automatically</appdir>-->
+
         <!-- NB you must set EITHER wfprefix OR samplesubdir (or both)-->
-        <!-- Workflow enactment fixed file prefix  - if set to e.g. 'wfx_',
-        data for workflow runs will be stored in 'wfx_1, ,wfx_2, ... -->
+        <!-- wfprefix is the enactment fixed file prefix  - if set to e.g. 'wfx_',
+        data for workflow runs will be stored under 'wfx_001/, wfx_002,/ ... -->
 <!--        <wfprefix>gphl_wf_</wfprefix>-->
-        <!-- Include sample name in enactment directory spec? -->
+        <!-- Include sample filename prefix as subdirector in enactment directory path -->
         <samplesubdir/>
-        <!-- Insert subdirectory under beamline root directory and appdir-->
-        <!-- The former is Session.get_base_image_directory(), set in ABI -->
-<!--        <rootsubdir>whatever</rootsubdir>-->
-        <!-- File name pattern for characterisation data collection -->
+
+        <!-- directory paths are:
+         wfprefix:  .../RAW_DATA/<wfprefix>_001/...
+         samplesubdir:   .../RAW_DATA/<filenameprefix>_001/...
+         both:   .../RAW_DATA/<filenameprefix>/<wfprefix>_001/...
+         -->
+
+        <!-- File name pattern for fixed-strategy data collection -->
+        <!-- Used as given for characterisation, and overridden belox for diffractcal -->
         <charpattern>generic</charpattern>
+
+
+        <!-- The following options are set elsewhere and can *not* be set here -->
+        <!-- <appdir> Processing root directory. -->
+        <!--        Set automatically to Session.get_process_directory()-->
+        <!-- <rootsubdir> Subdirectory under data and processing root directories. -->
+        <!--        Set automatically to reflect MXCuBE setup-->
+        <!-- <wdir> Workflow working directory -->
+        <!--        Set automatically to Session.get_process_directory()/<gphl_subdir>-->
+        <!--        see gphl_subdir in gphl-setup.xml -->
+        <!-- <persistname> Workflow persistence file is named <persistnam>.xml -->
+        <!--        Set in gph-setup.xml-->
+        <!-- gphl_subdir is not a workflow option. It is set in gphl-setup.xml -->
     </acq_workflow_options>
 
-    <mx_workflow_options>p
+    <mx_workflow_options>
+        <!-- Filename pattern name for normal data collections -->
+        <pattern>interleaved</pattern>
         <!-- Filename pattern name for inverse-beam collections -->
         <ibpattern>ib_interleaved</ibpattern>
-        <!-- Pattern name for normal collections -->
-        <pattern>interleaved</pattern>
     </mx_workflow_options>
 
 
@@ -143,12 +177,10 @@
     <invocation_properties>
         <file.encoding>UTF-8</file.encoding>
         <!-- Logging properties. -->
-        <!-- NB wdir and persistName should eventually replace cmd options -->
-        <!-- Automatically set to <appdir>/<gphl_subdir-->
-        <!-- Location for workflow log file -->
-        <!--<co.gphl.wf.wdir>Set Automatically</co.gphl.wf.wdir>-->
-        <!-- File name prefix for log files -->
+
+        <!-- File name prefix for workflow log files -->
         <co.gphl.wf.persistName>wf</co.gphl.wf.persistName>
+
         <!-- Switch to pass log to stdout. Defaults to True -->
         <!--<co.gphl.wf.logStdout>false</co.gphl.wf.logStdout>-->
     </invocation_properties>
@@ -156,25 +188,35 @@
     <!-- Properties applied after the java command - syntax as above-->
     <!-- Note that irtrelevant properties are simply ignored.-->
     <workflow_properties>
+
         <!-- Set to false to switch off pre-start checks for directory existence -->
+        <!-- in cases where the directoriesare are created after the workflow starts -->
+        <!-- Checks for data directory tree -->
         <co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>
+        <!-- Chcks for data processing directory tree -->
         <!--<co.gphl.wf.procRootCheck>false</co.gphl.wf.procRootCheck>-->
+
+        <!-- Parameters to individual applications -->
+        <!-- Switch devMod to True to activate development parameters -->
+        <!-- NB needed as of 20201202 to pass stratcal parameters strategy_type and variant -->
+        <co.gphl.wf.devMode>true</co.gphl.wf.devMode>
+        <!-- For stratcal configuration switches edit run_stratcal_wrap.py script instead-->
+
         <!-- Dummy sample properties. -->
-        <!-- Choose values for these to make the
-        predictions for the characterisation strategy look reasonable (they
-        have no basis, and are not used for any scientific purpose). -->
+        <!-- Choose values for these to make spot predictions for the characterisation
+        strategy look reasonable
+        (they have no basis, and are not used for any scientific purpose). -->
+        <!-- NB predicted spots are not currently displayed or used. Leave unchanged -->
         <!-- NB the following should be moved to a simcal-specific file -->
         <co.gphl.wf.simcal_predict.b_wilson>26.0</co.gphl.wf.simcal_predict.b_wilson>
         <co.gphl.wf.simcal_predict.cell_dim_sd_scale>1.5e-3</co.gphl.wf.simcal_predict.cell_dim_sd_scale>
         <co.gphl.wf.simcal_predict.mosaicity>0.2</co.gphl.wf.simcal_predict.mosaicity>
-        <!-- Parameters to individual applications -->
-        <!-- Switch devMod to True to activate these paremeters -->
-        <!-- NB needed as of 20201202 to pass stratcal parameters strategy_type and variant -->
-        <co.gphl.wf.devMode>true</co.gphl.wf.devMode>
-        <!-- For stratcal configuration switches edit run_stratcal_wrap.py script instead-->
     </workflow_properties>
 
-    <!-- List of supported workflows, with options for each -->
+    <!-- List of supported workflows, with control options for each -->
+    <!-- This defines the workflow pulldown. -->
+    <!-- NB strategy_type and variant control the stratcal strategy calculation -->
+    <!-- Other parameters are passed to the workflow, see workflow documentation for details -->
     <workflows>
 
         <Native-full>
@@ -257,7 +299,6 @@
             <!--            </options>-->
         </ThreeWavelengthMAD>
 
-
         <TranslationalCalibration>
             <application>co.gphl.wf.workflows.WFTransCal</application>
             <strategy_type>transcal</strategy_type>
@@ -268,8 +309,6 @@
                 position, and ask for centring.
             </documentation>
             <options>
-                <!-- Name for translation calibration output - not used after Sep 2020 -->
-<!--                <calibration>transcal</calibration>-->
                 <!-- file: File containing settings of rotation axes for calibration -->
                 <!-- The name is the relative path from the gphl_beamline_config directory -->
                 <!-- grid: Grid definition [axis_name:start:end:step], slowest-varying to fastest varying -->
@@ -278,7 +317,7 @@
                 <file>transcal_2stage.json</file>
 <!--                <file>transcal_2stage_0_252.json</file>-->
                 <!-- copy calibration result to configuration directory, -->
-                <!-- moving aside previous value -->
+                <!-- renaming previous result file -->
                 <updateblconfig/>
                 <!-- Path of file to dump persisted instrumentation configuration. OPTIONAL-->
                 <!--<instcfgout>gphl_transcal_out.nml</instcfgout>-->
@@ -296,8 +335,6 @@
 <!--                <wfprefix>Dcalib2_</wfprefix>-->
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal_ex</strategy>
-                <!-- Working subdirectory for workflow-side application data-->
-                <!--<appdir>calculations</appdir>-->
                 <!-- Name for diffractometer calibration output -->
                 <calibration>diffractcal</calibration>
                 <!-- Pattern name for characterisation collections - used for all data here-->
@@ -322,8 +359,6 @@
                 <!-- Name of strategy from library to use -->
                 <strategy>DiffractCal</strategy>
                 <!-- Working subdirectory for workflow-side application data-->
-                <!--<appdir>calculations</appdir>-->
-                <!-- Name for diffractometer calibration output -->
                 <calibration>diffractcal</calibration>
                 <!-- Pattern name for characterisation collections - used for all data here-->
                 <charpattern>multiorientation</charpattern>

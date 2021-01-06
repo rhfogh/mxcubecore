@@ -1013,20 +1013,18 @@ class GeometricStrategy(IdentifiedElement, Payload):
     def get_ordered_sweeps(self):
         """Get sweeps in acquisition order.
 
-        WARNING we do not have the necessary information.
-        So we sort in increasing order by angles, in alphabetical name order,
+        Acquisition order is determined by the sweepGroup -
+        to get results deterministic we use a secondary sort on
+        angles, in alphabetical name order as a backup,
         (in pracite, 'kappa', 'kappa_phi', 'phi')
-        HORRIBLE HACK, but as it happens this will give
-        at least the first one correct mostly
-        and anyway is the best approximation we have
-
-        TODO get this right, once the workflow allows"""
+        which should match what the workflow does internally.
+        Anyway, it is the sweep"""
         ll0 = []
         for sweep in self._sweeps:
             dd0 = sweep.get_initial_settings()
-            ll0.append((tuple(dd0[x] for x in sorted(dd0)), sweep))
+            ll0.append((sweep.sweepGroup, tuple(dd0[x] for x in sorted(dd0)), sweep))
         #
-        return list(tt0[1] for tt0 in sorted(ll0))
+        return list(tt0[2] for tt0 in sorted(ll0))
 
 
 class CollectionProposal(IdentifiedElement, Payload):

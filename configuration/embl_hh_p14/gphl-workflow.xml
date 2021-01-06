@@ -133,10 +133,16 @@
 
         <!-- NB you must set EITHER wfprefix OR samplesubdir (or both)-->
         <!-- wfprefix is the enactment fixed file prefix  - if set to e.g. 'wfx_',
-        data for workflow runs will be stored under 'wfx_1/, wfx_2,/ ... -->
+        data for workflow runs will be stored under 'wfx_001/, wfx_002,/ ... -->
 <!--        <wfprefix>gphl_wf_</wfprefix>-->
-        <!-- Include sample name in enactment directory path -->
+        <!-- Include sample filename prefix as subdirector in enactment directory path -->
         <samplesubdir/>
+
+        <!-- directory paths are:
+         wfprefix:  .../RAW_DATA/<wfprefix>_001/...
+         samplesubdir:   .../RAW_DATA/<filenameprefix>_001/...
+         both:   .../RAW_DATA/<filenameprefix>/<wfprefix>_001/...
+         -->
 
         <!-- File name pattern for fixed-strategy data collection -->
         <!-- Used as given for characterisation, and overridden belox for diffractcal -->
@@ -146,6 +152,8 @@
         <!-- The following options are set elsewhere and can *not* be set here -->
         <!-- <appdir> Processing root directory. -->
         <!--        Set automatically to Session.get_process_directory()-->
+        <!-- <rootsubdir> Subdirectory under data and processing root directories. -->
+        <!--        Set automatically to reflect MXCuBE setup-->
         <!-- <wdir> Workflow working directory -->
         <!--        Set automatically to Session.get_process_directory()/<gphl_subdir>-->
         <!--        see gphl_subdir in gphl-setup.xml -->
