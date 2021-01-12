@@ -20,7 +20,7 @@
 <!--        TEST_Characterisation_12_5-->
     </characterisation_strategies>
 
-    <!-- Contorl of UI default value setting -->
+    <!-- Control of UI default value setting -->
 
     <!-- How to set starting value for beam energy. Values are:  -->
     <!-- 'configured': set value from calibration and characterisation strategy file -->
@@ -33,24 +33,26 @@
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
     <default_snapshot_count>2</default_snapshot_count>
 
-    <!-- NBNB COMMENT OUT boolean properties to set them to False -->
-    <!-- NB Adds a sample centring at first acquisition for each orientation -->
-    <!-- May not work well if you interleave! -->
-    <!-- Sets default value only -->
-    <centre_before_sweep>True</centre_before_sweep>
-    <!-- NB Adds a sample centring for every scan -->
-    <!-- Would not work well with too many scans -->
-    <!-- Sets default value only -->
-<!--    <centre_before_scan>True</centre_before_scan>-->
-    <!-- Centre all orientations before acquisition start -->
-    <!-- Sets default value only -->
-    <!--<centre_at_start>True</centre_at_start>-->
-    <!-- Recentre crystal before (single-orientation) characterisation start -->
-    <!-- Default to False - crystal is normally already centred -->
-    <!-- Sets default value only -->
-    <!--    <recentre_before_start>True</recentre_before_start>-->
 
-    <!-- Control of suggestions for radiatio-dependent dose budget: -->
+    <!-- Sample centring options -->
+    <!-- (Re)centre sample when workflow starts? By default assumes sample is already centred -->
+    <recentre_before_start>True</recentre_before_start>
+
+    <!-- Default recentring mode. Possibilities are sweep/scan/start/none, default is sweep:
+        RECENTRING_MODES = OrderedDict(
+            ("when orientation changes","sweep"),
+            ("for each wedge","scan"),
+            ("at acquisition start","start"),
+            ("use predicted centrings only", "none"),
+        )
+     mode "none" is not allowed as default -->
+    <default_recentring_mode>sweep</default_recentring_mode>
+
+    <!-- tolerance for deciding whether angles match, in degrees;
+    used to compare kappa and phi to decide if orientation needs separate centring -->
+    <angle_tolerance>0.1</angle_tolerance>
+
+    <!-- Control of suggestions for radiation-dependent dose budget: -->
 
     <!-- Parameters to control proposal total dose budget -->
     <!-- The proposed budget is calculated so that radiation damage is predicted -->
@@ -163,6 +165,9 @@
     </acq_workflow_options>
 
     <mx_workflow_options>
+        <!-- Default filename prefix - will be overwritten by program
+        Removal not recommended. -->
+        <prefix>placeholder</prefix>
         <!-- Filename pattern name for normal data collections -->
         <pattern>interleaved</pattern>
         <!-- Filename pattern name for inverse-beam collections -->

@@ -1814,8 +1814,8 @@ class GphlWorkflow(TaskNode):
         self._snapshot_count = int(
             workflow_hwobj.getProperty("default_snapshot_count", 0)
         )
-        self._centre_before_sweep = None
-        self._centre_before_scan = None
+        self._recentring_mode = str()
+        self._current_rotation_id = None
 
         self._dose_budget = None
         self._decay_limit = workflow_hwobj.getProperty("default_decay_limit", 25)
@@ -1976,16 +1976,16 @@ class GphlWorkflow(TaskNode):
         self._snapshot_count = value
 
     # (Re)centre before each sweep?.
-    def get_centre_before_sweep(self):
-        return self._centre_before_sweep
-    def set_centre_before_sweep(self, value):
-        self._centre_before_sweep = bool(value)
+    def get_recentring_mode(self):
+        return self._recentring_mode
+    def set_recentring_mode(self, value):
+        self._recentring_mode = value
 
-    # (Re)centre before each scan?.
-    def get_centre_before_scan(self):
-        return self._centre_before_scan
-    def set_centre_before_scan(self, value):
-        self._centre_before_scan = bool(value)
+    # id_ of GonioostatRotation matching current goniostat position
+    def get_current_rotation_id(self):
+        return self._current_rotation_id
+    def set_current_rotation_id(self, value):
+        self._current_rotation_id = value
 
     def get_path_template(self):
         return self.path_template

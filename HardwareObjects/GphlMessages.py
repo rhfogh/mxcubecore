@@ -713,6 +713,14 @@ class GoniostatRotation(PositionerSetting):
         NB This link can be set only by GoniostatTranslation.__init__"""
         return self._translation
 
+    def get_motor_settings(self):
+        """Get dictionary of rotation and translation motor setting"""
+        result = dict(self.axisSettings)
+        translation = self.translation
+        if translation is not None:
+            result.update(translation.axisSettings)
+        #
+        return result
 
 class GoniostatSweepSetting(GoniostatRotation):
     """Goniostat Sweep setting"""
@@ -893,14 +901,9 @@ class Sweep(IdentifiedElement):
         self._scans.add(scan)
 
     def get_initial_settings(self):
-        """Get dictionary of rotation motor settings for start of sweep"""
-
-        sweepSetting = self.goniostatSweepSetting
-        result = dict(sweepSetting.axisSettings)
-        translation = sweepSetting.translation
-        if translation is not None:
-            result.update(translation.axisSettings)
-        result[sweepSetting.scanAxis] = self.start
+        """Get dictionary of rotation and translation motor settings for start of sweep"""
+        result = self.goniostatSweepSetting.get_motor_settings()
+        result[self.goniostatSweepSetting.scanAxis] = self.start
         #
         return result
 

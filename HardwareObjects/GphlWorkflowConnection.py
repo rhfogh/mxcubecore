@@ -277,12 +277,13 @@ class GphlWorkflowConnection(HardwareObject, object):
             if strategy:
                 workflow_options["strategy"] = strategy
         path_template = workflow_model_obj.get_path_template()
-        workflow_options["prefix"] = path_template.base_prefix
+        if "prefix" in workflow_options:
+            workflow_options["prefix"] = path_template.base_prefix
         workflow_options["wdir"] = self.software_paths["GPHL_WDIR"]
         workflow_options["persistname"] = self.getProperty(
             "gphl_persistname", "persistence"
         )
-        # Set the workflow root subdirectory  parameter from the base image directory
+        # Set the workflow root subdirectory parameter from the base image directory
         image_root = os.path.abspath(api.session.get_base_image_directory())
         rootsubdir = path_template.directory[len(image_root):]
         if rootsubdir.startswith(os.path.sep):
@@ -1077,17 +1078,6 @@ class GphlWorkflowConnection(HardwareObject, object):
             ),
             self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting),
         )
-        # else:
-        #     result = cls(
-        #         float(sampleCentred.imageWidth),
-        #         float(sampleCentred.exposure),
-        #         float(sampleCentred.transmission),
-        #         list(
-        #             self._PhasingWavelength_to_java(x)
-        #             for x in sampleCentred.wavelengths
-        #         ),
-        #         self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting),
-        #     )
 
         beamstopSetting = sampleCentred.beamstopSetting
         if beamstopSetting is not None:
