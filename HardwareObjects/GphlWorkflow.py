@@ -268,6 +268,11 @@ class GphlWorkflow(HardwareObject, object):
                 dd0["co.gphl.wf.stratcal.opt.--strategy_type"] = strategy_type
                 if variant:
                     dd0["co.gphl.wf.stratcal.opt.--variant"] = variant
+                angular_tolerance = self.getProperty("angular_tolerance")
+                if angular_tolerance:
+                    dd0["co.gphl.wf.stratcal.opt.--angular-tolerance"] = float(
+                        angular_tolerance
+                    )
 
             wf_dict["invocation_properties"] = dd0 = invocation_properties.copy()
             if wf_node.hasObject("invocation_properties"):
@@ -860,7 +865,7 @@ class GphlWorkflow(HardwareObject, object):
         geometric_strategy = payload
         sweeps = geometric_strategy.get_ordered_sweeps()
         gphl_workflow_model = self._queue_entry.get_data_model()
-        angle_tolerance = float(self.getProperty("angle_tolerance", 0))
+        angular_tolerance = float(self.getProperty("angular_tolerance", 0))
 
         # enqueue data collection group
         if gphl_workflow_model.lattice_selected:
@@ -998,6 +1003,8 @@ class GphlWorkflow(HardwareObject, object):
         else:
             # current position assumed to be centred
             ref_okp = tuple(pos_dict[role] for role in self.rotation_axis_roles)
+            settings = dict(sweepSetting.axisSettings)
+            okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
 
             if recen_parameters:
                 # Now update recentring parameters
@@ -1009,21 +1016,59 @@ class GphlWorkflow(HardwareObject, object):
                     sorted(recen_parameters.items()),
                 )
 
-            settings = dict(sweepSetting.axisSettings)
-            okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
+                # and recentre first sweep
+                okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
+                centring_settings = self.calculate_recentring(
+                    okp, **recen_parameters
+                )
+                logging.getLogger("HWR").debug(
+                    "GPHL Recentring. okp, motors, %s, %s"
+                    % (okp, sorted(centring_settings.items()))
+                )
+                settings.update(centring_settings)
+
             if (
-                abs(okp[1] - ref_okp[1]) <= angle_tolerance
-                and abs(okp[2] - ref_okp[2]) <= angle_tolerance
+                abs(okp[1] - ref_okp[1]) <= angular_tolerance
+                and abs(okp[2] - ref_okp[2]) <= angular_tolerance
             ):
                 # first orientation matches current, set to current centring
-                tra = dict(
-                    (role, pos_dict.get(role)) for role in self.translation_axis_roles
-                )
-                translation = GphlMessages.GoniostatTranslation(
-                    rotation=sweepSetting, **tra
-                )
-                goniostatTranslations.append(translation)
-                gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
+                if (recen_parameters or (
+                        abs(okp[1] - ref_okp[1]) <= 0.1
+                        and abs(okp[2] - ref_okp[2]) <= 0.1
+                    )
+                ):
+                    # Use sweepSetting as is, recentred or very close
+                    tra = dict(
+                        (role, pos_dict.get(role)) for role in self.translation_axis_roles
+                    )
+                    translation = GphlMessages.GoniostatTranslation(
+                        rotation=sweepSetting, **tra
+                    )
+                    goniostatTranslations.append(translation)
+                    gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
+                else:
+                    # NBNB This should work but does not.
+                    # When you pass in a new sweepSetting, the collection plan
+                    # uses neither the original nor the new sweepSdetting ID, but a third one
+                    # This means that the current_id's do not match, so the identity
+                    # is not recognised. TODO fix this
+                    rot = dict(
+                        (role, pos_dict[role]) for role in sweepSetting.axisSettings
+                    )
+                    newSweepSetting = GphlMessages.GoniostatSweepSetting(
+                        scanAxis=sweepSetting.scanAxis, **rot
+                    )
+                    tra = dict(
+                        (role, pos_dict.get(role))
+                        for role in self.translation_axis_roles
+                    )
+                    translation = GphlMessages.GoniostatTranslation(
+                        rotation=newSweepSetting,
+                        requestedRotationId=sweepSetting.id_,
+                        **tra
+                    )
+                    goniostatTranslations.append(translation)
+                    gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
             else:
                 # Centre first setting
                 if recen_parameters:

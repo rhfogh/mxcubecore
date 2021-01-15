@@ -36,7 +36,7 @@
 
     <!-- Sample centring options -->
     <!-- (Re)centre sample when workflow starts? By default assumes sample is already centred -->
-    <recentre_before_start>True</recentre_before_start>
+<!--    <recentre_before_start>True</recentre_before_start>-->
 
     <!-- Default recentring mode. Possibilities are sweep/scan/start/none, default is sweep:
         RECENTRING_MODES = OrderedDict(
@@ -50,7 +50,7 @@
 
     <!-- tolerance for deciding whether angles match, in degrees;
     used to compare kappa and phi to decide if orientation needs separate centring -->
-    <angle_tolerance>0.1</angle_tolerance>
+    <angular_tolerance>1.0</angular_tolerance>
 
     <!-- Control of suggestions for radiation-dependent dose budget: -->
 
@@ -231,10 +231,22 @@
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
-                Optimised for uniform distribution of redundancy,
-                2-3 sweeps (4 for triclinic).
+                Optimised for high-quality balanced data,
+                2-4 sweeps, ca. 600-1000 degrees.
             </documentation>
         </Native-full>
+
+        <Native-quick>
+            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <strategy_type>native</strategy_type>
+            <variant>quick</variant>
+            <documentation>
+                Single wavelength data acquisition for native data collection
+                Includes initial characterisation and complete collection.
+                1-2 orientations, 360-400 degrees
+                Quick, cusp-free acqiusition,
+            </documentation>
+        </Native-quick>
 
         <Native-minimal>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
@@ -243,8 +255,8 @@
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
-                Short, 1 sweep (2 for triclinic)
-                Optimised for uniform distribution of redundancy,
+                1 sweep of 180+ degrees, 1-2 centrings.
+                Absolute minimum for cusp-free acquisition
             </documentation>
         </Native-minimal>
 
@@ -309,9 +321,8 @@
             <strategy_type>transcal</strategy_type>
             <documentation>Translational calibration.
                 Designed for use by beamline personnel.
-                Will produce a series of goniostat positions compatible with
-                the inbuilt collision checker, move the goniostat to each
-                position, and ask for centring.
+                Calibrates centring motors to allow prediction of centring positions
+                Consissts of mulltiple centrings, requiring a glass or tungsten tip.
             </documentation>
             <options>
                 <!-- file: File containing settings of rotation axes for calibration -->
@@ -335,6 +346,9 @@
             <variant>full</variant>
             <documentation>Diffractometer calibration, full-length
                 Designed for use by beamline personnel.
+                Calibrates axis directions, detector pane orientation, and beam centre.
+                Long daa collectoin and processing, requiring a high-quality, high-symmetry
+                crystal of precisely known cell parameters.
             </documentation>
             <options>
 <!--                <wfprefix>Dcalib2_</wfprefix>-->
@@ -358,6 +372,9 @@
             <variant>short</variant>
             <documentation>Diffractometer calibration, short.
                 Designed for use by beamline personnel.
+                Calibrates axis directions, detector pane orientation, and beam centre.
+                Long daa collectoin and processing, requiring a high-quality, high-symmetry
+                crystal of precisely known cell parameters.
             </documentation>
             <options>
 <!--                <wfprefix>Dcalib1_</wfprefix>-->

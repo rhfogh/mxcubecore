@@ -50,7 +50,7 @@
 
     <!-- tolerance for deciding whether angles match, in degrees;
     used to compare kappa and phi to decide if orientation needs separate centring -->
-    <angle_tolerance>0.1</angle_tolerance>
+    <angular_tolerance>1.0</angular_tolerance>
 
     <!-- Control of suggestions for radiation-dependent dose budget: -->
 
@@ -370,7 +370,7 @@
             <application>co.gphl.wf.workflows.WFDiffractCal</application>
             <strategy_type>diffractcal</strategy_type>
             <variant>short</variant>
-            <documentation>Diffractometer calibration, short
+            <documentation>Diffractometer calibration, short.
                 Designed for use by beamline personnel.
                 Calibrates axis directions, detector pane orientation, and beam centre.
                 Long daa collectoin and processing, requiring a high-quality, high-symmetry
