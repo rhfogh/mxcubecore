@@ -239,7 +239,7 @@
         <Native-quick>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>native</strategy_type>
-            <variant>minimal</variant>
+            <variant>quick</variant>
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
