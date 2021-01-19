@@ -214,9 +214,12 @@ class ALBACollect(AbstractCollect):
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True, ))
 
-        self.bypass_shutters = bool(os.environ.get('MXCUBE_BYPASS_SHUTTERS'))
-        if self.bypass_shutters:
-            self.logger.warning("Starting MXCuBE BYPASSING the SHUTTERS")
+        #self.logger.debug('*** bypass shutters: %s', type(os.environ.get('MXCUBE_BYPASS_SHUTTERS')))
+        self.bypass_shutters = os.environ.get('MXCUBE_BYPASS_SHUTTERS')
+        #self.logger.debug('*** bypass shutters: %s', self.bypass_shutters)
+        if self.bypass_shutters and self.bypass_shutters.lower() == 'true':
+            self.logger.warning("Simulation mode: BYPASSING the SHUTTERS")
+            self.bypass_shutters = True
 
     def data_collection_hook(self):
         """Main collection hook, called from do_collect in AbstractCollect

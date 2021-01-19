@@ -79,7 +79,11 @@ class Qt4_TangoLimaVideo(GenericVideoDevice):
             self.height = None
 
         self.device = PyTango.DeviceProxy(tangoname)
-        self.device.ping()
+        try:
+            self.device.ping()
+        except:
+            logging.getLogger('HWR').error('Tango device %s is not running. Abort!' % tangoname)
+            os._exit(1)
 
         GenericVideoDevice.init(self)
 
