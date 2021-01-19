@@ -410,6 +410,15 @@ class ALBACats(Cats90):
                 self.logger.error("Mixing load/unload dewar vs HT, NOT IMPLEMENTED YET")
                 return
 
+            tool = self.tool_for_basket(100)  # basketno)
+
+            if tool != current_tool:
+                self.logger.warning("Changing tool from %s to %s" %
+                                    (current_tool, tool))
+                changing_tool = True
+            else:
+                changing_tool = False
+
             argin = ["2", str(sample), "0", "0", xshift, yshift, zshift]
             self.logger.warning("Loading HT sample, %s" % str(argin))
             if loaded_ht == 1:  # has ht loaded

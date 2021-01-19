@@ -265,6 +265,7 @@ class ALBAMiniDiff(GenericDiffractometer):
         # calibration uses the zoom percentage
         #calibx, caliby = self.calibration_hwobj.get_calibration()
         # zoom motor use zoom index
+        #calibx, caliby = self.calibration_hwobj.get_calibration()
         calibx, caliby = self.zoom_motor_hwobj.get_calibration()
         return 1000.0 / caliby, 1000.0 / caliby
 
@@ -295,9 +296,33 @@ class ALBAMiniDiff(GenericDiffractometer):
         It is expected in start_move_to_beam and move_to_beam methods in
         GenericDiffractometer HwObj.
 
+        point x,y is the lower left corner on the camera, this functions returns the motor positions for that point
+        
         @return: dict
         """
-        return {'omega': [200, 200]}
+        self.logger.info('get_centred_point_from_coord x %s and y %s and return_by_names %s' % ( x, y, return_by_names ) )
+        self.logger.info('get_centred_point_from_coord pixels_per_mm_x %s and pixels_per_mm_y %s' % ( self.pixels_per_mm_x, self.pixels_per_mm_y ) )
+        self.logger.info('get_centred_point_from_coord beam_position[0] %s and beam_position[1] %s' % 
+                                          ( self.beam_position[0], self.beam_position[1] ) 
+                                      )
+        loc_centred_point = {}
+        loc_centred_point['phi'] = self.phi_motor_hwobj.getPosition()
+        loc_centred_point['kappa'] = self.kappa_motor_hwobj.getPosition()
+        loc_centred_point['kappa_phi'] = self.kappa_phi_motor_hwobj.getPosition()
+        loc_centred_point['sampx'] = self.sample_x_motor_hwobj.getPosition()
+        loc_centred_point['sampy'] = self.sample_y_motor_hwobj.getPosition()
+        loc_centred_point['phiy'] = self.phiy_motor_hwobj.getPosition() - ( float( x - self.beam_position[0] ) / self.pixels_per_mm_x )
+        loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() + ( float( y - self.beam_position[1] ) / self.pixels_per_mm_y )
+
+        self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
+        
+#        if return_by_names:
+#            loc_centred_point = self.convert_from_obj_to_name(loc_centred_point)
+
+        self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
+        #self.logger.info('loc_centred_point[phiy] %s ' % ( loc_centred_point['phiy'] ) )
+        
+        return loc_centred_point
 
     def getBeamInfo(self, update_beam_callback):
         """
@@ -382,6 +407,16 @@ class ALBAMiniDiff(GenericDiffractometer):
         
         return self.super_hwobj.get_current_phase().upper() == "SAMPLE"
 
+    def get_grid_direction(self):
+        #grid_direction = {}
+        
+        #self.logger.info('diffr_hwobj grid_direction %s' % self.grid_direction)
+        #self.grid_direction['omega_ref'] = 1
+        #self.grid_direction['fast'] = [ 1, 0 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        #self.grid_direction['slow'] = [ 0, 1 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        
+        return self.grid_direction
+        
     def go_sample_view(self):
         """
         Go to sample view phase.
