@@ -66,6 +66,7 @@ class ALBASupervisor(Device):
         self.chan_state = self.getChannelObject("state")
         self.chan_phase = self.getChannelObject("phase")
         self.chan_detector_cover = self.getChannelObject("detector_cover_open")
+        #self.chan_fast_shutter_collect_position = self.getChannelObject("FastShutCollectPosition")
 
         self.chan_state.connectSignal("update", self.state_changed)
         self.chan_phase.connectSignal("update", self.phase_changed)
@@ -97,7 +98,7 @@ class ALBASupervisor(Device):
     def get_current_phase(self):
         try:
             _value = self.chan_phase.getValue()
-            self.logger.debug('get_current_phase: (value={0}, type={1})'.format(_value, type(_value)))
+            #self.logger.debug('get_current_phase: (value={0}, type={1})'.format(_value, type(_value)))
         except Exception as e:
             raise RuntimeError('Cannot get supervisor current phase:\n%s' % str(e))
         return _value
@@ -118,7 +119,7 @@ class ALBASupervisor(Device):
     def get_state(self):
         try:
             _value = self.chan_state.getValue()
-            self.logger.debug('get_state: (value={0}, type={1})'.format(_value, type(_value)))
+            #self.logger.debug('get_state: (value={0}, type={1})'.format(_value, type(_value)))
         except Exception as e:
             raise RuntimeError('Cannot get supervisor state:\n%s' % str(e))
         return _value
@@ -135,6 +136,9 @@ class ALBASupervisor(Device):
 
     def is_detector_cover_opened(self):
         return self.chan_detector_cover.getValue()
+    
+    def is_fast_shutter_in_collect_position(self):
+        return self.chan_fast_shutter_collect_position.getValue()
 
 
 def test_hwo(hwo):
