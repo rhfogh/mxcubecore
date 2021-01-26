@@ -98,8 +98,10 @@ class ALBACollect(AbstractCollect):
         self.autoprocessing_hwobj = None
         self.flux_hwobj = None
 
-        self.cmd_ni_conf = None
-        self.cmd_ni_unconf = None
+        #self.cmd_ni_conf = None
+        #self.cmd_ni_unconf = None
+        self.set_pilatus_saving_pattern = None
+        self.ascanct = None
 
         self.chan_kappa_pos = None
         self.chan_phi_pos = None
@@ -160,8 +162,12 @@ class ALBACollect(AbstractCollect):
         self.autoprocessing_hwobj = self.getObjectByRole("auto_processing")
         self.flux_hwobj = self.getObjectByRole("flux")
 
-        self.cmd_ni_conf = self.getCommandObject("ni_configure")
-        self.cmd_ni_unconf = self.getCommandObject("ni_unconfigure")
+        #self.cmd_ni_conf = self.getCommandObject("ni_configure")
+        #self.cmd_ni_unconf = self.getCommandObject("ni_unconfigure")
+
+        self.set_pilatus_saving_pattern = self.getCommandObject("set_pilatus_saving_pattern")
+        self.ascanct = self.getCommandObject("ascanct")
+        self.senv = self.getCommandObject("senv")
 
         self.chan_kappa_pos = self.getChannelObject("kappapos")
         self.chan_phi_pos = self.getChannelObject("phipos")
@@ -361,126 +367,66 @@ class ALBACollect(AbstractCollect):
         self.emit("collectStarted", (self.owner, 1))
 
 
-        if exp_type == 'OSC' or (exp_type == 'Characterization' and nb_images == 1) or exp_type == 'Helical':
-            self.collect_prepare_omega(init_pos)
-            self.prepare_collection(
-                                      start_angle=omega_pos,
-                                      nb_images=nb_images,
-                                      first_image_no=first_image_no,
-                                      img_range = img_range,
-                                      exp_time = exp_time,
-                                      omega_speed = omega_speed,
-                                      det_trigger = self.current_dc_parameters['detector_mode'][0]
-                                   )
+        if exp_type == 'OSC' or (exp_type == 'Characterization' and nb_images == 1):
+            # Sardana collect: run ascanct
+            final_pos, deg_interval, time_interval = self.prepare_collection(
+                start_angle=omega_pos,
+                nb_images=nb_images,
+                first_image_no=first_image_no,
+                'test_pilatus_omega_scan')
             self.detector_hwobj.start_collection()
-            #TODO: set a try except to capture aborted data collections, if necessary
-            self.collect_images(omega_speed, omega_pos, final_pos, nb_images, first_image_no)
+            self.collect_images(
+                omega_pos, 
+                final_pos, 
+                deg_interval, 
+                time_interval, 
+                deadtime, 
+                nb_images
+                )
         elif exp_type == 'Characterization' and nb_images > 1:   # image one by one
             for imgno in range(nb_images):
-                self.collect_prepare_omega(init_pos) # init_pos is calculated in prepare_acquisition but needs to be updated 
-                self.prepare_collection(
-                                          start_angle=omega_pos, nb_images=1, first_image_no=first_image_no,
-                                          img_range = img_range,
-                                          exp_time = exp_time,
-                                          omega_speed = omega_speed,
-                                          det_trigger = self.current_dc_parameters['detector_mode'][0]
-                                       )
+                # Sardana collect, run ascanct
+                final_pos, deg_interval, time_interval = self.prepare_collection(
+                    start_angle=omega_pos, nb_images=1, first_image_no=first_image_no,'test_pilatus_omega_scan')
                 self.detector_hwobj.start_collection()
-                self.collect_images(omega_speed, omega_pos, final_pos, 1, first_image_no)
+                self.collect_images(
+                    omega_pos,
+                    final_pos, 
+                    deg_interval, 
+                    time_interval, 
+                    deadtime, 
+                    nb_images
+                    )
                 first_image_no += 1
                 omega_pos += 90
-                init_pos, final_pos, total_dist, omega_speed = self.calc_omega_scan_values( omega_pos, nb_images )
-                
-        elif exp_type == 'Mesh':   # combine all collections
-            self.logger.debug("Running a raster collection")
-            self.init_mesh_scan()
-            # final_pos is end of omega range (not including safedelta)
-            if omega_speed == 0: self.current_dc_parameters['detector_mode'] = ['INTERNAL_TRIGGER']
-            for lineno in range(self.mesh_num_lines):
-                self.collect_prepare_omega(init_pos)
-                self.logger.debug("\t line %s out of %s" % ( lineno+1, self.mesh_num_lines ) )
-                #TODO move omegax/phiy to starting position of collection (OR is this done in the MxCube sequence somewhere???
-                #TODO fix the naming of the files
-                self.logger.debug("\t omega_pos %s mesh_nb_frames %s first image %s" % 
-                       ( omega_pos, mesh_nb_frames_per_line, first_image_no ) )
-                self.prepare_collection(
-                                           start_angle=omega_pos, nb_images=sweep_nb_images, first_image_no=first_image_no,
-                                           img_range = img_range,
-                                           exp_time = exp_time,
-                                           omega_speed = omega_speed,
-                                           det_trigger = self.current_dc_parameters['detector_mode'][0]
-                                       )
-                self.detector_hwobj.start_collection()
-                self.collect_images(omega_speed, omega_pos, final_pos, 1, first_image_no)
-                first_image_no += mesh_nb_frames_per_line
-                #TODO move omegaz/phiz by the mesh_vertical_discrete_step_size
-                #self._motor_persistently_move( self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name], mesh_vertical_discrete_step_size, 'REL' )
-                self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name].moveRelative( mesh_vertical_discrete_step_size )
-                #TODO invert the direction of the collection
-                self.logger.debug('  scan_start_positions before swap= %s' % self.scan_start_positions )
-                self.logger.debug('  scan_end_positions before swap= %s' % self.scan_end_positions )
-                # setup the end positions so the motor will move the other way for the next sweep
-                dummy = self.scan_end_positions[self.mesh_scan_line_motor_name]
-                self.scan_end_positions[self.mesh_scan_line_motor_name] = self.scan_start_positions[self.mesh_scan_line_motor_name]
-                self.scan_start_positions[self.mesh_scan_line_motor_name] = dummy
-                self.logger.debug('  scan_start_positions after swap= %s' % self.scan_start_positions )
-                self.logger.debug('  scan_end_positions after swap= %s' % self.scan_end_positions )
-                
-            self.finalize_mesh_scan()
 
-        #TODO: collection_finished should only be called in case of success, check if this is the case
+    def collect_images(self, start_pos, final_pos, deg_interval, time_interval, deadtime, nb_images):
+        #
+        # Run
+        #
+        self.logger.info( "Collecting images using the ascanct macro" )
+
+        self.ascanct(omega, 
+                     start_pos, 
+                     start_pos - deg_interval, 
+                     nb_images - 1, 
+                     time_inteval - deadtime, 
+                     deadtime 
+                     )
+
+        self.wait_collection_done(nb_images, first_image_no)
+        self.data_collection_end()
         self.collection_finished()
 
-                
-    def collect_images(self, omega_speed, start_pos, final_pos, nb_images, first_image_no):
-        """
-           Run a single wedge. 
-           Start position is the omega position where images should be collected. 
-           It is assumed omega is already at the initial position, which comes before the start position
-               and allows the mechanics to get up to speed
-        """
-        self.logger.info("collect_images: Collecting images, by moving omega to %s" % final_pos)
-        total_time = (final_pos - self.omega_hwobj.getPosition() ) / omega_speed 
-        omega_ramp_time = math.fabs ( ( self.omega_hwobj.getPosition() - start_pos ) / omega_speed )
-        self.logger.info("    Total collection time = %s" % total_time)
-        if omega_speed != 0:
-            try: 
-                #self._motor_persistently_move(self.omega_hwobj, final_pos)
-                self.omega_hwobj.move( final_pos )
-            except Exception as e:
-                self.data_collection_failed('Initial omega position could not be reached')
-                raise Exception(e)
-        else:
-            try:
-                self.open_fast_shutter_for_interal_trigger()
-            except Exception as e:
-                self.data_collection_failed('Cant open safety shutter for omega speed %.6f' % omega_speed)
-                raise Exception(e)
+    def data_collection_end(self):
+        self.omega_hwobj.set_velocity(60)
+        #self.unconfigure_ni()
 
-        time.sleep(omega_ramp_time)
-        for scanmovemotorname in self.scan_move_motor_names:
-            try: 
-                # It might be faster (but more dangerous)  
-                self.scan_motors_hwobj[scanmovemotorname].position_channel.setValue( self.scan_end_positions[scanmovemotorname] )
-                # the safer option:
-                #self.scan_motors_hwobj[scanmovemotorname].move( self.scan_end_positions[scanmovemotorname] )
-                
-                #self.logger.info('Moving motor %s from %.4f to final position %.4f at %.6f velocity' % 
-                #                  (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
-                #                     self.scan_end_positions[scanmovemotorname], 
-                #                       self.scan_velocities[scanmovemotorname] ) )
-            except Exception as e:
-                self.logger.error('Cannot move the helical motor %s to its end position' % scanmovemotorname)
-                self.data_collection_failed('Cannot move the helical motor %s to its end position' % scanmovemotorname)
-                raise Exception(e)
-        self.wait_collection_done(nb_images, first_image_no, total_time)
-
-    def data_collection_failed(self, failed_msg):
-        self.logger.info("ALBACollect data_collection_failed")
-        logging.getLogger('user_level_log').error(failed_msg)
-        
-        self.logger.debug("  Initiating recovery sequence")
-        self.stopCollect() # is it necessary to call this, or is it called through events? If it is not, this method is not necessary
+    def data_collection_failed(self):
+        self.logger.info("Data collection failed")
+        AbstractCollect.data_collection_failed()
+        self.collect_failed()
+        # recovering sequence should go here
 
         #AbstractCollect.data_collection_failed() # there is no data_collection_failed in AbstractCollect
         
@@ -550,11 +496,7 @@ class ALBACollect(AbstractCollect):
 
         return ( detok )
 
-    def calc_omega_scan_values( self, omega_start_pos, nb_images ):
-        """
-           Calculates the values at which the omega should start and end so that 
-           during collection it has a constant speed
-        """
+    def prepare_collection(self, start_angle, nb_images, first_image_no, measurement_group):
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
 
         img_range = osc_seq['range']
@@ -572,91 +514,26 @@ class ALBACollect(AbstractCollect):
         else:
             safe_delta = 9.0 * omega_speed * omega_acceltime
 
-        init_pos = omega_start_pos - safe_delta
-        final_pos = omega_start_pos + total_dist + safe_delta #TODO adjust the margins to the minimum necessary
-
-        return ( init_pos, final_pos, total_dist, omega_speed )
-
-    def collect_prepare_omega(self, omega_pos):
-        '''
-            Prepares omega for sweep. Calculates the margins at start and end position
-            Moves omega to the initial position
-        '''
-
-        try:
-            #self._motor_persistently_set_velocity(self.omega_hwobj, 60) # make sure omega is max speed before moving to start pos
-            self.omega_hwobj.set_velocity( 60 )
-        except Exception as e :
-            self.logger.error("Error setting omega velocity, state is %s" % str(self.omega_hwobj.getState()))
-            self.logger.info("Omega velocity set to its nominal value")
-            self.data_collection_failed('Omega position could not be set')
-            raise Exception( e )
-
-        self.logger.info("Moving omega to initial position %s" % omega_pos)
-        try:
-            if math.fabs(self.omega_hwobj.getPosition() - omega_pos) > 0.0001:
-                #self._motor_persistently_syncmove(self.omega_hwobj, omega_pos)
-                self.omega_hwobj.syncMove( omega_pos )
-        except Exception as e :
-            self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
-            self.data_collection_failed('Omega position could not be set')
-            raise Exception( e )
-
-        return 
- 
-    def prepare_collection(self, start_angle, nb_images, first_image_no, img_range, exp_time, omega_speed, det_trigger):
-        """
-          sets up data collection. 
-          the start_angle is the position of omega when the first image starts to be collected
-        """
-
-        total_dist = nb_images * img_range
-        
-        self.write_image_headers(start_angle)
-        
         self.logger.info("nb_images: %s / img_range: %s / exp_time: %s /"
                                       " total_distance: %s / speed: %s" %
                                       (nb_images, img_range, exp_time, total_dist,
                                        omega_speed))
 
-        self.detector_hwobj.prepare_collection(nb_images, first_image_no)
-
-        # TODO: Increase timeout: 
-        self.omega_hwobj.wait_end_of_move(timeout=40)
-
-        self.logger.info(
-            "Omega now at %s" %
-            self.omega_hwobj.getPosition())
-
-        # program omega speed depending on exposure time
-
-        self.logger.info("Setting omega velocity to %s and is moving %s" % (omega_speed, self.omega_hwobj.is_moving() ) )
-        self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
-        #while self.omega_hwobj.getState() == 3:
-        #            time.sleep(0.1)
-        self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
-        try: 
-            #self._motor_persistently_set_velocity(self.omega_hwobj, omega_speed)
-            self.omega_hwobj.set_velocity( omega_speed )
-        except Exception as e: 
-            self.data_collection_failed("Cannot set the omega velocity to %s" % omega_speed) 
-            raise Exception( e )
+        # This is repeated code: occurs in write_image_headers and wait_save_image
+        fileinfo = self.current_dc_parameters['fileinfo']
+        basedir = fileinfo['directory']
+        template = fileinfo['template'] # prefix_1_%04d.cbf
+        #TODO: change %04d to {index:04}
+        sardtemplate = template
+        savingpattern = os.path.join('file://', basedir, sardtemplate)
+        self.set_pilatus_saving_pattern( measurement_group,  savingpattern)
         
-        for scanmovemotorname in self.scan_move_motor_names:
-            self.logger.info("Setting %s velocity to %.4f" % (scanmovemotorname, self.scan_velocities[scanmovemotorname]) )
-            try:
-                #self._motor_persistently_set_velocity(self.scan_motors_hwobj[scanmovemotorname], self.scan_velocities[scanmovemotorname])
-                self.scan_motors_hwobj[scanmovemotorname].set_velocity( self.scan_velocities[scanmovemotorname] )
-            except Exception as e:
-                self.logger.info("Cant set the scan velocity of motor %s" % scanmovemotorname )
-                self.data_collection_failed("Cant set the scan velocity of motor %s" % scanmovemotorname) 
-                raise Exception( e )
-                
-        self.detector_hwobj.set_detector_mode(det_trigger)
-        if omega_speed != 0:
-            self.configure_ni(start_angle, total_dist)
-        
+        #TODO implement senv commands for scanfile and scandir if necessary
+
+        return final_pos, img_range, exp_time 
+
     def write_image_headers(self, start_angle):
+        # maintain for sardana scans?
         fileinfo = self.current_dc_parameters['fileinfo']
         basedir = fileinfo['directory']
 
@@ -998,14 +875,14 @@ class ALBACollect(AbstractCollect):
             gevent.sleep(0.5)
 
 
-    def configure_ni(self, startang, total_dist):
-        self.logger.debug(
-            "Configuring NI660 with pars 0, %s, %s, 0, 1" %
-            (startang, total_dist))
-        self.cmd_ni_conf(0.0, startang, total_dist, 0, 1)
+    #def configure_ni(self, startang, total_dist):
+        #self.logger.debug(
+            #"Configuring NI660 with pars 0, %s, %s, 0, 1" %
+            #(startang, total_dist))
+        #self.cmd_ni_conf(0.0, startang, total_dist, 0, 1)
 
-    def unconfigure_ni(self):
-        self.cmd_ni_unconf()
+    #def unconfigure_ni(self):
+        #self.cmd_ni_unconf()
 
     def open_safety_shutter(self):
         """ implements prepare_shutters in collect macro """
