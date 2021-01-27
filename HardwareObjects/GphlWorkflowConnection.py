@@ -38,7 +38,7 @@ from py4j import clientserver
 import api
 
 import ConvertUtils
-import GphlMessages
+from HardwareRepository.HardwareObjects import GphlMessages
 
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 from HardwareRepository.HardwareRepository import getHardwareRepository
@@ -75,6 +75,7 @@ class GphlWorkflowConnection(HardwareObject, object):
     """
     This HO acts as a gateway to the Global Phasing workflow engine.
     """
+
     STATES = GphlMessages.States
 
     def __init__(self, name):
@@ -285,7 +286,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         )
         # Set the workflow root subdirectory parameter from the base image directory
         image_root = os.path.abspath(api.session.get_base_image_directory())
-        rootsubdir = path_template.directory[len(image_root):]
+        rootsubdir = path_template.directory[len(image_root) :]
         if rootsubdir.startswith(os.path.sep):
             rootsubdir = rootsubdir[1:]
         if rootsubdir:
@@ -351,7 +352,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         envs["GPHL_XDS_PATH"] = os.path.dirname(
             self.software_paths["co.gphl.wf.xds.bin"]
         )
-        GPHL_CCP4_PATH =  self.software_paths.get("GPHL_CCP4_PATH")
+        GPHL_CCP4_PATH = self.software_paths.get("GPHL_CCP4_PATH")
         if GPHL_CCP4_PATH:
             envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
         # Hack to pass alternative installation dir for processing
@@ -359,7 +360,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         if val:
             envs["GPHL_PROC_INSTALLATION"] = val
         else:
-            envs["GPHL_PROC_INSTALLATION"] =  envs["GPHL_INSTALLATION"]
+            envs["GPHL_PROC_INSTALLATION"] = envs["GPHL_INSTALLATION"]
 
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
@@ -580,7 +581,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                             "WorkflowAborted",
                             GphlMessages.WorkflowAborted(),
                             correlation_id,
-                            None
+                            None,
                         )
                     )
                     self.workflow_ended()
@@ -710,7 +711,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             lattice_format=lattice_format,
             solutions=solutions,
             lattices=lattices,
-            crystalSystem=crystalSystem
+            crystalSystem=crystalSystem,
         )
 
     def _CollectionProposal_to_python(self, py4jCollectionProposal):
@@ -1072,10 +1073,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             float(sampleCentred.exposure),
             float(sampleCentred.transmission),
             list(sampleCentred.interleaveOrder),
-            list(
-                self._PhasingWavelength_to_java(x)
-                for x in sampleCentred.wavelengths
-            ),
+            list(self._PhasingWavelength_to_java(x) for x in sampleCentred.wavelengths),
             self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting),
         )
 
@@ -1132,7 +1130,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                     userProvidedInfo.lattice
                 )
             )
-        # NB The Java point groups are anenumeration: 'PG1', 'PG422' etc.
+        # NB The Java point groups are an enumeration: 'PG1', 'PG422' etc.
         xx0 = userProvidedInfo.pointGroup
         if xx0:
             builder = builder.pointGroup(
@@ -1232,7 +1230,11 @@ class GphlWorkflowConnection(HardwareObject, object):
         axisSettings = dict(((x, float(y)) for x, y in gts.axisSettings.items()))
         newRotation = gts.newRotation
         if newRotation:
-            javaNewRotation = self._GoniostatRotation_to_java(newRotation)
+            if isinstance(newRotation, GphlMessages.GoniostatSweepSetting):
+                javaNewRotation = self._GoniostatSweepSetting_to_java(newRotation)
+            else:
+                javaNewRotation = self._GoniostatRotation_to_java(newRotation)
+
             return jvm.astra.messagebus.messages.instrumentation.GoniostatTranslationImpl(
                 axisSettings, javaUuid, javaRotationId, javaNewRotation
             )
@@ -1250,15 +1252,24 @@ class GphlWorkflowConnection(HardwareObject, object):
         grs = goniostatRotation
         javaUuid = jvm.java.util.UUID.fromString(ConvertUtils.text_type(grs.id_))
         axisSettings = dict(((x, float(y)) for x, y in grs.axisSettings.items()))
-        # # NBNB The final None is necessary because there is no non-deprecated
-        # # constructor that takes two UUIDs. Eventually the deprecated
-        # # constructor will disappear and we can remove the None
-        # return jvm.astra.messagebus.messages.instrumentation.GoniostatRotationImpl(
-        #     axisSettings, javaUuid, None
-        # )
-        # Replaced 20201019 on advice of PK
+        # Long problematic, but now fixed (on both sides)
         return jvm.astra.messagebus.messages.instrumentation.GoniostatRotationImpl(
-            axisSettings
+            axisSettings, javaUuid
+        )
+
+    def _GoniostatSweepSetting_to_java(self, goniostatSweepSetting):
+        """Not currently in use, as you cannot replace SweepSettings,
+        but may come back in if something changes"""
+        jvm = self._gateway.jvm
+
+        if goniostatSweepSetting is None:
+            return None
+
+        gss = goniostatSweepSetting
+        javaUuid = jvm.java.util.UUID.fromString(ConvertUtils.text_type(gss.id_))
+        axisSettings = dict(((x, float(y)) for x, y in gss.axisSettings.items()))
+        return jvm.astra.messagebus.messages.instrumentation.GoniostatSweepSettingImpl(
+            axisSettings, javaUuid, goniostatSweepSetting.scanAxis
         )
 
     def _BeamstopSetting_to_java(self, beamStopSetting):

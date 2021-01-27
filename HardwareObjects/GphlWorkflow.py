@@ -853,7 +853,6 @@ class GphlWorkflow(HardwareObject, object):
             tag = "recentring_mode"
             result[tag] = RECENTRING_MODES[params[tag]]
 
-
             data_model.set_dose_budget(float(params.get("dose_budget", 0)))
             # Register the dose (about to be) consumed
             if std_dose_rate:
@@ -971,134 +970,120 @@ class GphlWorkflow(HardwareObject, object):
         if recentring_mode == "start":
             sweepSettings.reverse()
 
-        pos_dict =api.diffractometer.get_motor_positions()
+        pos_dict = api.diffractometer.get_motor_positions()
         sweepSetting = sweepSettings[0]
+
         if (
             self.getProperty("recentre_before_start")
             and not gphl_workflow_model.lattice_selected
         ):
-            # We do not rely on current position to be centred
-            # Centre first setting separately
+            # Sample has never been centred reliably.
+            # Centre it at sweepsetting and put it into goniostatTranslations
             settings = dict(sweepSetting.axisSettings)
+            current_okp = tuple(
+                int(settings.get(x, 0)) for x in self.rotation_axis_roles
+            )
             qe = self.enqueue_sample_centring(motor_settings=settings)
-            translation = self.execute_sample_centring(qe, sweepSetting)
+            translation, current_pos_dict = self.execute_sample_centring(
+                qe, sweepSetting
+            )
             goniostatTranslations.append(translation)
             gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-            okp = tuple(int(settings.get(x,0)) for x in self.rotation_axis_roles)
-            self.collect_centring_snapshots("%s_%s_%s" % okp)
-
-            if recen_parameters:
-                # Now update recentring parameters
-                recen_parameters["ref_okp"] = tuple(
-                    settings.get(x,0) for x in self.rotation_axis_roles
-                )
-                recen_parameters["ref_xyz"] = tuple(
-                    translation.axisSettings[x] for x in self.translation_axis_roles
-                )
-                logging.getLogger("HWR").debug(
-                    "Recentring set-up. Parameters are: %s",
-                    sorted(recen_parameters.items()),
-                )
-
+            self.collect_centring_snapshots("%s_%s_%s" % current_okp)
         else:
-            # current position assumed to be centred
-            ref_okp = tuple(pos_dict[role] for role in self.rotation_axis_roles)
+            # Sample was centred already, possibly during earlier characterisation
+            # - use current position for recentring
+            current_pos_dict = api.diffractometer.get_motor_positions()
+        current_okp = tuple(current_pos_dict[role] for role in self.rotation_axis_roles)
+        current_xyz = tuple(
+            current_pos_dict[role] for role in self.translation_axis_roles
+        )
+
+        if recen_parameters:
+            # Currrent position is now centred one way or the other
+            # Update recentring parameters
+            recen_parameters["ref_xyz"] = current_xyz
+            recen_parameters["ref_okp"] = current_okp
+            logging.getLogger("HWR").debug(
+                "Recentring set-up. Parameters are: %s",
+                sorted(recen_parameters.items()),
+            )
+
+        if goniostatTranslations:
+            # We had recentre_before_start and already have the goniosatTranslation
+            # matching the sweepSetting
+            pass
+
+        elif gphl_workflow_model.lattice_selected or strategy_type == "diffractcal":
+            # Acquisition or diffractcal; crystal is already centred
             settings = dict(sweepSetting.axisSettings)
-            okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
+            okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
+            maxdev = max(abs(okp[1] - current_okp[1]), abs(okp[2] - current_okp[2]))
 
             if recen_parameters:
-                # Now update recentring parameters
-                ref_xyz = tuple(pos_dict[role] for role in self.translation_axis_roles)
-                recen_parameters["ref_xyz"] = ref_xyz
-                recen_parameters["ref_okp"] = ref_okp
-                logging.getLogger("HWR").debug(
-                    "Recentring set-up. Parameters are: %s",
-                    sorted(recen_parameters.items()),
-                )
-
-                # and recentre first sweep
-                okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
-                centring_settings = self.calculate_recentring(
+                # recentre first sweep from okp
+                translation_settings = self.calculate_recentring(
                     okp, **recen_parameters
                 )
                 logging.getLogger("HWR").debug(
                     "GPHL Recentring. okp, motors, %s, %s"
-                    % (okp, sorted(centring_settings.items()))
+                    % (okp, sorted(translation_settings.items()))
                 )
-                settings.update(centring_settings)
-
-            if (
-                abs(okp[1] - ref_okp[1]) <= angular_tolerance
-                and abs(okp[2] - ref_okp[2]) <= angular_tolerance
-            ):
-                # first orientation matches current, set to current centring
-                if (recen_parameters or (
-                        abs(okp[1] - ref_okp[1]) <= 0.1
-                        and abs(okp[2] - ref_okp[2]) <= 0.1
-                    )
-                ):
-                    # Use sweepSetting as is, recentred or very close
-                    tra = dict(
-                        (role, pos_dict.get(role)) for role in self.translation_axis_roles
-                    )
-                    translation = GphlMessages.GoniostatTranslation(
-                        rotation=sweepSetting, **tra
-                    )
-                    goniostatTranslations.append(translation)
-                    gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-                else:
-                    # NBNB This should work but does not.
-                    # When you pass in a new sweepSetting, the collection plan
-                    # uses neither the original nor the new sweepSdetting ID, but a third one
-                    # This means that the current_id's do not match, so the identity
-                    # is not recognised. TODO fix this
-                    rot = dict(
-                        (role, pos_dict[role]) for role in sweepSetting.axisSettings
-                    )
-                    newSweepSetting = GphlMessages.GoniostatSweepSetting(
-                        scanAxis=sweepSetting.scanAxis, **rot
-                    )
-                    tra = dict(
-                        (role, pos_dict.get(role))
-                        for role in self.translation_axis_roles
-                    )
-                    translation = GphlMessages.GoniostatTranslation(
-                        rotation=newSweepSetting,
-                        requestedRotationId=sweepSetting.id_,
-                        **tra
-                    )
-                    goniostatTranslations.append(translation)
-                    gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
             else:
-                # Centre first setting
-                if recen_parameters:
-                    # Update
-                    okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
-                    centring_settings = self.calculate_recentring(
-                        okp, **recen_parameters
-                    )
-                    logging.getLogger("HWR").debug(
-                        "GPHL Recentring. okp, motors, %s, %s"
-                        % (okp, sorted(centring_settings.items()))
-                    )
-                    settings.update(centring_settings)
+                # existing centring - take from current position
+                translation_settings = dict(
+                    (role, current_pos_dict.get(role))
+                    for role in self.translation_axis_roles
+                )
+
+            tol = angular_tolerance if recen_parameters else 0.1
+            if maxdev <= tol:
+                # first orientation matches current, set to current centring
+                # Use sweepSetting as is, recentred or very close
+                translation = GphlMessages.GoniostatTranslation(
+                    rotation=sweepSetting, **translation_settings
+                )
+                goniostatTranslations.append(translation)
+                gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
+
+            else:
 
                 if recentring_mode == "none":
-                    if not recen_parameters:
+                    if recen_parameters:
+                        translation = GphlMessages.GoniostatTranslation(
+                            rotation=sweepSetting, **translation_settings
+                        )
+                        goniostatTranslations.append(translation)
+                    else:
                         raise RuntimeError(
                             "Coding error, mode 'none' requires recen_parameters"
-                    )
-                    translation = GphlMessages.GoniostatTranslation(
-                        rotation=sweepSetting, **centring_settings
-                    )
-                    goniostatTranslations.append(translation)
+                        )
                 else:
+                    settings.update(translation_settings)
                     qe = self.enqueue_sample_centring(motor_settings=settings)
-                    translation = self.execute_sample_centring(qe, sweepSetting)
+                    translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                     goniostatTranslations.append(translation)
                     gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-                    okp = tuple(int(settings.get(x,0)) for x in self.rotation_axis_roles)
                     self.collect_centring_snapshots("%s_%s_%s" % okp)
+
+        elif not self.getProperty("recentre_before_start"):
+            # Characterisation, and current position was pre-centred
+            # Do characterisation at current position, not the hardcoded one
+            rotation_settings = dict(
+                (role, current_pos_dict[role]) for role in sweepSetting.axisSettings
+            )
+            newRotation = GphlMessages.GoniostatRotation(**rotation_settings)
+            translation_settings = dict(
+                (role, current_pos_dict.get(role))
+                for role in self.translation_axis_roles
+            )
+            translation = GphlMessages.GoniostatTranslation(
+                rotation=newRotation,
+                requestedRotationId=sweepSetting.id_,
+                **translation_settings
+            )
+            goniostatTranslations.append(translation)
+            gphl_workflow_model.set_current_rotation_id(newRotation.id_)
 
         # calculate or determine centring for remaining sweeps
         if not goniostatTranslations:
@@ -1109,7 +1094,7 @@ class GphlWorkflow(HardwareObject, object):
             settings = sweepSetting.get_motor_settings()
             if recen_parameters:
                 # Update settings
-                okp = tuple(settings.get(x,0) for x in self.rotation_axis_roles)
+                okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
                 centring_settings = self.calculate_recentring(okp, **recen_parameters)
                 logging.getLogger("HWR").debug(
                     "GPHL Recentring. okp, motors, %s, %s"
@@ -1120,10 +1105,10 @@ class GphlWorkflow(HardwareObject, object):
             if recentring_mode == "start":
                 # Recentre now, using updated values if available
                 qe = self.enqueue_sample_centring(motor_settings=settings)
-                translation = self.execute_sample_centring(qe, sweepSetting)
+                translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                 goniostatTranslations.append(translation)
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-                okp = tuple(int(settings.get(x,0)) for x in self.rotation_axis_roles)
+                okp = tuple(int(settings.get(x, 0)) for x in self.rotation_axis_roles)
                 self.collect_centring_snapshots("%s_%s_%s" % okp)
             elif recen_parameters:
                 # put recalculated translations back to workflow
@@ -1137,14 +1122,14 @@ class GphlWorkflow(HardwareObject, object):
                 # raise NotImplementedError(
                 #     "For now must have recentring or mode 'start' or single sweep"
                 # )
-                # We do NOT have any sensible translatoin settings
-                # Take teh current settings because nwe need something.
-                # Better to have a calibration, prlobabkly
-                centring_settings = dict(
+                # We do NOT have any sensible translation settings
+                # Take the current settings because we need something.
+                # Better to have a calibration, actually
+                translation_settings = dict(
                     (role, pos_dict[role]) for role in self.translation_axis_roles
                 )
                 translation = GphlMessages.GoniostatTranslation(
-                    rotation=sweepSetting, **centring_settings
+                    rotation=sweepSetting, **translation_settings
                 )
                 goniostatTranslations.append(translation)
 
@@ -1412,16 +1397,17 @@ class GphlWorkflow(HardwareObject, object):
             goniostatRotation = sweep.goniostatSweepSetting
             id_ = goniostatRotation.id_
             initial_settings = sweep.get_initial_settings()
-            if (
-                (
-                    id_ != gphl_workflow_model.get_current_rotation_id()
-                    and recentring_mode in ("sweep", "scan")
+            if sweeps and (
+                recentring_mode == "scan"
+                or (
+                    recentring_mode == "sweep"
+                    and id_ != gphl_workflow_model.get_current_rotation_id()
                 )
-                or recentring_mode == "scan" and sweeps
             ):
                 # Put centring on queue and collect using the resulting position
                 # if mode 'sweep' and orientation has changed
                 # or "scan" and we are not at the start
+                # Never recentre on first scan - that is taken care of in setup
                 #
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
@@ -1730,7 +1716,7 @@ class GphlWorkflow(HardwareObject, object):
         if goniostatTranslation is not None:
             settings.update(goniostatTranslation.axisSettings)
         centring_queue_entry = self.enqueue_sample_centring(motor_settings=settings)
-        goniostatTranslation = self.execute_sample_centring(
+        goniostatTranslation, dummy = self.execute_sample_centring(
             centring_queue_entry, goniostatRotation
         )
 
@@ -1812,10 +1798,13 @@ class GphlWorkflow(HardwareObject, object):
         if centring_result:
             positionsDict = centring_result.as_dict()
             dd0 = dict((x, positionsDict[x]) for x in self.translation_axis_roles)
-            return GphlMessages.GoniostatTranslation(
-                rotation=goniostatRotation,
-                requestedRotationId=requestedRotationId,
-                **dd0
+            return (
+                GphlMessages.GoniostatTranslation(
+                    rotation=goniostatRotation,
+                    requestedRotationId=requestedRotationId,
+                    **dd0
+                ),
+                positionsDict,
             )
         else:
             self.abort("No Centring result found")

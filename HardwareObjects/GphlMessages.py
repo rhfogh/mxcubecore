@@ -189,7 +189,6 @@ POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
 class States(enum.Enum):
     """Duplicate of standard HardwareObject states"""
 
-
     UNKNOWN = 0
     WARNING = 1
     BUSY = 2
@@ -662,7 +661,10 @@ class PositionerSetting(IdentifiedElement):
                 "Programming error -"
                 " attempt to instantiate abstract class PositionerSetting"
             )
-
+        if None in axisSettings.values():
+            raise ValueError(
+                "axisSettings contain value None: %s" % sorted(axisSettings.items())
+            )
         self._axisSettings = axisSettings.copy()
 
     @property
@@ -721,6 +723,7 @@ class GoniostatRotation(PositionerSetting):
             result.update(translation.axisSettings)
         #
         return result
+
 
 class GoniostatSweepSetting(GoniostatRotation):
     """Goniostat Sweep setting"""
