@@ -325,9 +325,13 @@ class GenericParallelProcessing(HardwareObject):
         """
         self.data_collection = data_collection
         self.prepare_processing()
-        input_filename = os.path.join(
-            self.params_dict["process_directory"], "dozor_input.xml"
-        )
+
+        input_filename = self.get_input_filename(self.data_collection)
+        if not input_filename:
+            input_filename = os.path.join(
+                self.params_dict["process_directory"], "dozor_input.xml"
+            )
+
         self.create_processing_input_file(input_filename)
 
         self.emit(
@@ -361,6 +365,9 @@ class GenericParallelProcessing(HardwareObject):
                 stderr=None,
                 close_fds=True,
             )
+
+    def get_input_filename(self, data_collection):
+        return None
 
     def save_snapshot_task(self, snapshot_filename):
         """Saves snapshot
