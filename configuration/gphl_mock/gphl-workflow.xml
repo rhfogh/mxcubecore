@@ -263,9 +263,9 @@
         <SingleAnomalousDispersion>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
-            <variant>SAD</variant>
+            <variant>full</variant>
             <documentation>
-                Single wavelength data acquisition, strategy for phasing
+                Single wavelength SAD data acquisition, full strategy.
                 Includes initial characterisation and complete collection
             </documentation>
             <!-- Workflow interleave order (string);  Slowest changing first-->
@@ -281,9 +281,10 @@
         <TwoWavelengthMAD>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
-            <variant>MAD_2wvl</variant>
+<!--            <variant>MAD_2wvl</variant>-->
+            <variant>quick</variant>
             <documentation>
-                Two-wavelength MAD data acquisition.
+                Two-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
             </documentation>
             <!-- Workflow interleave order (string);  Slowest changing first-->
@@ -300,9 +301,10 @@
         <ThreeWavelengthMAD>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
-            <variant>MAD_3wvl</variant>
+<!--            <variant>MAD_3wvl</variant>-->
+            <variant>quick</variant>
             <documentation>
-                Three-wavelength MAD data acquisition.
+                Three-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
             </documentation>
             <!-- Workflow interleave order (string);  Slowest changing first-->
