@@ -127,13 +127,13 @@ class ALBAParallelProcessing(GenericParallelProcessing):
         self.logger.debug("batch_processed called, batch is %s" % batch)
         self.logger.debug("Has process started? %s" % str(self.started))
 
-        #if self.started:
-        if True:
+        if self.started:
             for image in batch:
                 self.logger.debug("Loop for each image in batch arrived")
+                self.logger.debug("image is : %s" % image)
                 self.results_raw["spots_num"][image[0] - 1] = image[1]
                 self.results_raw["spots_resolution"][image[0] - 1] = image[3]
-                self.results_raw["score"][image[0] - 1] = image[4]
+                self.results_raw["score"][image[0] - 1] = image[2]
 
             self.align_processing_results(batch[0][0] - 1, batch[-1][0] - 1)
             self.emit("processingResultsUpdate", False)
