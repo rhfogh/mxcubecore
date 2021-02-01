@@ -547,6 +547,9 @@ class GenericDiffractometer(HardwareObject):
         """
         Descript. :
         """
+        self.current_motor_positions['sampx'] = self.sample_x_motor_hwobj.getPosition()
+        self.current_motor_positions['sampy'] = self.sample_y_motor_hwobj.getPosition()
+
 
         self.current_motor_positions["beam_x"] = (self.beam_position[0] - \
              self.zoom_centre['x'] )/self.pixels_per_mm_y
