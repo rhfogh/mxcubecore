@@ -78,7 +78,7 @@ RECENTRING_MODES = OrderedDict(
         ("Re-centre when orientation changes", "sweep"),
         ("Re-centre at the start of each wedge", "scan"),
         ("Re-centre all before acquisition start", "start"),
-        ("Do not re-centre, predicted centrings only", "none"),
+        ("No manual re-centring, rely on calculated values", "none"),
     )
 )
 
@@ -512,11 +512,15 @@ class GphlWorkflow(HardwareObject, object):
         proposed_dose = max(dose_budget * budget_use_fraction, 0.0)
 
         # For calculating dose-budget transmission
-        std_dose_rate = (
-            api.flux.dose_rate_per_photon_per_mmsq(initial_energy)
-            * api.flux.get_average_flux_density(transmission=100.0)
-            * 1.0e-6  # convert to MGy/s
-        )
+        flux_density = api.flux.get_average_flux_density(transmission=100.0)
+        if flux_density:
+            std_dose_rate = (
+                api.flux.dose_rate_per_photon_per_mmsq(initial_energy)
+                * flux_density
+                * 1.0e-6  # convert to MGy/s
+            )
+        else:
+            std_dose_rate = 0
         transmission = acq_parameters.transmission
 
         # define update functions
@@ -768,17 +772,34 @@ class GphlWorkflow(HardwareObject, object):
         # recentring mode:
         labels = list(RECENTRING_MODES.keys())
         modes = list(RECENTRING_MODES.values())
-        # Put default at top
         default_mode = self.getProperty("default_recentring_mode", "sweep")
-        if default_mode == "none" or default_mode not in modes:
+        if default_mode == "scan" or default_mode not in modes:
             raise ValueError("invalid default recentring mode '%s' " % default_mode)
-        if not self.load_transcal_parameters():
-            logging.getLogger("user_log").warning(
-                "No translational calibration found; recentring calculation disabled"
-            )
-            indx = modes.index("none")
-            del modes[indx]
-            del labels[indx]
+        use_modes = ["sweep"]
+        if len(orientations) > 1:
+            use_modes.append("start")
+        if data_model.get_interleave_order():
+            use_modes.append("scan")
+        if self.load_transcal_parameters() and (
+            data_model.lattice_selected
+            or wf_parameters.get("strategy_type") == "diffractcal"
+        ):
+            # Not Characteisation
+            use_modes.append("none")
+        for indx in range (len(modes) -1, -1, -1):
+            if modes[indx] not in use_modes:
+                del modes[indx]
+                del labels[indx]
+        if default_mode in modes:
+            indx = modes.index(default_mode)
+            if indx:
+                # Put default at top
+                del modes[indx]
+                modes.insert(indx, default_mode)
+                default_label = labels.pop(indx)
+                labels.insert(indx, default_label)
+        else:
+            default_mode = "sweep"
         default_label = labels[modes.index(default_mode)]
 
         field_list.append(

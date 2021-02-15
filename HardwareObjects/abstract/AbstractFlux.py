@@ -81,9 +81,12 @@ class AbstractFlux(HardwareObject):
         """
 
         beam_size = api.beam_info.get_beam_size()
-        result = api.flux.get_flux() / (beam_size[0] * beam_size[1])
-        if transmission  is not None:
-            result = result * transmission / api.transmission.get_value()
+        flux = api.flux.get_flux()
+        result = None
+        if flux and all(beam_size):
+            result = flux / (beam_size[0] * beam_size[1])
+            if transmission  is not None:
+                result = result * transmission / api.transmission.get_value()
         #
         return result
 
