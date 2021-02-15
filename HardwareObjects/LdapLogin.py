@@ -83,7 +83,7 @@ class LdapLogin(Procedure):
                 msg=ex[0]['desc']
             except (IndexError,KeyError,ValueError,TypeError):
                 msg="generic LDAP error"
-        logging.getLogger("HWR").debug("LdapLogin: %s" % msg)
+        logging.getLogger("HWR").debug("LdapLogin (cleanup): %s" % msg)
         if ex is not None:
             self.reconnect()
         return (False,msg)
@@ -108,9 +108,11 @@ class LdapLogin(Procedure):
             else:
                 found=self.ldapConnection.search_s(search_str, ldap.SCOPE_SUBTREE,"uid="+username,fields)
         except ldap.LDAPError as err:
+            logging.getLogger("HWR").error("LDAP error: %s" % err)
             if retry:
+                logging.getLogger('HWR').debug('Starting retry: cleanup and retry login')
                 self.cleanup(ex=err)
-                return self.login(username,password,retry=False)
+                return self.login(username,password,retry=False,fields=fields)
             else:
                 return self.cleanup(ex=err)
 
@@ -118,6 +120,7 @@ class LdapLogin(Procedure):
             return self.cleanup(msg="unknown proposal %s" % username)
 
         if fields is not None:
+            logging.getLogger("HWR").debug("info obtained from LDAP: %s" % found)
             self.field_values = found[0][1]  
 
         if password=="":
