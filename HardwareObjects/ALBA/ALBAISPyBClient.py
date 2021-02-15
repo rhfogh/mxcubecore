@@ -57,7 +57,7 @@ class ALBAISPyBClient(ISPyBClient2):
         ok, msg = ldap_connection.login(
             login_name, psd, fields=[
                 "uid", "homeDirectory"])
-
+        self.logger.debug("ALBA LDAP login success %s (msg: %s)" % (ok, msg))
         if ok:
             vals = ldap_connection.get_field_values()
             if 'homeDirectory' in vals:
