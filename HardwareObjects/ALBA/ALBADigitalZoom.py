@@ -87,6 +87,7 @@ class ALBADigitalZoom(Device):
         self.chan_state.connectSignal("update", self.stateChanged)
 
         self.current_position = self.getPosition()
+        self.logger.debug('***** get Position: %s',self.getPosition())
         self.current_state = self.getState()
 
     def getPredefinedPositionsList(self):

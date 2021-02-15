@@ -311,6 +311,17 @@ class ALBAPilatus(AbstractDetector, HardwareObject):
             self.logger.debug("Detector is %s" % self.get_cam_state())
         return True
 
+    def wait_running(self, timestep=0.1, timeout=300):
+        logging.getLogger("user_level_log").info("Waiting detector to be in RUNNING")
+        t0 = time.time()
+        while self.get_cam_state() != 'RUNNING':
+            if time.time() - t0 > timeout:
+                self.logger.debug("timeout waiting for Pilatus to be on RUNNING")
+                return False
+            time.sleep( timestep )
+            self.logger.debug("Detector is %s" % self.get_cam_state())
+        return True
+
     def prepare_acquisition(self, dcpars):
 
         self.arm()
