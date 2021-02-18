@@ -590,6 +590,7 @@ class ALBAMiniDiff(GenericDiffractometer):
 
         @relpos: target relative position
         """
+        #TODO:Are all these waiting times really necessary??'
         self.wait_device_ready()
         self.phi_motor_hwobj.syncMoveRelative(relpos)
         time.sleep(0.2)
@@ -613,6 +614,18 @@ class ALBAMiniDiff(GenericDiffractometer):
             self.logger.warning(
                 "Diffractometer set_phase asked for un-handled phase: %s" %
                 phase)
+    
+    # Copied from GenericDiffractometer just to improve error loggin
+    def wait_device_ready(self, timeout=30):
+        """ Waits when diffractometer status is ready:
+
+        :param timeout: timeout in second
+        :type timeout: int
+        """
+        gevent.sleep(1) # wait a bit to see if state does not change inmediately
+        with gevent.Timeout(timeout, Exception("Timeout waiting for Diffracometer ready, check bl13/eh/diff. Is omegax close enough to 0??")):
+            while not self.is_ready():
+                time.sleep(0.01)
 
 
 def test_hwo(hwo):

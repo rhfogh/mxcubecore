@@ -105,6 +105,7 @@ class ALBACollect(AbstractCollect):
         #self.cmd_ni_unconf = None
         self.set_pilatus_saving_pattern = None
         self.ascanct = None
+        self.meshct = None
         self.senv = None
 
 
@@ -114,8 +115,7 @@ class ALBACollect(AbstractCollect):
         self.chan_undulator_gap = None
 
         self.scan_motors_hwobj = {}
-        self.mesh_scan_line_motor_name = 'phiz'
-        self.mesh_scan_discrete_motor_name = 'phiy'
+        self.xaloc_motor_names_dict = {}
 
         self._error_msg = ""
         self.owner = None
@@ -136,24 +136,12 @@ class ALBACollect(AbstractCollect):
         self.scan_move_motor_names = []
         self.scan_all_motor_names = []
 
-        self.mesh_range = []
-        self.mesh_center = {}
-        self.mesh_num_lines = None
-        self.total_nb_frames = None
-
-<<<<<<< HEAD
-#        self.saved_omega_velocity = None
-=======
         self.mesh_xaloc_fast_motor_name = None
         self.mesh_xaloc_slow_motor_name = None
         self.mesh_sshaped_bool = None # True: up and down scans, False: only up scans
 
         #self.helical_positions = None
         #self.saved_omega_velocity = None
-
-        self.omega_init_pos = None
-        self.omega_init_vel = None
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
 
         self.omega_init_pos = None
         self.omega_init_vel = None
@@ -188,10 +176,19 @@ class ALBACollect(AbstractCollect):
 
         self.set_pilatus_saving_pattern = self.getCommandObject("set_pilatus_saving_pattern")
         self.ascanct = self.getCommandObject("ascanct")
+        self.meshct = self.getCommandObject("meshct")
         self.senv = self.getCommandObject("senv")
 
         self.chan_kappa_pos = self.getChannelObject("kappapos")
         self.chan_phi_pos = self.getChannelObject("phipos")
+
+        self.xaloc_motor_names_dict = {'phi': 'omega', 
+                                       'phiy' : 'omegax', 
+                                       'phiz': 'omegaz', 
+                                       'kappa': 'kappa', 
+                                       'kappaphi': 'phi', 
+                                       'sampx': 'centx', 
+                                       'sampy': 'centy'}
 
         #TODO 20200921 kappa_phi is broken
         #self.scan_all_motor_names = ['phiy', 'phiz', 'sampx', 'sampy', 'kappa', 'kappa_phi']
@@ -204,7 +201,8 @@ class ALBACollect(AbstractCollect):
 
         self.mesh_xaloc_fast_motor_name = 'phiy' # omegax
         self.mesh_xaloc_slow_motor_name = 'phiz' # omegaz
-        self.mesh_sshaped_bool = True # True: up and down scans, False: only up scans
+        #self.mesh_sshaped_bool = True # True: up and down scans
+        self.mesh_sshaped_bool = False # False: only up scans
 
         #self.chan_undulator_gap = self.getChannelObject("chanUndulatorGap")
 
@@ -280,42 +278,15 @@ class ALBACollect(AbstractCollect):
             self.scan_init_positions[motorname] = self.scan_motors_hwobj[motorname].getPosition()
         self.omega_init_pos = self.omega_hwobj.getPosition()
         self.omega_init_vel = self.omega_hwobj.get_velocity()
-<<<<<<< HEAD
-        self.logger.info('Inital motor velocities dict %s' % str(self.scan_init_velocities) )
-        self.logger.info('Inital omega velocity value %.1f' % self.omega_init_vel )
-=======
 
-        self.omega_init_pos = self.omega_hwobj.getPosition()
-        self.omega_init_vel = self.omega_hwobj.get_velocity()
         #self.logger.info('Inital motor velocities dict %s' % str(self.scan_init_velocities) )
         #self.logger.info('Inital omega velocity value %.1f' % self.omega_init_vel )
 
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
-
         # prepare input files for autoprocessing
-        self.autoprocessing_hwobj.create_input_files(self.current_dc_parameters)
+
         # pass wavelength needed in auto processing input files
         osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
         osc_seq['wavelength'] = self.get_wavelength()
-<<<<<<< HEAD
-        self.current_dc_parameters['detector_mode'] = ['EXTERNAL_TRIGGER']
-
-        first_image_no = osc_seq['start_image_number']
-        exp_time = osc_seq['exposure_time']
-        img_range = osc_seq['range']
-        omega_speed = 60 # initial the speed value, this will be recalculated later on in prepare_acquisition
-        omega_pos = osc_seq['start']
-        # Save omega initial position to be recovered after collection (cleanup).
-        self.omega_init_pos = omega_pos
-        exp_time = osc_seq['exposure_time']
-        nb_images = osc_seq['number_of_images']
-        sweep_nb_images = nb_images
-        total_collection_time = exp_time * nb_images
-
-        self.logger.info('%s' % osc_seq)
-        
-        self.autoprocessing_hwobj.create_input_files(self.current_dc_parameters)
-=======
 
         self.current_dc_parameters['detector_mode'] = ['EXTERNAL_TRIGGER']
 
@@ -324,17 +295,12 @@ class ALBACollect(AbstractCollect):
         img_range = osc_seq['range']
         omega_speed = 60 # initial the speed value, this will be recalculated later on in prepare_acquisition
         omega_pos = osc_seq['start']
-        # Save omega initial position to be recovered after collection (cleanup).
-        self.omega_init_pos = omega_pos
         exp_time = osc_seq['exposure_time']
         nb_images = osc_seq['number_of_images']
         sweep_nb_images = nb_images
         total_collection_time = exp_time * nb_images
 
         self.logger.info('%s' % osc_seq)
-
- 
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
 
         if self.aborted_by_user:
             self.emit_collection_failed("Aborted by user")
@@ -357,77 +323,6 @@ class ALBACollect(AbstractCollect):
             self.logger.debug(
                 "\thelical end positions are: %s" % str(
                     self.scan_end_positions))
-<<<<<<< HEAD
-            
-            self.set_scan_move_motors(self.scan_start_positions, self.scan_end_positions)
-            self.scan_velocities = self.calculate_scan_velocities(
-                                      self.scan_start_positions, self.scan_end_positions, total_collection_time
-                                                                 )
-            self.logger.info('Preliminary helical setup completed')
-        elif exp_type == "Mesh": 
-            # Mesh scans are fast in columns (phiz/omegaz), slow in rows (phiy/omegax). 
-            # First column start from min omegaz to max omegaz. Rows are collected from min omegax to max omegax.
-            # mesh_range is a list with two values, the first value represents the horizontal range, 
-            #                                       the second value represents the vertical line scan range
-            # number_of_lines represents the number of line scans, ie the number of steps in the horizontal direction
-            # number_of_images represents the number of images to be taken for each line scan
-            self.scan_move_motor_names = [self.mesh_scan_line_motor_name]
-            self.mesh_num_lines = osc_seq['number_of_lines']
-            self.mesh_range = osc_seq['mesh_range']
-            if not osc_seq['number_of_images'] % self.mesh_num_lines:
-                mesh_nb_frames_per_line = osc_seq['number_of_images'] / self.mesh_num_lines 
-                sweep_nb_images = mesh_nb_frames_per_line
-                mesh_line_exposure_time = mesh_nb_frames_per_line * exp_time
-            else: 
-                msg = 'Inconsistent total number of images and number of lines in Mesh scan'
-                self.data_collection_failed(msg)
-                raise Exception( msg )
-            
-            self.logger.debug("Running a raster collection ()")
-            self.logger.debug(
-                "\tnumber of lines are: %s" %
-                self.mesh_num_lines)
-            self.logger.debug(
-                "\ttotal nb of frames: %s" % 
-                                 (mesh_nb_frames_per_line * self.mesh_num_lines)
-                             )
-            self.logger.debug("\tmesh range[0] : %s" % self.mesh_range[0])
-            mesh_vertical_discrete_step_size = self.setMeshScanParameters(
-                                                 self.mesh_num_lines, mesh_nb_frames_per_line, 
-                                                 self.mesh_range, mesh_line_exposure_time
-                                               ) 
-            # For mesh scans, the start parameter represents the center of the mesh
-            omega_pos = omega_pos - ( mesh_nb_frames_per_line * img_range / 2.0 )
-        else:
-            self.logger.debug( "Running a collect (STANDARD)" )
-
-        if self.check_scan_velocities( self.scan_velocities ): # There are motors that cant work at required speed
-            msg = 'Cant reach the required velocities'
-            self.data_collection_failed( msg )
-            raise Exception( msg )
-            
-        try:
-            ready = self.prepare_acquisition()
-            # RB init_pos and final_pos include the ramp up and run out range for omega
-            init_pos, final_pos, total_dist, omega_speed = self.calc_omega_scan_values(
-                                                                omega_pos, sweep_nb_images 
-                                                           )
-        except Exception as e:
-            self.logger.error("Prepare_acquisition failed")
-            self.logger.error('error %s' % str(e) )
-            logging.getLogger('user_level_log').error('error %s' % repr( e ) )
-            self.data_collection_failed( "Prepare_acquisition failed" )
-            raise Exception( e )
-
-
-        self.logger.debug('  Sweep parameters omega: init %s start %s total dist %s speed %s' % (init_pos, omega_pos, total_dist, omega_speed ) )
-            
-        if not ready:
-            self.data_collection_failed( msg )
-            self.stop_collect() # This is the only place this function is called, defined in AbstractCollect, is it do anything
-            raise Exception( msg )
-            
-=======
             self.scan_move_motor_names = []
             self.set_scan_move_motors(self.scan_start_positions, self.scan_end_positions)
             self.scan_velocities = self.calculate_scan_velocities(
@@ -435,42 +330,13 @@ class ALBACollect(AbstractCollect):
                                                                 )
             self.logger.info('Preliminary helical setup completed')
         elif exp_type == "Mesh":
-                        # Mesh scans are fast in columns (phiz/omegaz), slow in rows (phiy/omegax).
-            # First column start from min omegaz to max omegaz. Rows are collected from min omegax to max omegax.
-            # mesh_range is a list with two values, the first value represents the horizontal range,
-            #                                       the second value represents the vertical line scan range
-            # number_of_lines represents the number of line scans, ie the number of steps in the horizontal direction
-            # number_of_images represents the number of images to be taken for each line scan
-            
-            mesh_fast_discrete_step_size , mesh_slow_discrete_step_size = \
-                 self.setMeshScanParameters( osc_seq, mesh_xaloc_fast_motor_name, mesh_xaloc_slow_motor_name )
-            #self.scan_move_motor_names = [self.mesh_scan_line_motor_name]
-            #self.mesh_num_lines = osc_seq['number_of_lines']
-            #self.mesh_range = osc_seq['mesh_range']
-            #if not osc_seq['number_of_images'] % self.mesh_num_lines:
-                #mesh_nb_frames_per_line = osc_seq['number_of_images'] / self.mesh_num_lines
-                #range_per_frame_in_line = mesh_nb_frames_per_line
-                #mesh_line_exposure_time = mesh_nb_frames_per_line * exp_time
-            #else:
-                #msg = 'Inconsistent total number of images and number of lines in Mesh scan'
-                #self.data_collection_failed(msg)
-                #raise Exception( msg )
-
-            #self.logger.debug("Running a raster collection ()")
-            #self.logger.debug(
-                #"\tnumber of lines are: %s" %
-                #self.mesh_num_lines)
-            #self.logger.debug(
-                #"\ttotal nb of frames: %s" %
-                                 #(mesh_nb_frames_per_line * self.mesh_num_lines)
-                             #)
-            #self.logger.debug("\tmesh range[0] : %s" % self.mesh_range[0])
-            #mesh_line_discrete_step_size = self.setMeshScanParameters(
-                                                 #self.mesh_num_lines, mesh_nb_frames_per_line,
-                                                 #self.mesh_range, mesh_line_exposure_time
-                                               #)
-            ## For mesh scans, the start parameter represents the center of the mesh
-            #omega_pos = omega_pos - ( mesh_nb_frames_per_line * img_range / 2.0 )
+            fast_motor_nr_images, slow_motor_nr_images = self.setMeshScanParameters( 
+                                            osc_seq, 
+                                            self.mesh_xaloc_fast_motor_name, 
+                                            self.mesh_xaloc_slow_motor_name,
+                                            self.mesh_center,
+                                            self.mesh_range
+                                            )
         else:
             self.logger.debug("Running a collect (STANDARD)")
 
@@ -479,15 +345,8 @@ class ALBACollect(AbstractCollect):
             self.data_collection_failed( msg )
             raise Exception( msg )
 
-
-        osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
-
-        omega_pos = osc_seq['start']
-        # Save omega initial position to be recovered after collection (cleanup).
-        self.omega_init_pos = omega_pos
-
         try:
-            ready,msg = self.prepare_acquisition()
+            ready = self.prepare_acquisition()
             # RB init_pos and final_pos include the ramp up and run out range for omega
         except Exception as e:
             self.logger.error("Prepare_acquisition failed")
@@ -497,12 +356,12 @@ class ALBACollect(AbstractCollect):
             raise Exception( e )
 
         self._collecting = True
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
         # for progressBar brick
         self.emit("progressInit", "Collection", osc_seq['number_of_images'])
 
         self.emit("collectStarted", (self.owner, 1))
 
+        #self.autoprocessing_hwobj.create_input_files(self.current_dc_parameters)
 
         if exp_type == 'OSC' or (exp_type == 'Characterization' and nb_images == 1) or exp_type == 'Helical':
             # Sardana collect: run ascanct
@@ -556,16 +415,21 @@ class ALBACollect(AbstractCollect):
                 #)
             self.collect_mesh(
                       self.mesh_xaloc_fast_motor_name,
-                      mesh_fast_discrete_step_size,
+                      fast_motor_nr_images,
                       self.mesh_xaloc_slow_motor_name,
-                      mesh_slow_discrete_step_size,
+                      slow_motor_nr_images,
                       time_interval, 
                       self.mesh_sshaped_bool, # True: up and down scans, False: only up scans
-                      deadtime 
+                      self.detector_hwobj.get_latency_time() 
                     )
             #self.finalize_mesh_scan()
 
-    def collect_mesh( mesh_xaloc_fast_motor_name, mesh_fast_discrete_step_size, mesh_xaloc_slow_motor_name, mesh_slow_discrete_step_size,
+    def collect_mesh( 
+                      self, 
+                      mesh_xaloc_fast_motor_name, 
+                      fast_motor_nr_images, 
+                      mesh_xaloc_slow_motor_name, 
+                      slow_motor_nr_images,
                       time_interval, 
                       sshaped_bool, 
                       deadtime 
@@ -583,47 +447,38 @@ class ALBACollect(AbstractCollect):
             #integ_time : (Float) Integration time
             #bidirectional : (Boolean) Save time by scanning s-shaped
             #latency_time : (Float) Latency time
-        fast_motor_final_start_pos = self.scan_end_positions[mesh_xaloc_fast_motor_name] - mesh_fast_discrete_step_size
-        fast_motor_nr_images = math.round (
-                                 math.fabs ( 
-                                     self.scan_end_positions[mesh_xaloc_fast_motor_name] - self.scan_start_positions[mesh_xaloc_fast_motor_name] 
-                                 )  / mesh_fast_discrete_step_size
-                              )
-        slow_motor_final_start_pos = self.scan_end_positions[mesh_xaloc_slow_motor_name] - mesh_slow_discrete_step_size
-        slow_motor_nr_images = math.round (
-                                 math.fabs ( 
-                                     self.scan_end_positions[mesh_xaloc_slow_motor_name] - self.scan_start_positions[mesh_xaloc_slow_motor_name] 
-                                 )  / mesh_fast_discrete_step_size
-                              )
         self.logger.debug("meshct parameters:")
-        self.logger.debug("    fast_motor_name: %s" % fast_motor_name)
+        self.logger.debug("    fast_motor_name: %s" % mesh_xaloc_fast_motor_name)
+        self.logger.debug("    xaloc fast_motor_name: %s" % self.xaloc_motor_names_dict[mesh_xaloc_fast_motor_name])
         self.logger.debug("    fast_motor_start_pos: %s" % self.scan_start_positions[mesh_xaloc_fast_motor_name])
-        self.logger.debug("    fast_motor_end_pos: %s" % fast_motor_final_start_pos)
+        self.logger.debug("    fast_motor_end_pos: %s" % self.scan_end_positions[mesh_xaloc_fast_motor_name])
         self.logger.debug("    fast_motor_nr_images: %s" % fast_motor_nr_images)
-        self.logger.debug("    slow_motor_name: %s" % fast_motor_name)
+        self.logger.debug("    slow_motor_name: %s" % mesh_xaloc_slow_motor_name)
+        self.logger.debug("    xaloc slow_motor_name: %s" % self.xaloc_motor_names_dict[mesh_xaloc_slow_motor_name])
         self.logger.debug("    slow_motor_start_pos: %s" % self.scan_start_positions[mesh_xaloc_slow_motor_name])
-        self.logger.debug("    slow_motor_end_pos: %s" % slow_motor_final_start_pos)
+        self.logger.debug("    slow_motor_end_pos: %s" % self.scan_end_positions[mesh_xaloc_slow_motor_name])
         self.logger.debug("    slow_motor_nr_images: %s" % slow_motor_nr_images)
-        self.logger.debug("    time_interval: %s" % fast_motor_name)
+        self.logger.debug("    time_interval: %.4f" % time_interval)
         self.logger.debug("    sshaped_bool: %s" % sshaped_bool)
-        self.logger.debug("    deadtime: %s" % deadtime)
+        self.logger.debug("    deadtime: %.4f" % deadtime)
 
-        #self.meshct(
-                      #fast_motor_name, 
-                      #self.scan_start_positions[mesh_xaloc_fast_motor_name],
-                      #fast_motor_final_start_pos, #start pos of fast motor for last data point
-                      #fast_motor_nr_images, 
-                      #self.scan_start_positions[mesh_xaloc_slow_motor_name],
-                      #slow_motor_final_start_pos, #start pos of slow motor for last data point
-                      #slow_motor_nr_images, 
-                      #time_interval, 
-                      #sshaped_bool, # True: up and down scans, False: only up scans
-                      #deadtime 
-                   #)
-            
-        #self.wait_collection_done(nb_images, first_image_no, total_time + 5)
-        #self.data_collection_end()
-        #self.collection_finished()
+        self.meshct(
+                      self.xaloc_motor_names_dict[mesh_xaloc_fast_motor_name], 
+                      self.scan_start_positions[mesh_xaloc_fast_motor_name],
+                      self.scan_end_positions[mesh_xaloc_fast_motor_name], #start pos of fast motor for last data point
+                      fast_motor_nr_images - 1, 
+                      self.xaloc_motor_names_dict[mesh_xaloc_slow_motor_name],
+                      self.scan_start_positions[mesh_xaloc_slow_motor_name],
+                      self.scan_end_positions[mesh_xaloc_slow_motor_name], #start pos of slow motor for last data point
+                      slow_motor_nr_images - 1, 
+                      time_interval - deadtime, 
+                      sshaped_bool, # True: up and down scans, False: only up scans
+                      deadtime 
+                   )
+        total_time = fast_motor_nr_images * fast_motor_nr_images * ( time_interval + deadtime )
+        self.wait_collection_done(fast_motor_nr_images * slow_motor_nr_images, 1, total_time + 5) # TODO: allow for start at higher image numbers
+        self.data_collection_end()
+        self.collection_finished()
             
 
     def collect_images(self, moveable, start_pos, final_pos, deg_interval, time_interval, deadtime, first_image_no, nb_images):
@@ -720,7 +575,7 @@ class ALBACollect(AbstractCollect):
         gevent.sleep(1)
         self.logger.info(
             "Waiting diffractometer ready (is %s)" % str(self.diffractometer_hwobj.current_state))
-        self.diffractometer_hwobj.wait_device_ready(timeout=10)
+        self.diffractometer_hwobj.wait_device_ready(timeout=10) # Is an exception generated upon timeout???
         self.logger.info("Diffractometer is now ready.")
 
         # go to collect phase
@@ -728,32 +583,22 @@ class ALBACollect(AbstractCollect):
             self.logger.info("Supervisor not in collect phase, asking to go...")
             success = self.go_to_collect()
             if not success:
-                msg = "Supervisor cannot set COLLECT phase"
+                msg = "Supervisor cannot set COLLECT phase. Issue an Init in the diff and supervisor devices. Omegax should be between -1 and +1 mm"
+                logging.getLogger('user_level_log').error(msg)
                 self.logger.error(msg)
                 return False, msg
 
-<<<<<<< HEAD
-        detok = False
-        try:
-            detok = self.detector_hwobj.prepare_acquisition(self.current_dc_parameters)
-            self.logger.info("Prepared detector for acquistion, detok = %s" % str( detok ) )
-        except Exception as e:
-            self.logger.info( "Cannot prepare the detector for acquisition" )
-            self.data_collection_failed("Cannot prepare the detector for acquisition")
-            self.stop_collect()
-            raise Exception( e )
-=======
-        detok = ( self.detector_hwobj.get_cam_state() == 'STANDBY' )
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
+        detok = self.detector_hwobj.get_cam_state() == 'STANDBY'
+        self.logger.info( 'Detector ok %s' % detok )
 
         if not detok:
-            msg = "Cannot prepare the detector for acquisition" 
+            msg = "Cannot prepare the detector for acquisition, check the Pilatus state" 
             self.logger.info( msg )
             self.data_collection_failed( msg )
             self.stop_collect()
             raise Exception( msg )
 
-        return ( detok )
+        return detok
 
 
     def prepare_collection(self, start_angle, nb_images, first_image_no, measurement_group):
@@ -762,16 +607,9 @@ class ALBACollect(AbstractCollect):
         img_range = osc_seq['range']
         exp_time = osc_seq['exposure_time']
 
-<<<<<<< HEAD
         total_dist = float ( nb_images * img_range )
         total_time = float ( nb_images * exp_time )
-        omega_acceltime = self.omega_hwobj.get_acceleration()
-        omega_speed = float( total_dist / total_time )
-=======
-        total_dist = nb_images * img_range
-        total_time = nb_images * exp_time
         final_pos = start_angle + total_dist
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
 
         # TODO: for mesh scans, this range is way to big
         safe_delta = 1
@@ -903,18 +741,15 @@ class ALBACollect(AbstractCollect):
 
     def wait_collection_done(self, nb_images, first_image_no, total_time):
 
-        # Deprecated
-        # osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
-        # first_image_no = osc_seq['start_image_number']
-        # nb_images = osc_seq['number_of_images']
-        last_image_no = first_image_no + nb_images - 1
+        #TODO: wait for door to be ready
+        last_image_no = first_image_no + nb_images - 1 
         self.logger.info("  Total acquisition time = %.2f s" % total_time )
         self.logger.info("  last_image_no          = %d" % last_image_no )
 
         if nb_images > 1:
             self.wait_save_image(first_image_no)
-        self.omega_hwobj.wait_end_of_move(timeout=720)
-        self.wait_save_image(last_image_no)
+        self.omega_hwobj.wait_end_of_move( timeout= total_time + 5 )
+        self.wait_save_image( last_image_no - 1 ) # TODO: the minus one to fix the fact that first image is 0
         self.logger.info("  wait_collection_done last image found" )
         for motorname in self.scan_move_motor_names:
             self.logger.info("     Motor %s position = %.2f" % ( motorname, self.scan_motors_hwobj[motorname].getPosition() ) )
@@ -924,12 +759,7 @@ class ALBACollect(AbstractCollect):
         # Wait for any other motors to stop moving
         for motorname in self.scan_move_motor_names:
             self.scan_motors_hwobj[motorname].wait_end_of_move(timeout=40)
-
-<<<<<<< HEAD
-        # Make sure the detector is readyddddd (in stand by and not moving)
-=======
         # Make sure the detector is ready (in stand by and not moving)
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
         self.detector_hwobj.wait_ready()
 
     def wait_save_image(self, frame_number, timeout=25):
@@ -945,7 +775,7 @@ class ALBACollect(AbstractCollect):
 
         self.logger.debug("   waiting for image on disk: %s" % full_path)
 
-        while not os.path.exists(full_path) and self.aborted_by_user: 
+        while not os.path.exists(full_path) and not self.aborted_by_user: 
             # TODO: review next line for NFTS related issues.
             dirlist = os.listdir(basedir)  # forces directory flush ?
             if (time.time() - start_wait) > timeout:
@@ -1025,26 +855,14 @@ class ALBACollect(AbstractCollect):
         try:
             if self.omega_init_vel != None: # Sometimes, data collections fails before the initial velocities are set, eg when supervisor or diff DS are in alarm
                 self.logger.info('  Setting velocity of motor omega')
-<<<<<<< HEAD
                 self.logger.info('     to initial velocity %.6f' % self.omega_init_vel ) 
-=======
-                self.logger.info('     to initial velocity %.6f' % self.omega_init_vel )
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
-                #self._motor_persistently_set_velocity( self.omega_hwobj, self.omega_init_vel )
                 self.omega_hwobj.set_velocity( self.omega_init_vel )
         except:
             self.logger.info('  Setting velocity of motor omega to %.1f failed' % self.omega_init_vel)
-<<<<<<< HEAD
-            
-        for motorname in self.scan_move_motor_names:
-            self.logger.info('  Setting velocity of motor %s' % motorname )
-            self.logger.info('     to initial velocity %.6f' % self.scan_init_velocities[motorname] ) 
-=======
 
         for motorname in self.scan_move_motor_names:
             self.logger.info('  Setting velocity of motor %s' % motorname )
-            self.logger.info('     to initial velocity %.6f' % self.scan_init_velocities[motorname] )
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
+            self.logger.info('     to initial velocity %.6f' % self.scan_init_velocities[motorname] ) 
             #self._motor_persistently_set_velocity( self.scan_motors_hwobj[motorname], self.scan_init_velocities[motorname] )
             self.scan_motors_hwobj[motorname].set_velocity( self.scan_init_velocities[motorname] )
 
@@ -1052,25 +870,15 @@ class ALBACollect(AbstractCollect):
         try:
             # RB: isnt it better that the detetor keeps collecting to not loose images of a collection.Or increase wating time?
             # In fact, this is done in stopCollect when a user specifically asks for an Abort
-<<<<<<< HEAD
-            #self.detector_hwobj.stop_collection() 
-            #self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos) 
-            self.omega_hwobj.move( self.omega_init_pos ) 
-=======
             #self.detector_hwobj.stop_collection()
-            #self._motor_persistently_move(self.omega_hwobj, self.omega_init_pos)
-            self.omega_hwobj.move( self.omega_init_pos )
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
+            if self.omega_init_pos != None: # Sometiemes collection fails before omega_init_pos is set, no need to move in those cases
+                self.omega_hwobj.move( self.omega_init_pos )
         except:
-            self.logger.error("Omega needs to be stopped before restoring initial position")
+            self.logger.debug("Omega needs to be stopped before restoring initial position, will try this now")
             self.omega_hwobj.stop()
             self.omega_hwobj.move(self.omega_init_pos)
 
         self.scan_delete_motor_data()
-<<<<<<< HEAD
-        self.unconfigure_ni()
-=======
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
         self.fastshut_hwobj.close() # RB: not sure if it closes when unconfiguring it, just in case
 
         self.logger.debug("ALBA data_collection_cleanup finished")
@@ -1082,19 +890,12 @@ class ALBACollect(AbstractCollect):
             except OSError as e:
                 import errno
                 if e.errno != errno.EEXIST:
+                    logging.getLogger('user_level_log').error('Directories cannot be made, are the lockdown settings correct?')
+                    self.logger.debug("user_level_log').error('Directories cannot be made, are the lockdown settings correct?")
                     raise
 
     def collect_finished(self, green):
         logging.getLogger('user_level_log').info("Data collection finished")
-
-# RB 20200915: Jordi didnt have the override of collect_failed in his code.
-#    def collect_failed(self, par):
-#        self.logger.exception("Data collection failed")
-#        self.current_dc_parameters["status"] = 'failed'
-#        exc_type, exc_value, exc_tb = sys.exc_info()
-#        failed_msg = 'Data collection failed!\n%s' % exc_value
-#        self.emit("collectOscillationFailed", (self.owner, False, failed_msg,
-#                                               self.current_dc_parameters.get('collection_id'), 1))
 
     def go_to_collect(self, timeout=180):
         self.wait_supervisor_ready()
@@ -1262,114 +1063,6 @@ class ALBACollect(AbstractCollect):
         Descript. : 8 floats describe
         p1AlignmY, p1AlignmZ, p1CentrX, p1CentrY
         p2AlignmY, p2AlignmZ, p2CentrX, p2CentrY
-<<<<<<< HEAD
-        
-        At XALOC, the phiz motor is not moved
-        """
-        self.logger.info('Setting helical motor positions')
-        self.logger.info('Helical motor positions %s' % str(arg))
-        try:
-            for motorname in self.scan_all_motor_names: # phiy (omegax), phiz (omegaz), sampx (centx), sampy (centy)
-                if arg["1"][motorname] != None: self.scan_start_positions[motorname] = arg["1"][motorname]
-                else: self.logger.info('Helical motor %s not added, position is None' % arg["1"][motorname])
-                if arg["2"][motorname] != None: self.scan_end_positions[motorname] = arg["2"][motorname]
-                else: self.logger.info('Helical motor %s not added, position is None' % arg["2"][motorname])
-        except Exception as e :
-             self.logger.error('FAILED TO SET HELICAL MOTOR POSITIONS')
-             self.data_collection_failed("Cannot interpret helical motor start/end positions") #TODO: collect_failed?? or self.data_collection_failed?
-             raise Exception( e )
-
-    def set_scan_move_motors(self, scan_start_pos, scan_end_pos, cutoff=0.005): #cutoff in microns
-        self.logger.info('  Checking which motors should move for the helical data collection')
-        for motorname in self.scan_all_motor_names:
-            self.logger.info('    Motor    : %s' % motorname)
-            self.logger.info('    Start pos: %.4f' % scan_start_pos[motorname])
-            self.logger.info('    End pos  : %.4f' % scan_end_pos[motorname])
-            self.logger.info('    Diff pos : %.4f' % math.fabs(scan_start_pos[motorname] - scan_end_pos[motorname]))
-            if math.fabs(scan_start_pos[motorname] - scan_end_pos[motorname]) > cutoff and scan_start_pos[motorname] != None and scan_end_pos[motorname] != None:
-                self.logger.info('    Add helical motor %s' % motorname)
-                self.scan_move_motor_names.append(motorname)
-        
-    def calculate_scan_velocities(self, scan_start_pos, scan_end_pos, total_collection_time):
-        self.logger.info('  Calculating the velocities for the helical data collection')
-        self.logger.info('    Calculating the required velocities for the helical motors')
-        scan_velocities = {}
-        for motorname in self.scan_move_motor_names:
-            self.logger.info('    Motor    : %s' % motorname)
-            self.logger.info('    Start pos: %.4f' % scan_start_pos[motorname])
-            self.logger.info('    End pos  : %.4f' % scan_end_pos[motorname])
-            scan_velocities[motorname] = math.fabs ( scan_start_pos[motorname] - scan_end_pos[motorname] ) / total_collection_time
-            self.logger.info('    Velocity : %.7f' % scan_velocities[motorname])
-          
-        return scan_velocities
-
-    def check_scan_velocities(self, scan_velocities):
-        self.logger.info('  Checking the velocities for the helical data collection')
-        scan_motor_velo_keys = scan_velocities.keys()
-        self.logger.info('    Helical motor list: %s' % scan_motor_velo_keys )
-        scan_motor_too_fast = [] # list of motors that cannot go fast enough for the proposed scan
-        scan_motor_too_slow = [] # list of motors that cannot go slow enough for the proposed scan
-        for motorname in scan_motor_velo_keys: 
-            self.logger.info('    %7s velocity : %.4f' % (motorname, scan_velocities[motorname])  )
-            if scan_velocities[motorname] < self.scan_motors_min_velocity[motorname]: 
-                scan_motor_too_slow.append(motorname)
-            elif scan_velocities[motorname] > self.scan_motors_max_velocity[motorname]: 
-                scan_motor_too_fast.append(motorname)
-
-        for motorname in scan_motor_too_fast:
-            self.logger.error('Helical collection error: Stop data collection cause %s cant go fast enough. TIP reduce the range or increase the total data collection time' % motorname)
-            logging.getLogger('user_level_log').error('Helical collection error: Stop data collection cause %s cant go fast enough.' % motorname)
-            logging.getLogger('user_level_log').error('    TIP reduce the distance between starting and ending points, or increase the total data collection time' )
-        for motorname in scan_motor_too_slow:
-            self.logger.error('stop data collection cause %s cant go slow enough. TIP increase the range or reduce the total data collection time' % motorname)
-            logging.getLogger('user_level_log').error('stop data collection cause %s cant go slow enough.' % motorname)
-            logging.getLogger('user_level_log').error('    TIP increase the distance between starting and ending points, or reduce the total data collection time')
-        
-        return len(scan_motor_too_fast)+len(scan_motor_too_slow)
-
-    def set_mesh_scan_parameters(self, num_lines, total_nb_frames, mesh_center_param, mesh_range_param):
-        """
-        Supersedes AbstractCollect set_mesh_scan_paramters
-        """
-        self.logger.info('ALBACollect set_mesh_scan_parameters')
-        self.logger.info('\t num_lines        : %s' % num_lines)
-        self.logger.info('\t total_nb_frames   : %s' % total_nb_frames)
-        self.logger.info('\t mesh_center_param : %s' % mesh_center_param)
-        self.logger.info('\t mesh_range_param  : %s' % mesh_range_param)
-        #self.mesh_center = mesh_center_param
-        #self.mesh_range = mesh_range_param
-        #self.mesh_num_lines = num_lines
-        #self.total_nb_frames = total_nb_frames
-
-    def init_mesh_scan(self):
-        for motorname in self.scan_start_positions:
-            self.scan_motors_hwobj[motorname].move( self.scan_start_positions[motorname] )
-        
-    def finalize_mesh_scan(self):
-        for motorname in self.scan_init_positions:
-            self.scan_motors_hwobj[motorname].move( self.scan_init_positions[motorname] )
-    
-    def update_lims_with_workflow(self, workflow_id, grid_snapshot_filename):
-        pass
-    
-    def setMeshScanParameters(self, num_lines, num_images_per_line, mesh_range, collect_time_per_line):
-        """
-        Calculates velocity, starting and end position of the phiy (omegax) motor for each horizontal line scan
-                   the step size for the vertical direction
-                   
-            # Mesh scans are fast in columns (phiz/omegaz), slow in rows (phiy/omegax). 
-            # First column start from min omegaz to max omegaz. Rows are collected from min omegax to max omegax.
-            # mesh_range is a list with two values, the first value represents the horizontal range, 
-            #                                       the second value represents the vertical line scan range
-            # number_of_lines represents the number of line scans, ie the number of steps in the horizontal direction
-            # number_of_images represents the number of images to be taken for each line scan
-            
-        """
-        mesh_vertical_discrete_step_size = 0
-        self.logger.debug('setMeshScanParameters')
-        self.logger.debug('\t num_lines %s num_images_per_line %s mesh_range %s collect_time_per_line %s' % 
-=======
-
         At XALOC, the phiz motor is not moved
         """
         self.logger.info('Setting helical motor positions')
@@ -1433,7 +1126,31 @@ class ALBACollect(AbstractCollect):
 
         return len(scan_motor_too_fast)+len(scan_motor_too_slow)
 
-    def setMeshScanParameters(self, osc_seq, mesh_xaloc_fast_motor_name, mesh_xaloc_slow_motor_name):
+    def set_mesh_scan_parameters(self, num_lines, total_nb_frames, mesh_center_param, mesh_range_param):
+        """
+        sets the mesh scan parameters :
+         - vertcal range
+         - horizontal range
+         - nb lines
+         - nb frames per line
+         - invert direction (boolean)  # NOT YET DONE
+         """
+ 
+
+        # num_lines are the number of vertical lines
+        self.mesh_num_lines = num_lines
+        self.mesh_total_nb_frames = total_nb_frames
+        # mesh_range is a list of two values in fast en slow direction: the range is actually the total interval!
+        self.mesh_range = mesh_range_param
+        # mesh_center is a dictionary holding centered positions of motors
+        self.mesh_center = mesh_center_param
+        self.logger.debug( "mesh_num_lines       : %s" % self.mesh_num_lines )
+        self.logger.debug( "mesh_total_nb_frames : %s" % self.mesh_total_nb_frames )
+        self.logger.debug( "mesh_range           : %s" % self.mesh_range )
+        self.logger.debug( "mesh_center          : %s" % self.mesh_center )
+
+
+    def setMeshScanParameters(self, osc_seq, mesh_xaloc_fast_motor_name, mesh_xaloc_slow_motor_name, mesh_center, mesh_range):
         """
         Calculates velocity, starting and end position of the phiy (omegax) motor for each horizontal line scan
                    the step size for the vertical direction
@@ -1450,67 +1167,45 @@ class ALBACollect(AbstractCollect):
 
 
         """
+        
+        if not type(mesh_center) is dict:
+            mesh_center = mesh_center.as_dict()
+
+        
         mesh_vertical_discrete_step_size = 0
         self.logger.debug('setMeshScanParameters')
-        self.logger.debug('\t num_lines %s num_images_per_line %s mesh_range %s collect_time_per_line %s' %
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
-                             (num_lines, num_images_per_line, mesh_range, collect_time_per_line)
-                         )
+
         beam_size = self.get_beam_size() # TODO get beam size
         self.logger.debug('\t beam size: %s' % str(beam_size))
 
-        self.logger.debug('\t mesh_center: %s' % str(self.mesh_center))
-        #self.logger.debug('\t mesh_center[phiy]: %s' % str(self.mesh_center['phiy']) )
-        #self.logger.debug('\t mesh_center[phiy]: %s' % str(self.mesh_center[self.mesh_scan_line_motor_name]) )
-<<<<<<< HEAD
-        self.logger.debug('\t self.mesh_scan_line_motor_name: %s' % self.mesh_scan_line_motor_name)
-        self.logger.debug('\t self.mesh_scan_discrete_motor_name: %s' % self.mesh_scan_discrete_motor_name )
-        self.logger.debug('\t self.scan_motors_hwobj[self.mesh_scan_line_motor_name]: %s' % self.scan_motors_hwobj[self.mesh_scan_line_motor_name])
+        self.logger.debug('\t mesh_center: %s' % str(mesh_center))
+        self.logger.debug('\t mesh_range: %s' % str(mesh_range))
+        self.logger.debug('\t mesh_xaloc_fast_motor_name %s' % ( mesh_xaloc_fast_motor_name) ) 
+        self.logger.debug('\t mesh_xaloc_slow_motor_name %s' % ( mesh_xaloc_slow_motor_name) ) 
+        #self.logger.debug('\t mesh_center[%s]: %s' % ( mesh_xaloc_fast_motor_name, str(mesh_center[mesh_xaloc_fast_motor_name]) ) )
+        #self.logger.debug('\t mesh_center[%s]: %s' % ( mesh_xaloc_slow_motor_name, str(mesh_center[mesh_xaloc_slow_motor_name]) ) )
         self.logger.debug('\t ( mesh_range[1] / 2 ) %s' % ( mesh_range[1] / 2 ) )
-        self.scan_start_positions[self.mesh_scan_line_motor_name] = \
-            self.scan_motors_hwobj[self.mesh_scan_line_motor_name].getPosition() + ( mesh_range[1] / 2.0 ) + ( beam_size[1] / 2.0 )
-        self.scan_start_positions[self.mesh_scan_discrete_motor_name] = \
-            self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name].getPosition() - ( mesh_range[0] / 2 ) 
-        self.logger.debug('\t scan_start_positions: %s' % str(self.scan_start_positions))
-        #self.scan_start_positions[self.mesh_scan_line_motor_name] = \
-        #               self.mesh_center[self.mesh_scan_line_motor_name] - ( self.mesh_range[1] / 2 )
-        #self.scan_start_positions[self.mesh_scan_discrete_motor_name] = \
-        #               self.mesh_center[self.mesh_discrete_line_motor_name] - ( self.mesh_range[0] / 2 ) + ( beam_size[0] / 2)
-                       
-        self.logger.debug('\t scan_start_positions: %s' % str(self.scan_start_positions))
-        self.scan_end_positions[self.mesh_scan_line_motor_name] = \
-                       self.scan_start_positions[self.mesh_scan_line_motor_name] - mesh_range[1] - beam_size[1]
-=======
-        self.logger.debug('\t mesh_xaloc_fast_motor_name: %s' % mesh_xaloc_fast_motor_name )
-        self.logger.debug('\t mesh_xaloc_slow_motor_name: %s' % mesh_xaloc_slow_motor_name )
-        self.logger.debug('\t ( mesh_range[1] / 2 ) %s' % ( mesh_range[1] / 2 ) )
-        #TODO: index 1 is slow or fast??
-        self.scan_start_positions[mesh_xaloc_slow_motor_name] = \
-            mesh_center [1] + ( mesh_range[1] / 2.0 ) + ( beam_size[1] / 2.0 )
+        #TODO: index 0 is fast??
+
         self.scan_start_positions[mesh_xaloc_fast_motor_name] = \
-            mesh_center[0] - ( mesh_range[0] / 2 ) + ( beam_size[1] / 2.0 )
-        self.logger.debug('\t scan_start_positions: %s' % str(self.scan_start_positions))
+            mesh_center [ mesh_xaloc_fast_motor_name ] - ( mesh_range[0] / 2.0 ) - ( beam_size[0] / 2.0 ) 
+        self.scan_start_positions[mesh_xaloc_slow_motor_name] = \
+            mesh_center [ mesh_xaloc_slow_motor_name ] - ( mesh_range[1] / 2.0 ) 
 
-        self.scan_end_positions[mesh_xaloc_slow_motor_name] = \
-                       mesh_center [1] - mesh_range[1] - beam_size[1]
+        # Sardana meshct end motor positions are start of last image, which fist well with the mesh_range pars
         self.scan_end_positions[mesh_xaloc_fast_motor_name] = \
-                       mesh_center [0] - mesh_range[0] - beam_size[0]
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
+            self.scan_start_positions[mesh_xaloc_fast_motor_name] + mesh_range[0] 
+        self.scan_end_positions[mesh_xaloc_slow_motor_name] = \
+            self.scan_start_positions[mesh_xaloc_slow_motor_name] + mesh_range[1] 
+        self.logger.debug('\t scan_start_positions: %s' % str(self.scan_start_positions))
         self.logger.debug('\t scan_end_positions: %s' % str(self.scan_end_positions))
-        if num_lines > 1: mesh_vertical_discrete_step_size = mesh_range[0] / ( num_lines - 1 )
-        self.logger.debug('\t mesh_vertical_discrete_step_size: %s' % str(mesh_vertical_discrete_step_size))
 
-<<<<<<< HEAD
-        self.scan_velocities[self.mesh_scan_line_motor_name] = math.fabs( 
-                                                                  ( self.scan_end_positions[self.mesh_scan_line_motor_name] - 
-                                                                    self.scan_start_positions[self.mesh_scan_line_motor_name] ) 
-                                                                      / collect_time_per_line )
-        self.logger.debug('\t scan_velocities: %s' % str(self.scan_velocities))
+        fast_motor_nr_images = self.mesh_num_lines  
+        slow_motor_nr_images = self.mesh_total_nb_frames / self.mesh_num_lines 
+        self.logger.debug('\t fast_motor_nr_images: %s' % str( fast_motor_nr_images ) )
+        self.logger.debug('\t slow_motor_nr_images: %s' % str( slow_motor_nr_images ) )
 
-        return mesh_vertical_discrete_step_size 
-=======
-        return mesh_fast_discrete_step_size, mesh_slow_discrete_step_size
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
+        return fast_motor_nr_images, slow_motor_nr_images
 
     @task
     def _take_crystal_snapshot(self, filename):
@@ -1575,35 +1270,20 @@ class ALBACollect(AbstractCollect):
         """
            Apparently this method is called when the user aborts data collection
            overrides AbstractCollect.stopCollect
-<<<<<<< HEAD
-           
-           TODO: stop the supervisor from changing state 
-        """
-        self.logger.debug("ALBACollect stopCollect") 
-=======
 
            TODO: stop the supervisor from changing state
         """
         self.logger.debug("ALBACollect stopCollect")
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
         self.aborted_by_user = True
-        self.stop_collect() # What does this do???
+        self.stop_collect() 
 
     def stop_collect(self):
         """
         Stops data collection, either interrupted by user, or due to failure
         overrides AbstractCollect.stop_collect
+        
+        TODO: adapt to Sardana collection through Door
         """
-<<<<<<< HEAD
-        self.logger.debug("ALBACollect stop_collect") 
-        self.logger.info("  Stopping all motors")
-        self.detector_hwobj.stop_collection()
-        self.omega_hwobj.stop()
-        
-        self.logger.info("  Closing fast shutter")
-        self.close_fast_shutter()
-        
-=======
         self.logger.debug("ALBACollect stop_collect")
         self.logger.info("  Stopping all motors")
         self.detector_hwobj.stop_collection()
@@ -1612,7 +1292,6 @@ class ALBACollect(AbstractCollect):
         self.logger.info("  Closing fast shutter")
         self.close_fast_shutter()
 
->>>>>>> Sardana collection for standard, helical, and initial mesh implementation
         for helmovemotorname in self.scan_move_motor_names:
             self.scan_motors_hwobj[helmovemotorname].stop()
 
@@ -1636,12 +1315,28 @@ class ALBACollect(AbstractCollect):
         """
         self.create_directories(
             self.current_dc_parameters['fileinfo']['directory'],
-            self.current_dc_parameters['fileinfo']['process_directory'])
+            self.current_dc_parameters['fileinfo']['process_directory']
+            )
 
         # create processing directories for each post process
         for proc in ['xds', 'mosflm', 'ednaproc', 'autoproc']:
             self._create_proc_files_directory(proc)
 
+    # The following methods are copied to improve error logging, the functionality is the same
+    def create_directories(self, *args):
+        """
+        Descript. :
+        """
+        for directory in args:
+            self.logger.debug('Creating directory: %s' % str(directory) )
+            try:
+                os.makedirs(directory)
+            except OSError as e:
+                import errno
+                if e.errno != errno.EEXIST:
+                    logging.getLogger('user_level_log').error('Error in making the directories, has the permission lockdown been setup properly?' )
+                    raise
+            
     def _create_proc_files_directory(self, proc_name):
 
         i = 1
@@ -1660,11 +1355,11 @@ class ALBACollect(AbstractCollect):
             i += 1
 
         try:
-            self.logger.debug('Creating proc directory: ' % _directory)
+            self.logger.debug('Creating proc directory: %s' % _directory)
             self.create_directories(_directory)
             os.system("chmod -R 777 %s" % _directory)
         except Exception as e:
-            msg = "Could not create directory %s\n%s" % (_directory, str(e))
+            msg = "Could not create directory %s, are the file permissions setup correctly?\n%s" % (_directory, str(e))
             self.logger.exception(msg)
             return
 
@@ -1791,109 +1486,14 @@ class ALBACollect(AbstractCollect):
         if event == "after":
             dc_pars = self.current_dc_parameters
             self.autoprocessing_hwobj.trigger_auto_processing(dc_pars)
-
-    #def _motor_persistently_set_velocity(self, motor_hwobj, new_velo, Timeout = 10):
-        #starttime = time.time()
-        #if new_velo is None:
-            #self.logger.debug('Could not set motor velocity to %s' % 
-                                      #new_velo ) 
-            #return
-        #while time.time()-starttime < Timeout:
-            #try: 
-                ##self.logger.debug('Setting motor velocity to %s, motor state is %s' % 
-                ##                      ( new_velo, motor_hwobj.getState() ) 
-                ##                 )
-                #if motor_hwobj.getState() == 3: # TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    #motor_hwobj.set_velocity(new_velo)
-                    #self.logger.debug('Succesfully set motor velocity to %s, motor state is %s' % 
-                                         #( new_velo, motor_hwobj.getState() ) 
-                                     #)
-                    #break
-            #except:
-                #self.logger.debug('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      #( new_velo, motor_hwobj.getState() ) 
-                                 #)
-                #time.sleep(0.2)                                 
-        #else:
-            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                     #( new_velo, motor_hwobj.getState() ) 
-                             #)
-          
-    #def _motor_persistently_syncmove(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
-        #starttime = time.time()
-        #if new_pos is None:
-            #self.logger.debug('Could not set motor position to %s' % 
-                                      #new_pos ) 
-            #return
-        #while time.time()-starttime < Timeout:
-            #try: 
-                ##self.logger.debug('Setting motor position to %s, motor state is %s' % 
-                ##                      ( new_pos, motor_hwobj.getState() ) 
-                ##                 )
-                #if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    #if mode == 'ABS':
-                        #motor_hwobj.syncMove(new_pos)
-                    #else: 
-                        #motor_hwobj.syncMoveRelative(new_pos)
-                    #self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
-                                          #( new_pos, motor_hwobj.getState() ) 
-                                     #)
-                    #break
-            #except:
-                #self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      #( new_pos, motor_hwobj.getState() ) 
-                                 #)
-                #time.sleep(0.2)
-        #else: 
-            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                     #( new_pos, motor_hwobj.getState() ) 
-                             #)
-
-    #def _motor_persistently_move(self, motor_hwobj, new_pos, mode = 'ABS', Timeout = 10):
-        #starttime = time.time()
-        #if new_pos is None:
-            #self.logger.debug('Could not set motor position to %s' % 
-                                      #new_pos ) 
-            #return
-        #while time.time()-starttime < Timeout:
-            #try: 
-                ##self.logger.debug('Setting motor position to %s, motor state is %s' % 
-                ##                      ( new_pos, motor_hwobj.getState() ) 
-                ##                 )
-                #if motor_hwobj.getState() == 3:# TODO: remove all 3 and 5 and replace by AbstractMotor import MotorStates
-                    #if mode == 'ABS':
-                         #motor_hwobj.move(new_pos)
-                    #else: 
-                         #motor_hwobj.moveRelative(new_pos)
-                    #self.logger.info('Succesfully set motor position to %s, motor state is %s' % 
-                                          #( new_pos, motor_hwobj.getState() ) 
-                                     #)
-                    #break
-            #except:
-                #self.logger.error('Could not set motor velocity to %s, motor state is %s, trying again' % 
-                                      #( new_pos, motor_hwobj.getState() ) 
-                                 #)
-                #time.sleep(0.2)
-        #else: 
-            #self.logger.error('Could not set motor velocity to %s, motor state is %s Giving up' % 
-                                      #( new_pos, motor_hwobj.getState() ) 
-                             #)
-
-# The following methods are copied to improve error logging, the functionality is the same
-    def create_directories(self, *args):
-        """
-        Descript. :
-        """
-        for directory in args:
-            self.logger.debug('Creating directory: ' % directory)
-            try:
-                os.makedirs(directory)
-            except OSError as e:
-                import errno
-                if e.errno != errno.EEXIST:
-                    logging.getLogger('user_level_log').error('Error in making the directories, has the permission lockdown been setup properly?' )
-                    raise
             
+    def update_lims_with_workflow(self, workflow_id, grid_snapshot_filename):
+        """
+         Triggered from parallel processing, but not implemented
+         update_lims_with_workflow( workflow_id, self.params_dict["grid_snapshot_filename"] ) 
+        """
+        pass
+
 def test_hwo(hwo):
     print("Energy: ", hwo.get_energy())
     print("Transmission: ", hwo.get_transmission())
