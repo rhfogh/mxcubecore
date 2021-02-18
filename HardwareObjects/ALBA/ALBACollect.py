@@ -424,7 +424,108 @@ class ALBACollect(AbstractCollect):
                     )
             #self.finalize_mesh_scan()
 
-    def collect_mesh( 
+    # Collect images using direct configuration of the ni660 card
+    def collect_images(self, omega_speed, start_pos, final_pos, nb_images, first_image_no):
+        """
+           Run a single wedge. 
+           Start position is the omega position where images should be collected. 
+           It is assumed omega is already at the initial position, which comes before the start position
+               and allows the mechanics to get up to speed
+        """
+        self.logger.info("collect_images: Collecting images, by moving omega to %s" % final_pos)
+        total_time = (final_pos - self.omega_hwobj.getPosition() ) / omega_speed 
+        omega_ramp_time = math.fabs ( ( self.omega_hwobj.getPosition() - start_pos ) / omega_speed )
+        self.logger.info("    Total collection time = %s" % total_time)
+        if omega_speed != 0:
+            try: 
+                #self._motor_persistently_move(self.omega_hwobj, final_pos)
+                self.omega_hwobj.move( final_pos )
+            except Exception as e:
+                self.data_collection_failed('Initial omega position could not be reached')
+                raise Exception(e)
+        else:
+            try:
+                self.open_fast_shutter_for_interal_trigger()
+            except Exception as e:
+                self.data_collection_failed('Cant open safety shutter for omega speed %.6f' % omega_speed)
+                raise Exception(e)
+
+        time.sleep(omega_ramp_time)
+        for scanmovemotorname in self.scan_move_motor_names:
+            try: 
+                # It might be faster (but more dangerous)  
+                self.scan_motors_hwobj[scanmovemotorname].position_channel.setValue( self.scan_end_positions[scanmovemotorname] )
+                # the safer option:
+                #self.scan_motors_hwobj[scanmovemotorname].move( self.scan_end_positions[scanmovemotorname] )
+                
+                #self.logger.info('Moving motor %s from %.4f to final position %.4f at %.6f velocity' % 
+                #                  (scanmovemotorname, self.scan_start_positions[scanmovemotorname],
+                #                     self.scan_end_positions[scanmovemotorname], 
+                #                       self.scan_velocities[scanmovemotorname] ) )
+            except Exception as e:
+                self.logger.error('Cannot move the helical motor %s to its end position' % scanmovemotorname)
+                self.data_collection_failed('Cannot move the helical motor %s to its end position' % scanmovemotorname)
+                raise Exception(e)
+        self.wait_collection_done(nb_images, first_image_no, total_time)
+
+    def collect_mesh():
+        """
+        """
+        
+
+    def prepare_collection(self, start_angle, nb_images, first_image_no, img_range, exp_time, omega_speed, det_trigger):
+        """
+          sets up data collection. 
+          the start_angle is the position of omega when the first image starts to be collected
+        """
+
+        total_dist = nb_images * img_range
+        
+        self.write_image_headers(start_angle)
+        
+        self.logger.info("nb_images: %s / img_range: %s / exp_time: %s /"
+                                      " total_distance: %s / speed: %s" %
+                                      (nb_images, img_range, exp_time, total_dist,
+                                       omega_speed))
+
+        self.detector_hwobj.prepare_collection(nb_images, first_image_no)
+
+        # TODO: Increase timeout: 
+        self.omega_hwobj.wait_end_of_move(timeout=40)
+
+        self.logger.info(
+            "Omega now at %s" %
+            self.omega_hwobj.getPosition())
+
+        # program omega speed depending on exposure time
+
+        self.logger.info("Setting omega velocity to %s and is moving %s" % (omega_speed, self.omega_hwobj.is_moving() ) )
+        self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
+        #while self.omega_hwobj.getState() == 3:
+        #            time.sleep(0.1)
+        self.logger.debug('  Omega motor state = %s' % self.omega_hwobj.getState() )
+        try: 
+            #self._motor_persistently_set_velocity(self.omega_hwobj, omega_speed)
+            self.omega_hwobj.set_velocity( omega_speed )
+        except Exception as e: 
+            self.data_collection_failed("Cannot set the omega velocity to %s" % omega_speed) 
+            raise Exception( e )
+        
+        for scanmovemotorname in self.scan_move_motor_names:
+            self.logger.info("Setting %s velocity to %.4f" % (scanmovemotorname, self.scan_velocities[scanmovemotorname]) )
+            try:
+                #self._motor_persistently_set_velocity(self.scan_motors_hwobj[scanmovemotorname], self.scan_velocities[scanmovemotorname])
+                self.scan_motors_hwobj[scanmovemotorname].set_velocity( self.scan_velocities[scanmovemotorname] )
+            except Exception as e:
+                self.logger.info("Cant set the scan velocity of motor %s" % scanmovemotorname )
+                self.data_collection_failed("Cant set the scan velocity of motor %s" % scanmovemotorname) 
+                raise Exception( e )
+                
+        self.detector_hwobj.set_detector_mode(det_trigger)
+        if omega_speed != 0:
+            self.configure_ni(start_angle, total_dist)
+
+    def run_meshct( 
                       self, 
                       mesh_xaloc_fast_motor_name, 
                       fast_motor_nr_images, 
@@ -481,7 +582,7 @@ class ALBACollect(AbstractCollect):
         self.collection_finished()
             
 
-    def collect_images(self, moveable, start_pos, final_pos, deg_interval, time_interval, deadtime, first_image_no, nb_images):
+    def run_ascanct(self, moveable, start_pos, final_pos, deg_interval, time_interval, deadtime, first_image_no, nb_images):
         #
         # Run
         #
@@ -503,6 +604,62 @@ class ALBACollect(AbstractCollect):
         self.wait_collection_done(nb_images, first_image_no, total_time + 5)
         self.data_collection_end()
         self.collection_finished()
+
+
+    def calc_omega_scan_values( self, omega_start_pos, nb_images ):
+        """
+           Calculates the values at which the omega should start and end so that 
+           during collection it has a constant speed
+        """
+        osc_seq = self.current_dc_parameters['oscillation_sequence'][0]
+
+        img_range = osc_seq['range']
+        exp_time = osc_seq['exposure_time']
+
+        total_dist = float ( nb_images * img_range )
+        total_time = float ( nb_images * exp_time )
+        omega_acceltime = self.omega_hwobj.get_acceleration()
+        omega_speed = float( total_dist / total_time )
+
+        # TODO: for mesh scans, this range is way to big
+        safe_delta = 1
+        if self.current_dc_parameters['experiment_type'] == 'Mesh':
+            safe_delta = 0.5
+        else:
+            safe_delta = 9.0 * omega_speed * omega_acceltime
+
+        init_pos = omega_start_pos - safe_delta
+        final_pos = omega_start_pos + total_dist + safe_delta #TODO adjust the margins to the minimum necessary
+
+        return ( init_pos, final_pos, total_dist, omega_speed )
+
+    def collect_prepare_omega(self, omega_pos):
+        '''
+            Prepares omega for sweep. Calculates the margins at start and end position
+            Moves omega to the initial position
+        '''
+
+        try:
+            #self._motor_persistently_set_velocity(self.omega_hwobj, 60) # make sure omega is max speed before moving to start pos
+            self.omega_hwobj.set_velocity( 60 )
+        except Exception as e :
+            self.logger.error("Error setting omega velocity, state is %s" % str(self.omega_hwobj.getState()))
+            self.logger.info("Omega velocity set to its nominal value")
+            self.data_collection_failed('Omega position could not be set')
+            raise Exception( e )
+
+        self.logger.info("Moving omega to initial position %s" % omega_pos)
+        try:
+            if math.fabs(self.omega_hwobj.getPosition() - omega_pos) > 0.0001:
+                #self._motor_persistently_syncmove(self.omega_hwobj, omega_pos)
+                self.omega_hwobj.syncMove( omega_pos )
+        except Exception as e :
+            self.logger.info("Omega state is %s" % str(self.omega_hwobj.getState()))
+            self.data_collection_failed('Omega position could not be set')
+            raise Exception( e )
+
+        return 
+ 
 
     def wait_start_helical_motors( self):
         timestep = 1 # secs
