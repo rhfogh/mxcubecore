@@ -504,7 +504,7 @@ class ALBACollect(AbstractCollect):
                     ):
         """
         """
-        mov_fast_step = mesh_range[self.mesh_fast_index] / float( mesh_num_frames_per_line - 1 )
+        mov_fast_step = mesh_range[self.mesh_fast_index] / float( mesh_num_frames_per_line )
         mov_slow_step = mesh_range[self.mesh_slow_index] / float( mesh_num_lines - 1 )
         local_fast_start_pos = self.scan_start_positions[ mesh_mxcube_fast_motor_name ]
         local_fast_end_pos   = self.scan_end_positions[ mesh_mxcube_fast_motor_name ] 
