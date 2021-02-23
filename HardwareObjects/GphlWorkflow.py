@@ -1101,7 +1101,13 @@ class GphlWorkflow(HardwareObject, object):
                     translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                     goniostatTranslations.append(translation)
                     gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-                    # self.collect_centring_snapshots("%s_%s_%s" % okp)
+                    if recentring_mode == "start":
+                        # We want snapshots in this mode,
+                        # and the first sweepmis skipped in the loop below
+                        okp = tuple(
+                            int(settings.get(x, 0)) for x in self.rotation_axis_roles
+                        )
+                        self.collect_centring_snapshots("%s_%s_%s" % okp)
 
         elif not self.getProperty("recentre_before_start"):
             # Characterisation, and current position was pre-centred
