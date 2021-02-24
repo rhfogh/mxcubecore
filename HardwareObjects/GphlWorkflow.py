@@ -997,6 +997,7 @@ class GphlWorkflow(HardwareObject, object):
         #     )
         #     # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
         #     api.resolution.move(new_resolution, timeout=60)
+        parameters.pop("resolution")
 
         snapshot_count = parameters.pop("snapshot_count", None)
         if snapshot_count is not None:
