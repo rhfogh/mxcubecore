@@ -706,6 +706,7 @@ class GphlWorkflow(HardwareObject, object):
                 "lowerBound": reslimits[0],
                 "upperBound": reslimits[1],
                 "decimals": 3,
+                "readOnly": True,
                 # "update_function": update_function,
             }
         )
@@ -970,18 +971,32 @@ class GphlWorkflow(HardwareObject, object):
             GphlMessages.PhasingWavelength(wavelength=h_over_e / val, role=tag)
             for tag, val in beam_energies.items()
         )
-        new_energy = list(beam_energies.items())[0][1]
-        if new_energy != initial_energy:
-            # NB, this should not happen
-            # set to wavelength of first energy
-            # necessary so that resolution setting below gives right detector distance
-            logging.getLogger("GUI").info(
-                "GphlWorkflow: resetting energy from %7.3f to %7.3f keV"
-                % (initial_energy, new_energy)
-            )
+        # new_energy = list(beam_energies.items())[0][1]
+        # if new_energy != initial_energy:
+        #     # NB, this should not happen
+        #     # set to wavelength of first energy
+        #     # necessary so that resolution setting below gives right detector distance
+        #     logging.getLogger("GUI").info(
+        #         "GphlWorkflow: resetting energy from %7.3f to %7.3f keV"
+        #         % (initial_energy, new_energy)
+        #     )
+        #
+        #     api.energy.move_wavelength(wavelengths[0].wavelength)
+        # # TODO ensure that move is finished before resolution is set
 
-            api.energy.move_wavelength(wavelengths[0].wavelength)
-        # TODO ensure that move is finished before resolution is set
+        # transmission = parameters["transmission"]
+        # logging.getLogger("GUI").info(
+        #     "GphlWorkflow: setting transmission to %7.3f %%" % (100.0 * transmission)
+        # )
+        # api.transmission.set_value(100 * transmission)
+        # new_resolution = parameters.pop("resolution")
+        # if new_resolution != initial_resolution:
+        #     logging.getLogger("GUI").info(
+        #         "GphlWorkflow: setting detector distance for resolution %7.3f A"
+        #         % new_resolution
+        #     )
+        #     # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
+        #     api.resolution.move(new_resolution, timeout=60)
 
         snapshot_count = parameters.pop("snapshot_count", None)
         if snapshot_count is not None:
@@ -1176,20 +1191,6 @@ class GphlWorkflow(HardwareObject, object):
                 )
                 goniostatTranslations.append(translation)
 
-        # GB, RF
-        transmission = parameters["transmission"]
-        logging.getLogger("GUI").info(
-            "GphlWorkflow: setting transmission to %7.3f %%" % (100.0 * transmission)
-        )
-        api.transmission.set_value(100 * transmission)
-        new_resolution = parameters.pop("resolution")
-        if new_resolution != initial_resolution:
-            logging.getLogger("GUI").info(
-                "GphlWorkflow: setting detector distance for resolution %7.3f A"
-                % new_resolution
-            )
-            # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
-            api.resolution.move(new_resolution, timeout=60)
         orgxy = api.detector.get_beam_centre_pix()
         resolution = api.resolution.get_value()
         distance = api.detector_distance.get_position()
@@ -1201,9 +1202,6 @@ class GphlWorkflow(HardwareObject, object):
         detectorSetting = GphlMessages.BcsDetectorSetting(
             resolution, id_=id_, orgxy=orgxy, Distance=distance
         )
-        # Do this at the end, for maxiumum time to settle
-        api.transmission.wait_ready(20)
-        parameters["transmission"] = 0.01 * api.transmission.get_value()
 
         # Return SampleCentred message
         sampleCentred = GphlMessages.SampleCentred(
@@ -1341,7 +1339,6 @@ class GphlWorkflow(HardwareObject, object):
         queue_manager = self._queue_entry.get_queue_controller()
 
         gphl_workflow_model = self._queue_entry.get_data_model()
-        wf_parameters = gphl_workflow_model.get_workflow_parameters()
         master_path_template = gphl_workflow_model.path_template
         relative_image_dir = collection_proposal.relativeImageDir
 
@@ -1349,6 +1346,7 @@ class GphlWorkflow(HardwareObject, object):
         # There will be exactly one for the kinds of collection we are doing
         crystal = sample.crystals[0]
         snapshot_count = gphl_workflow_model.get_snapshot_count()
+        # wf_parameters = gphl_workflow_model.get_workflow_parameters()
         # if (
         #     gphl_workflow_model.lattice_selected
         #     or wf_parameters.get("strategy_type") == "diffractcal"
