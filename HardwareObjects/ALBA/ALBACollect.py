@@ -1332,7 +1332,7 @@ class ALBACollect(AbstractCollect):
             i += 1
 
         try:
-            self.logger.debug('Creating proc directory: ' % _directory)
+            self.logger.debug('Creating proc directory: %s' % _directory)
             self.create_directories(_directory)
             os.system("chmod -R 777 %s" % _directory)
         except Exception as e:
@@ -1557,7 +1557,7 @@ class ALBACollect(AbstractCollect):
         Descript. :
         """
         for directory in args:
-            self.logger.debug('Creating directory: ' % directory)
+            self.logger.debug('Creating directory: %s' % directory)
             try:
                 os.makedirs(directory)
             except OSError as e:
