@@ -87,6 +87,7 @@ class ALBADigitalZoom(Device):
         self.chan_state.connectSignal("update", self.stateChanged)
 
         self.current_position = self.getPosition()
+        self.logger.debug('***** get Position: %s',self.getPosition())
         self.current_state = self.getState()
 
     def getPredefinedPositionsList(self):
@@ -239,5 +240,5 @@ class ALBADigitalZoom(Device):
         _zoom_lut[7] = 1.0000
 
         x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
-        self.logger.debug("Getting calibration from zoom hwobj: {}".format(x))
+        #self.logger.debug("Getting calibration from zoom hwobj: {}".format(x))
         return x, x

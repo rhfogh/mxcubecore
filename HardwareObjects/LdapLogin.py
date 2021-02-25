@@ -112,7 +112,7 @@ class LdapLogin(Procedure):
             if retry:
                 logging.getLogger('HWR').debug('Starting retry: cleanup and retry login')
                 self.cleanup(ex=err)
-                return self.login(username,password,retry=False)
+                return self.login(username,password,retry=False,fields=fields)
             else:
                 return self.cleanup(ex=err)
 
@@ -120,6 +120,7 @@ class LdapLogin(Procedure):
             return self.cleanup(msg="unknown proposal %s" % username)
 
         if fields is not None:
+            logging.getLogger("HWR").debug("info obtained from LDAP: %s" % found)
             self.field_values = found[0][1]  
 
         if password=="":

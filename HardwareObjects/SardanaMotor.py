@@ -248,12 +248,12 @@ class SardanaMotor(AbstractMotor):
         Descript. : move to the given position
         """
         current_pos = self.position_channel.getValue()
-        logging.getLogger("HWR").debug("On move, cached motor_position = %s" % self.motor_position)
-        current_pos = self.getPosition()
-        logging.getLogger("HWR").debug("On move, updated motor position = %s" % current_pos)
+        #logging.getLogger("HWR").debug("On move, cached motor_position = %s" % self.motor_position)
+        #current_pos = self.getPosition()
+        #logging.getLogger("HWR").debug("On move, updated motor position = %s" % current_pos)
 
         if not current_pos:
-            logging.getLogger("HWR").debug("current position was None")
+            #logging.getLogger("HWR").debug("current position was None")
             current_pos = self.motor_position
 
         if abs(absolute_position-current_pos) > self.move_threshold_default:
