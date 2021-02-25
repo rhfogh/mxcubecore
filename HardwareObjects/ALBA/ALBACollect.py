@@ -519,6 +519,9 @@ class ALBACollect(AbstractCollect):
         self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].syncMove( local_slow_start_pos )
         self.scan_motors_hwobj[ self.mesh_mxcube_fast_motor_name  ].syncMove( local_fast_start_pos )
 
+        #TODO fix the naming of the files
+        self.prepare_sardana_env( measurement_group )
+
         for lineno in range( mesh_num_lines ):
             if self.aborted_by_user: 
                 self.logger.info("User interruption of data collection during mesh scan detected, aborting mesh scan" )
@@ -526,8 +529,6 @@ class ALBACollect(AbstractCollect):
             else:
                 self.logger.debug("\t line %s out of %s" % ( lineno, mesh_num_lines ) )
                 #TODO move omegax/phiy to starting position of collection (OR is this done in the MxCube sequence somewhere???
-                #TODO fix the naming of the files
-                self.prepare_sardana_env( measurement_group )
                 # Sardana will move the motor back to the inital position after the scan. Two consecuences:
                 #    the fast motor will always go back the same position after each scan, so better move it to the start position of the scan to prevent excessive movements
                 #    sscans are not possible
@@ -555,8 +556,6 @@ class ALBACollect(AbstractCollect):
                         mesh_num_frames_per_line
                     )
                 local_first_image_no += mesh_num_frames_per_line
-                #TODO move omegaz/phiz by the mesh_vertical_discrete_step_size
-                #self._motor_persistently_move( self.scan_motors_hwobj[self.mesh_scan_discrete_motor_name], mesh_vertical_discrete_step_size, 'REL' )
                 self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].moveRelative(
                                              mov_slow_step 
                                         )
@@ -564,9 +563,9 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('  scan_start_positions before swap= %s' % self.scan_start_positions )
                 #self.logger.debug('  scan_end_positions before swap= %s' % self.scan_end_positions )
                 ## Invert fast start and end positions so the motor will move the other way for the next sweep
-                #dummy = local_fast_end_pos
-                #local_fast_end_pos = local_fast_start_pos
-                #local_fast_start_pos = dummy
+                dummy = local_fast_end_pos
+                local_fast_end_pos = local_fast_start_pos
+                local_fast_start_pos = dummy
                 
                 #self.logger.debug('  scan_start_positions after swap= %s' % self.scan_start_positions )
                 #self.logger.debug('  scan_end_positions after swap= %s' % self.scan_end_positions )
