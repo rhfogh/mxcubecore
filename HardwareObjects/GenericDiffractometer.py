@@ -614,7 +614,7 @@ class GenericDiffractometer(HardwareObject):
             self.beam_position[1] - self.zoom_centre["y"]
         ) / self.pixels_per_mm_x
 
-        return self.current_motor_positions
+        return self.current_motor_positions.copy()
     #
     def get_motor_positions(self):
         return self.get_positions()
