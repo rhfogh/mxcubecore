@@ -208,22 +208,26 @@ class QueueManager(HardwareObject, QueueEntryContainer):
                 self.emit("statusMessage", ("status", "", "ready"))
         except queue_entry.QueueSkippEntryException:
             # Queue entry, failed, skipp.
-            self.emit("queue_entry_execute_finished", (entry, "Skipped"))
-        except queue_entry.QueueExecutionException as ex:
-            self.emit("queue_entry_execute_finished", (entry, "Failed"))
-            self.emit("statusMessage", ("status", "Queue execution failed", "error"))
-        except (queue_entry.QueueAbortedException, Exception) as ex:
+            self.emit('queue_entry_execute_finished', (entry, "Skipped"))
+        #except (queue_entry.QueueExecutionException, Exception) as ex:
+        #    self.emit('queue_entry_execute_finished', (entry, "Failed"))
+        except (queue_entry.QueueAbortedException) as ex:
             # Queue entry was aborted in a controlled, way.
-            # or in the exception case:
+            self.emit('queue_entry_execute_finished', (entry, "Aborted"))
+            entry.post_execute()
+            entry.handle_exception(ex)
+            raise ex
+        except Exception as ex:
             # Definetly not good state, but call post_execute
             # in anyways, there might be code that cleans up things
             # done in _pre_execute or before the exception in _execute.
-            if not self._is_stopped:
-                self.emit('queue_entry_execute_finished', (entry, "Aborted"))
-                entry.post_execute()
-                entry.handle_exception(ex)
-                logging.getLogger('HWR').exception("Exception while running queue:")
-                raise ex
+            #
+            # Must be done here to get the real error trace
+            logging.getLogger("debug").exception("Error during queue execution")
+            self.emit('queue_entry_execute_finished', (entry, "Failed"))
+            entry.post_execute()
+            entry.handle_exception(ex)
+            raise ex
         else:
             entry.post_execute()
         finally:
