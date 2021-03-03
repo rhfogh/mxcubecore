@@ -15,10 +15,14 @@
     <!-- names refer to stategies in  strategylib.nml -->
     <characterisation_strategies>
         Characterisation_6_5
+        Char_6_5_multitrigger
 <!--        TEST_Characterisation_12_3-->
 <!--        TEST_Characterisation_12_4-->
 <!--        TEST_Characterisation_12_5-->
     </characterisation_strategies>
+
+    <!-- Use multitrigger collection where indicated -->
+    <use_multitrigger>True</use_multitrigger>
 
     <!-- Control of UI default value setting -->
 
