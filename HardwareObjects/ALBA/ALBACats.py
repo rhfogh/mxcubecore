@@ -193,7 +193,14 @@ class ALBACats(Cats90):
             self.logger.debug("Supervisor waiting to finish phase change")
             time.sleep(0.2)
 
-        time.sleep(0.1)
+        # time.sleep(0.1)
+        # wait for phase to change or ab:ort
+        t0 = time.time()
+        timeout = 5
+        while self.read_super_phase().upper() != final_phase or timeout > time.time() - t0:
+            logging.getLogger("user_level_log").warning(
+                "Phase changed done. Waiting phase change....")
+            time.sleep(0.2)
 
         if self.read_super_phase().upper() != final_phase:
             self.logger.error("Supervisor is not yet in %s phase. Aborting load" %
