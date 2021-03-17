@@ -952,7 +952,8 @@ class ALBACollect(AbstractCollect):
         nb_images = osc_seq['number_of_images']
         # start_angle = osc_seq['start']
 
-        img_range = osc_seq['range']
+        try: img_range = osc_seq['range']
+        except: img_range = 0
 
         if exp_type == "Characterization":
             angle_spacing = 90
