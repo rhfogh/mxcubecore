@@ -572,9 +572,10 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('  scan_start_positions before swap= %s' % self.scan_start_positions )
                 #self.logger.debug('  scan_end_positions before swap= %s' % self.scan_end_positions )
                 ## Invert fast start and end positions so the motor will move the other way for the next sweep
-                dummy = local_fast_end_pos
-                local_fast_end_pos = local_fast_start_pos
-                local_fast_start_pos = dummy
+                if sshape: 
+                    dummy = local_fast_start_pos
+                    local_fast_start_pos = local_fast_end_pos
+                    local_fast_end_pos = dummy
                 
                 #self.logger.debug('  scan_start_positions after swap= %s' % self.scan_start_positions )
                 #self.logger.debug('  scan_end_positions after swap= %s' % self.scan_end_positions )
