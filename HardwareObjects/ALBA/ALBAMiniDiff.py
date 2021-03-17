@@ -415,12 +415,14 @@ class ALBAMiniDiff(GenericDiffractometer):
         return self.super_hwobj.get_current_phase().upper() == "SAMPLE"
 
     def get_grid_direction(self):
-        #grid_direction = {}
         
-        #self.logger.info('diffr_hwobj grid_direction %s' % self.grid_direction)
-        #self.grid_direction['omega_ref'] = 1
-        #self.grid_direction['fast'] = [ 1, 0 ] # Qt4_GraphicsLib.py line 1184/85 MD2
-        #self.grid_direction['slow'] = [ 0, 1 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        grid_direction = self.getProperty("gridDirection")
+
+        grid_direction = {}
+        self.grid_direction['omega_ref'] = 1
+        self.grid_direction['fast'] = [ 1, 0 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        self.grid_direction['slow'] = [ 0, -1 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        self.logger.info('diffr_hwobj grid_direction %s' % self.grid_direction)
         
         return self.grid_direction
         
