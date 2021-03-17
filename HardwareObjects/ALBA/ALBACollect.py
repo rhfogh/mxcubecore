@@ -1497,8 +1497,8 @@ class ALBACollect(AbstractCollect):
         self.logger.debug('\t scan_start_positions: %s' % str(self.scan_start_positions))
         self.logger.debug('\t scan_end_positions: %s' % str(self.scan_end_positions))
 
-        fast_motor_nr_images = self.mesh_num_lines  
-        slow_motor_nr_images = self.mesh_total_nb_frames / self.mesh_num_lines 
+        slow_motor_nr_images = self.mesh_num_lines  
+        fast_motor_nr_images = self.mesh_total_nb_frames / self.mesh_num_lines 
         self.logger.debug('\t fast_motor_nr_images: %s' % str( fast_motor_nr_images ) )
         self.logger.debug('\t slow_motor_nr_images: %s' % str( slow_motor_nr_images ) )
 
