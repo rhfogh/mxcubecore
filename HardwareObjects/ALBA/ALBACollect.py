@@ -1054,7 +1054,7 @@ class ALBACollect(AbstractCollect):
                 self.detector_hwobj.get_saving_statistics()
                 msg = "cam_state = {}, acq_status = {}, fault_error = {}".format(
                     cam_state, acq_status, fault_error)
-                logging.getLogger('user_level_log').error("Incompleted data collection")
+                logging.getLogger('user_level_log').error("Incomplete data collection")
                 logging.getLogger('user_level_log').error(msg)
                 raise RuntimeError(msg)
                 #return False
