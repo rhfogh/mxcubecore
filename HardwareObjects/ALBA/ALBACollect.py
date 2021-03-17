@@ -580,8 +580,12 @@ class ALBACollect(AbstractCollect):
                 #self.logger.debug('  scan_start_positions after swap= %s' % self.scan_start_positions )
                 #self.logger.debug('  scan_end_positions after swap= %s' % self.scan_end_positions )
 
-        # since the scan image numbers start at 0, 1 should be abstracted
-        self.wait_collection_done(first_image_no, first_image_no - 1 + ( mesh_num_frames_per_line * mesh_num_lines ) - 1, total_time + 5)
+        if self.diffractometer_hwobj.getProperty("omegaReference"):
+                self.logger.debug("\t Propertry %s" % str( self.diffractometer_hwobj.getProperty("omegaReference") ) )
+                omegaz_reference = eval( self.diffractometer_hwobj.getProperty("omegaReference") )
+                self.logger.debug("\t Moving motor %s to %.4f" % ( self.mesh_mxcube_slow_motor_name, omegaz_reference['position'] ) )
+                self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].syncMove( omegaz_reference['position']  )
+        self.wait_collection_done(first_image_no, first_image_no + ( mesh_num_frames_per_line * mesh_num_lines ) - 1, total_time + 5)
         self.data_collection_end()
         self.collection_finished()
 
