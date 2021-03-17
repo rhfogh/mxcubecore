@@ -646,20 +646,16 @@ class ALBACollect(AbstractCollect):
         # TODO: the time.sleeps are necessary to wait for the door to recover. Make a while loop to check for doors ON. see ./HardwareRepository/Command/Sardana.py
         # save the images to the write place
         self.logger.info("setting ActiveMntGrp")
-        self.senv('ActiveMntGrp', measurement_group)
-        time.sleep(0.1)
+        self.senv('ActiveMntGrp', measurement_group, wait = True )
         self.logger.info("setting set_pilatus_saving_pattern")
-        self.set_pilatus_saving_pattern( measurement_group, savingpattern)
+        self.set_pilatus_saving_pattern( measurement_group, savingpattern , wait = True )
         self.logger.info("senv.door_state = %s" % self.set_pilatus_saving_pattern.door_state )
-        time.sleep(0.1)
 
         # save the collection details
         self.logger.info("setting ScanDir")
-        self.senv( 'ScanDir', basedir )
-        time.sleep(0.1)
+        self.senv( 'ScanDir', basedir, wait = True )
         self.logger.info("setting ScanFile")
-        self.senv( 'ScanFile ' + str( template.split('_%')[0] + '.dat') ) 
-        time.sleep(0.1)
+        self.senv( 'ScanFile ' + str( template.split('_%')[0] + '.dat'), wait = True ) 
 
     #def run_meshct( 
                       #self, 
