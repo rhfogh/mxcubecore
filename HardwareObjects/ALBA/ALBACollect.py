@@ -503,11 +503,15 @@ class ALBACollect(AbstractCollect):
                        time_interval
                     ):
         """
+           mesh scan using Sardana ascanct. It is assumed that the fast motor and slow motor move in a positive direction
+           The mesh scan does an S shape when sshape is true.
         """
+        
+        # Calculate motor steps
         mov_fast_step = mesh_range[self.mesh_fast_index] / float( mesh_num_frames_per_line )
-        mov_slow_step = mesh_range[self.mesh_slow_index] / float( mesh_num_lines - 1 )
-        local_fast_start_pos = self.scan_start_positions[ mesh_mxcube_fast_motor_name ]
-        local_fast_end_pos   = self.scan_end_positions[ mesh_mxcube_fast_motor_name ] 
+        mov_slow_step = 0
+        if mesh_num_lines > 1: mov_slow_step = mesh_range[self.mesh_slow_index] / float( mesh_num_lines - 1 )
+
         local_slow_start_pos = self.scan_start_positions[ mesh_mxcube_slow_motor_name ]
         local_first_image_no = first_image_no
         mesh_xaloc_fast_motor_name = self.xaloc_motor_names_dict[ mesh_mxcube_fast_motor_name ]
@@ -515,23 +519,28 @@ class ALBACollect(AbstractCollect):
         # final_pos is end of omega range (not including safedelta)
         detdeadtime = self.detector_hwobj.get_latency_time()
         total_time = mesh_num_frames_per_line * mesh_num_lines * time_interval
+        
+        #TODO: fix image headers
+        #self.write_image_headers( self.omega_hwobj.getPosition() )
 
+        local_fast_start_pos = self.scan_start_positions[ mesh_mxcube_fast_motor_name ]
+        local_fast_end_pos = self.scan_end_positions[ mesh_mxcube_fast_motor_name ]
         self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].syncMove( local_slow_start_pos )
-        self.scan_motors_hwobj[ self.mesh_mxcube_fast_motor_name  ].syncMove( local_fast_start_pos )
 
-        #TODO fix the naming of the files
+        #TODO fix the numbering of the files
         self.prepare_sardana_env( measurement_group )
+        sshape = True
 
         for lineno in range( mesh_num_lines ):
             if self.aborted_by_user: 
                 self.logger.info("User interruption of data collection during mesh scan detected, aborting mesh scan" )
                 break # cleanup will be handled in stop_collect
             else:
-                self.logger.debug("\t line %s out of %s" % ( lineno, mesh_num_lines ) )
+                self.logger.debug("\t line %s out of %s" % ( lineno + 1, mesh_num_lines ) )
+
                 #TODO move omegax/phiy to starting position of collection (OR is this done in the MxCube sequence somewhere???
                 # Sardana will move the motor back to the inital position after the scan. Two consecuences:
                 #    the fast motor will always go back the same position after each scan, so better move it to the start position of the scan to prevent excessive movements
-                #    sscans are not possible
  
 
                 self.logger.debug("mesh_xaloc_fast_motor_name = %s\nlocal_fast_start_pos = %.4f\nlocal_fast_end_pos = %.4f\nmov_fast_step = %.4f\ntime_interval - detdeadtime = %.4f\ndetdeadtime = %.4f\nfirst_image_no = %d\nmesh_num_frames_per_line = %d" % (
