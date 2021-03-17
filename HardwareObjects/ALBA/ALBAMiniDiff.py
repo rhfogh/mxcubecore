@@ -296,14 +296,16 @@ class ALBAMiniDiff(GenericDiffractometer):
         """
         self.update_pixels_per_mm()
 
-    # TODO: Must be implemented.
     def get_centred_point_from_coord(self, x, y, return_by_names=None):
         """
         Returns a dictionary with motors name and positions centred.
         It is expected in start_move_to_beam and move_to_beam methods in
-        GenericDiffractometer HwObj.
+        GenericDiffractometer HwObj, 
+        Also needed for the calculation of the motor positions after definition of the mesh grid 
+            (Qt4_GraphicsManager, update_grid_motor_positions)
 
-        point x,y is the lower left corner on the camera, this functions returns the motor positions for that point
+        point x,y is relative to the lower left corner on the camera, this functions returns the motor positions for that point,
+        where the motors that are changed are phiy and phiz. 
         
         @return: dict
         """
@@ -312,24 +314,109 @@ class ALBAMiniDiff(GenericDiffractometer):
         self.logger.info('get_centred_point_from_coord beam_position[0] %s and beam_position[1] %s' % 
                                           ( self.beam_position[0], self.beam_position[1] ) 
                                       )
+
+        self.update_zoom_calibration()
         loc_centred_point = {}
         loc_centred_point['phi'] = self.phi_motor_hwobj.getPosition()
         loc_centred_point['kappa'] = self.kappa_motor_hwobj.getPosition()
         loc_centred_point['kappa_phi'] = self.kappa_phi_motor_hwobj.getPosition()
+        loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() + ( float( y - self.beam_position[1] ) / self.pixels_per_mm_y )
+        loc_centred_point['phiy'] = self.phiy_motor_hwobj.getPosition() - ( float( x - self.beam_position[0] ) / self.pixels_per_mm_x )
         loc_centred_point['sampx'] = self.sample_x_motor_hwobj.getPosition()
         loc_centred_point['sampy'] = self.sample_y_motor_hwobj.getPosition()
-        loc_centred_point['phiy'] = self.phiy_motor_hwobj.getPosition() - ( float( x - self.beam_position[0] ) / self.pixels_per_mm_x )
-        loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() + ( float( y - self.beam_position[1] ) / self.pixels_per_mm_y )
 
-        self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
-        
 #        if return_by_names:
 #            loc_centred_point = self.convert_from_obj_to_name(loc_centred_point)
 
         self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
-        #self.logger.info('loc_centred_point[phiy] %s ' % ( loc_centred_point['phiy'] ) )
         
         return loc_centred_point
+
+    def get_samp_centred_point_from_coord(self, x, y, return_by_names=None):
+        # START: An alternative would be to return the point position expressed as a change in sampx, sampy motors, leaving phiz untouched
+        # An initial implementation is given below. However, currently this would break the mesh scan, it is
+        #    left here for future reference. Note that this implementation is absolutely necessary to do it this way to center on a point in 2D!!
+        #loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() 
+
+        self.logger.info('get_centred_point_from_coord x %s and y %s and return_by_names %s' % ( x, y, return_by_names ) )
+        self.logger.info('get_centred_point_from_coord pixels_per_mm_x %s and pixels_per_mm_y %s' % ( self.pixels_per_mm_x, self.pixels_per_mm_y ) )
+        self.logger.info('get_centred_point_from_coord beam_position[0] %s and beam_position[1] %s' % 
+                                          ( self.beam_position[0], self.beam_position[1] ) 
+                                      )
+
+        # Reuse code
+        self.get_centred_point_from_coord( x, y, return_by_names )
+        # Overwrite phiz, which should remain in the actual position, hopefully the center of rotation
+        loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() 
+
+        # Calculate the positions of sampx and sampy that correspond to the camera x,y coordinates
+        vertdist = float( y - self.beam_position[1] ) / self.pixels_per_mm_y 
+        sampxpos = self.sample_x_motor_hwobj.getPosition()
+        sampypos = self.sample_y_motor_hwobj.getPosition()
+        phi_angle = math.radians(self.centring_phi.direction * \
+                    self.centring_phi.getPosition())
+
+        dx = math.cos(phi_angle) * vertdist
+        dy = math.sin(phi_angle) * vertdist
+
+        loc_centred_point['sampx'] = sampxpos + dx
+        loc_centred_point['sampy'] = sampypos + dy
+
+#        if return_by_names:
+#            loc_centred_point = self.convert_from_obj_to_name(loc_centred_point)
+
+        self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
+
+        # END of alternative sampx, sampy method
+        return loc_centred_point
+
+    #def start_move_to_beam(self, coord_x=None, coord_y=None, omega=None, wait_result=None):
+        #"""
+           #Reimplemented from GenericDiffractometer to adjust sampx and sampy instead of phiz
+           # Not sure when this is called, so not implemented for now.
+         #"""
+        #try:
+            #self.emit_progress_message("Move to beam...")
+            #self.centring_time = time.time()
+            #curr_time = time.strftime("%Y-%m-%d %H:%M:%S")
+            #self.centring_status = {"valid": True,
+                                    #"startTime": curr_time,
+                                    #"endTime": curr_time}
+            #if (coord_x is None and
+                #coord_y is None):
+                #coord_x = self.beam_position[0]
+                #coord_y = self.beam_position[1]
+
+            #motors = self.get_samp_centred_point_from_coord(\
+                  #coord_x, coord_y, return_by_names=True)
+            #if omega is not None:
+                #motors["phi"] = omega
+
+            #self.centring_status["motors"] = motors
+            #self.centring_status["valid"] = True
+            #self.centring_status["angleLimit"] = True
+            #self.emit_progress_message("")
+            #self.accept_centring()
+            #self.current_centring_method = None
+            #self.current_centring_procedure = None
+        #except:
+            #logging.exception("Diffractometer: Could not complete 2D centring")
+
+
+    def move_to_beam(self, x, y, omega=None):
+        """
+            Reimplemented from GenericDiffractometer to adjust sampx and sampy instead of phiz
+                This method is called when someone double clicks on the camera object
+        """
+        try:
+            pos = self.get_samp_centred_point_from_coord(x, y, return_by_names=False)
+            if omega is not None:
+                pos["phiMotor"] = omega
+            self.move_to_motors_positions(pos)
+        except:
+            logging.getLogger("HWR").exception("Diffractometer: could not center to beam, aborting")
+
+
 
     def getBeamInfo(self, update_beam_callback):
         """
