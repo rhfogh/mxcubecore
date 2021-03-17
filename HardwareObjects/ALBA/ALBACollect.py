@@ -1160,6 +1160,7 @@ class ALBACollect(AbstractCollect):
         except:
             self.logger.debug("Omega needs to be stopped before restoring initial position, will try this now")
             self.omega_hwobj.stop()
+            self.omega_hwobj.set_velocity( self.omega_init_vel )
             self.omega_hwobj.move(self.omega_init_pos)
 
         self.scan_delete_motor_data()
