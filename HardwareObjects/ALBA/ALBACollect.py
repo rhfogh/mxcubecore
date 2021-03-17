@@ -565,7 +565,7 @@ class ALBACollect(AbstractCollect):
                         mesh_num_frames_per_line
                     )
                 local_first_image_no += mesh_num_frames_per_line
-                self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].moveRelative(
+                self.scan_motors_hwobj[ self.mesh_mxcube_slow_motor_name ].syncMoveRelative(
                                              mov_slow_step 
                                         )
                 #TODO sscans are not possible yet, becuase Sardana moves the motors back to the starting position
