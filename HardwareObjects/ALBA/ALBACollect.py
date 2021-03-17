@@ -725,6 +725,8 @@ class ALBACollect(AbstractCollect):
         self.logger.info( "Collecting images using the ascanct macro" )
         total_time = time_interval * (final_pos - start_pos) / deg_interval
  
+        if final_pos < start_pos: deg_interval = - deg_interval 
+ 
         self.logger.debug("moveable                  %s" % moveable )
         self.logger.debug("start_pos                 %.4f" % start_pos ) 
         self.logger.debug("final_pos - deg_interval  %.4f " % (final_pos - deg_interval) )
