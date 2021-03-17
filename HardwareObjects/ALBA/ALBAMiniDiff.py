@@ -113,6 +113,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'stateChanged',
                 self.phi_motor_state_changed)
             self.connect(self.phi_motor_hwobj, "positionChanged", self.phi_motor_moved)
+            self.current_motor_positions["phi"] = self.phi_motor_hwobj.getPosition()
         else:
             self.logger.error('Phi motor is not defined')
 
@@ -125,6 +126,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.phiz_motor_hwobj,
                 'positionChanged',
                 self.phiz_motor_moved)
+            self.current_motor_positions["phiz"] = self.phiz_motor_hwobj.getPosition()
         else:
             self.logger.error('Phiz motor is not defined')
 
@@ -137,6 +139,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.phiy_motor_hwobj,
                 'positionChanged',
                 self.phiy_motor_moved)
+            self.current_motor_positions["phiy"] = self.phiy_motor_hwobj.getPosition()
         else:
             self.logger.error('Phiy motor is not defined')
 
@@ -165,6 +168,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.sample_x_motor_hwobj,
                 'positionChanged',
                 self.sampleX_motor_moved)
+            self.current_motor_positions["sampx"] = self.sample_x_motor_hwobj.getPosition()
         else:
             self.logger.error('Sampx motor is not defined')
 
@@ -177,6 +181,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.sample_y_motor_hwobj,
                 'positionChanged',
                 self.sampleY_motor_moved)
+            self.current_motor_positions["sampy"] = self.sample_y_motor_hwobj.getPosition()
         else:
             self.logger.error('Sampx motor is not defined')
 
@@ -195,6 +200,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.kappa_motor_hwobj,
                 "positionChanged",
                 self.kappa_motor_moved)
+            self.current_motor_positions["kappa"] = self.kappa_motor_hwobj.getPosition()
         else:
             self.logger.error('Kappa motor is not defined')
 
@@ -207,6 +213,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.kappa_phi_motor_hwobj,
                 "positionChanged",
                 self.kappa_phi_motor_moved)
+            self.current_motor_positions["kappa_phi"] = self.kappa_phi_motor_hwobj.getPosition()
         else:
             self.logger.error('Kappa-Phi motor is not defined')
 
