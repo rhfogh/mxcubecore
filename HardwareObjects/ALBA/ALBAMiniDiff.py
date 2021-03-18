@@ -39,6 +39,7 @@ from __future__ import print_function
 import logging
 import time
 import gevent
+import math
 
 import queue_model_objects_v1 as queue_model_objects
 
@@ -262,7 +263,7 @@ class ALBAMiniDiff(GenericDiffractometer):
 
     def getCalibrationData(self, offset=None):
         """
-        Get pixel size for OAV system
+        Get pixel size for OAV system in mm
 
         @offset: Unused
         @return: 2-tuple float
@@ -345,7 +346,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                                       )
 
         # Reuse code
-        self.get_centred_point_from_coord( x, y, return_by_names )
+        loc_centred_point = self.get_centred_point_from_coord( x, y, return_by_names )
         # Overwrite phiz, which should remain in the actual position, hopefully the center of rotation
         loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() 
 
@@ -356,8 +357,8 @@ class ALBAMiniDiff(GenericDiffractometer):
         phi_angle = math.radians(self.centring_phi.direction * \
                     self.centring_phi.getPosition())
 
-        dx = math.cos(phi_angle) * vertdist
-        dy = math.sin(phi_angle) * vertdist
+        dy = math.cos(phi_angle) * vertdist
+        dx = math.sin(phi_angle) * vertdist
 
         loc_centred_point['sampx'] = sampxpos + dx
         loc_centred_point['sampy'] = sampypos + dy
