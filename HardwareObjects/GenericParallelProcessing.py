@@ -155,9 +155,10 @@ class GenericParallelProcessing(HardwareObject):
         images_num = acq_params.num_images
         last_image_num = first_image_num + images_num - 1
         lines_num = acq_params.num_lines
+        # TODO: be aware about file index format
         template = os.path.join(
             acquisition.path_template.directory,
-            "%s_%%d_%%05d.cbf" % acquisition.path_template.get_prefix(),
+            "%s_%%d_%%04d.cbf" % acquisition.path_template.get_prefix(),
         )
 
         workflow_step_directory = None
@@ -243,12 +244,14 @@ class GenericParallelProcessing(HardwareObject):
         self.params_dict["resolution"] = acq_params.resolution
         self.params_dict["exp_time"] = acq_params.exp_time
 
-        if not acq_params.num_images_per_trigger:
-            self.params_dict["num_images_per_trigger"] = 1
-        else:
-            self.params_dict[
-                "num_images_per_trigger"
-            ] = acq_params.num_images_per_trigger
+        self.params_dict["num_images_per_trigger"] = 1
+        # TODO: review num_image_per_trigger configuration
+        # if not acq_params.num_images_per_trigger:
+        #     self.params_dict["num_images_per_trigger"] = 1
+        # else:
+        #     self.params_dict[
+        #         "num_images_per_trigger"
+        #     ] = acq_params.num_images_per_trigger
 
         self.params_dict["status"] = "Started"
         self.params_dict["title"] = "%s_%d_#####.cbf (%d - %d)" % (
@@ -340,30 +343,33 @@ class GenericParallelProcessing(HardwareObject):
         )
         self.emit("processingResultsUpdate", False)
 
-        if not os.path.isfile(self.start_command):
-            msg = (
-                "ParallelProcessing: Start command %s" % self.start_command
-                + "is not executable"
-            )
-            logging.getLogger("queue_exec").error(msg)
-            self.set_processing_status("Failed")
-        else:
+        # if not os.path.isfile(self.start_command):
+        #     msg = (
+        #         "ParallelProcessing: Start command %s" % self.start_command
+        #         + "is not executable"
+        #     )
+        #     logging.getLogger("queue_exec").error(msg)
+        #     self.set_processing_status("Failed")
+        # else:
+        # TODO: is can be something more complex than a script file
+        if True:
             line_to_execute = (
                 self.start_command
                 + " "
                 + input_filename
-                + " "
-                + self.params_dict["process_directory"]
+                #+ " "
+                #+ self.params_dict["process_directory"]
             )
+            logging.getLogger("HWR").debug("Processing DOZOR as: %s" % line_to_execute)
 
             self.started = True
             subprocess.Popen(
                 str(line_to_execute),
                 shell=True,
-                stdin=None,
-                stdout=None,
-                stderr=None,
-                close_fds=True,
+#                stdin=None,
+#                stdout=None,
+#                stderr=None,
+#                close_fds=True,
             )
 
     def get_input_filename(self, data_collection):
