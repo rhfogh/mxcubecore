@@ -545,6 +545,9 @@ class ALBACollect(AbstractCollect):
                                           mesh_num_frames_per_line
                                    )
                                  )
+                # TODO: that should not be here: prepare mesh or sardana instead
+                self.write_image_headers(0)
+                time.sleep(1)
                 self.run_ascanct(
                         mesh_xaloc_fast_motor_name,
                         local_fast_start_pos,
@@ -636,22 +639,22 @@ class ALBACollect(AbstractCollect):
         # TODO: the time.sleeps are necessary to wait for the door to recover. Make a while loop to check for doors ON. see ./HardwareRepository/Command/Sardana.py
         # save the images to the write place
         self.logger.info("setting ActiveMntGrp")
-        self.senv('ActiveMntGrp', measurement_group)
+        self.senv('ActiveMntGrp', measurement_group, wait=True)
         time.sleep(0.1)
         self.logger.info("setting set_pilatus_saving_pattern")
-        self.set_pilatus_saving_pattern( measurement_group, savingpattern)
+        self.set_pilatus_saving_pattern( measurement_group, savingpattern, wait=True)
         self.logger.info("senv.door_state = %s" % self.set_pilatus_saving_pattern.door_state )
         time.sleep(0.1)
 
         # save the collection details
         self.logger.info("setting ScanDir")
-        self.senv( 'ScanDir', basedir )
+        self.senv( 'ScanDir', basedir, wait=True )
         time.sleep(0.1)
         self.logger.info("setting ScanFile")
-        self.senv( 'ScanFile ' + str( template.split('_%')[0] + '.dat') ) 
+        self.senv( 'ScanFile ' + str( template.split('_%')[0] + '.dat'), wait=True )
         time.sleep(0.1)
 
-    #def run_meshct( 
+    #def run_meshct(
                       #self, 
                       #first_image_no, 
                       #mesh_mxcube_fast_motor_name, 
