@@ -911,8 +911,11 @@ class ALBACollect(AbstractCollect):
         self.logger.info( 'Detector ok %s' % detok )
 
         if not detok:
-            msg = "Cannot prepare the detector for acquisition, check the Pilatus state. Issuing a reset command in bl13/eh/pilatuslima, try again" 
-            self.detector_hwobj.cmd_reset()
+            msg = "Cannot prepare the detector for acquisition, check the Pilatus state. "
+            if self.detector_hwobj.get_cam_state() != 'SETTING_ENERGY':
+                msg += "Issuing a reset command in bl13/eh/pilatuslima, try again" 
+                self.detector_hwobj.cmd_reset()
+            else: msg += "The Pilatus is setting the energy, please be patient!!!" 
             self.logger.info( msg )
             self.data_collection_failed( msg )
             self.stop_collect()
