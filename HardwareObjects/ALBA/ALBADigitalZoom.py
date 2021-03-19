@@ -242,7 +242,8 @@ class ALBADigitalZoom(Device):
         _zoom_lut[6] = 0.9540
         _zoom_lut[7] = 1.0000
 
-        x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
+        #x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
+        x = 2.784 + (-2.604 * _zoom_lut[int(self.current_position)])
         #TODO improve calibration.
         self.logger.debug("Getting calibration from zoom hwobj: position (level) {} pix size (um) {}".
                           format(self.current_position,x) 
