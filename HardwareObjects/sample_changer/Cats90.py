@@ -978,7 +978,8 @@ class Cats90(SampleChanger):
         elif has_loaded ^ on_diff:
             # go to Unknown state if a sample is detected on the gonio but not registered in the internal database
             # or registered but not on the gonio anymore
-            logging.getLogger("HWR").warning("SAMPLE CHANGER Unknown 2 (hasLoaded: %s / detected: %s)" % (self.hasLoadedSample(), self._chnSampleIsDetected.getValue()))
+            logging.getLogger("HWR").warning("SAMPLE CHANGER Unknown sample (hasLoadedInfo: %s / detected: %s)" % (self.hasLoadedSample(),
+                                                                                                                   self._chnSampleIsDetected.getValue()))
             _state = SampleChangerState.Unknown 
         #elif not lids_closed: 
             #_state = SampleChangerState.Charging
