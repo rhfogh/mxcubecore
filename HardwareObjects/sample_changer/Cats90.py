@@ -234,7 +234,7 @@ class Cats90(SampleChanger):
             self._chnSampleIsDetected = self.addChannel({
                     "type": "tango", "name": "_chnSampleIsDetected",
                     "tangoname": self.tangoname, 
-                }, "di_PRI_SOM")
+                }, "di_PRI4_SOM")
 
         self._chnAllLidsClosed = self.getChannelObject("_chnTotalLidState", optional=True)
         if self._chnAllLidsClosed is None:
