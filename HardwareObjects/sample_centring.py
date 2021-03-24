@@ -354,6 +354,7 @@ def center(phi, phiy, phiz,
       except:
         raise RuntimeError("Aborted while waiting for point selection")
       USER_CLICKED_EVENT = gevent.event.AsyncResult()
+      #TODO: refresh pixel size for each point, some users change zoom in between clicks
       X.append(x / float(pixelsPerMm_Hor))
       Y.append(y / float(pixelsPerMm_Ver))
       phi_positions.append(phi.direction*math.radians(phi.getPosition()))
@@ -395,10 +396,14 @@ def center(phi, phiy, phiz,
                            phiz.motor: float(phiz.getPosition() + phiz.direction*d_vertical[0,0]),
                            phiy.motor: float(phiy.getPosition() + phiy.direction*d_horizontal[0,0]) })
   else:
-      centred_pos.update({ sampx.motor: float(sampx.getPosition() + sampx.direction*(dx*1.475 + vertical_move[0,0])),
-                           sampy.motor: float(sampy.getPosition() + sampy.direction*(dy*1.455 + vertical_move[1,0])),
+      #centred_pos.update({ sampx.motor: float(sampx.getPosition() + sampx.direction*(dx*1.475 + vertical_move[0,0])),
+                           #sampy.motor: float(sampy.getPosition() + sampy.direction*(dy*1.455 + vertical_move[1,0])),
+                           #phiz.motor: float(phiz.reference_position),
+                           #phiy.motor: float(phiy.getPosition() + phiy.direction*1.454*d_horizontal[0,0]) })
+      centred_pos.update({ sampx.motor: float(sampx.getPosition() + sampx.direction*(dx + vertical_move[0,0])),
+                           sampy.motor: float(sampy.getPosition() + sampy.direction*(dy + vertical_move[1,0])),
                            phiz.motor: float(phiz.reference_position),
-                           phiy.motor: float(phiy.getPosition() + phiy.direction*1.454*d_horizontal[0,0]) })
+                           phiy.motor: float(phiy.getPosition() + phiy.direction*d_horizontal[0,0]) })
       logging.getLogger('HWR').debug('Update phiz centred position with its reference position %s' % phiz.reference_position)
   return centred_pos
 
