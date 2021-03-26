@@ -390,7 +390,7 @@ class ALBACats(Cats90):
         diffractometer is empty, and a sample exchange (unmount of old + mount of new
         sample) if a sample is already mounted on the diffractometer.
         Overides Cats90 method.
-
+        
         @sample: sample to load.
         @shifts: mounting point offsets.
         @use_ht: mount a sample from hot tool.
@@ -692,6 +692,13 @@ class ALBACats(Cats90):
         # At this point, due to the waitsafe, we can be sure that the robot has left RI2 and will not return
 
         allok = self._check_coherence()[0]
+        if not allok:
+                self._wait_super_ready()
+                if not self.hasLoadedSample() and self.cats_sample_on_diffr():
+                      msg = "The CATS device indicates there was a problem in unmounting the sample, click on Fix Fail Get"
+                self._updateState()
+                raise Exception( msg )
+
 
     def _doAbort(self):
         """
