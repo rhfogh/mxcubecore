@@ -365,7 +365,7 @@ class ALBACats(Cats90):
             # TODO: implement a wait with timeout method.
             self.logger.debug("CATS power is OFF. Trying to switch the power ON...")
             self._cmdPowerOn()  # try switching power on
-            time.sleep(1)
+            time.sleep(2)
 
         current_tool = self.get_current_tool()
 
