@@ -421,7 +421,7 @@ class ALBACats(Cats90):
                             str(self.getLoadedSample().getAddress()) +
                             " is already loaded")
 
-        if self.cats_sample_on_diffr() == -1:
+        if self.cats_sample_on_diffr() == -1 and self.hasLoadedSample(): # no sample on diff, but cats has sample info
             self._updateState()
             raise Exception(
                 "Conflicting info between diffractometer and on-magnet detection."
