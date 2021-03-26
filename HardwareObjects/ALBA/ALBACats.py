@@ -235,6 +235,19 @@ class ALBACats(Cats90):
         
         return True
 
+    def _wait_super_moving(self):
+        allokret = True # No problems
+        while allokret:
+            state = str(self.super_state_channel.getValue())
+            if not self._chnCollisionSensorOK.getValue(): 
+                self._updateState()
+                raise Exception ("The robot had a collision, call your LC or floor coordinator")
+            elif state == "MOVING":
+                self.logger.debug("Supervisor is in MOVING state. Returning")
+                return allokret
+            time.sleep(0.1)
+
+        return allokret
 
     def _wait_phase_done(self, final_phase, timeout = 20 ):
         """
