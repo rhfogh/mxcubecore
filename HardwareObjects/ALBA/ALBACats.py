@@ -544,12 +544,43 @@ class ALBACats(Cats90):
             self.logger.info(
                 "AUTO_PREPARE_DIFF (On) sample changer is in safe state... "
                 "preparing diff now")
-            #ret = self.diff_send_sampleview()
-            self._wait_super_ready()
-            self.go_sampleview_cmd()
-            self.logger.info("Restoring detector distance")
-            self.restore_detdist_position()
-            self._wait_phase_done('SAMPLE')
+            allok, msg = self._check_coherence()
+            if allok:
+                self.diff_send_sampleview()
+                self.logger.info("Restoring detector distance")
+                self.restore_detdist_position()
+                self._wait_phase_done('SAMPLE',timeout=10)
+            else:
+                # Now recover failed put for double gripper
+                # : double should be in soak, single should be ??
+                #isPathRunning amd cats_idle dont work for tool 5, becuase cats stays in running state after failed put. 
+                #_wait_cats_home followed by immediate abort fails because double tool passed through home on the way to soak
+                # time.sleep(5) fails because of a possible dry for double 
+                # When doing a dry, CATS passes through home, so a double wait_cats_home is necessary, with a time.sleep of a couple of seconds in between so CATS starts drying
+                # An alternative is to abort at arriving home, clear memeory and move to soak
+                logging.getLogger('user_level_log').error( 'There was a problem loading your sample, please wait for the system to recover' )
+                self._wait_cats_home(10) # wait for robot to return from diff
+                time.sleep( 5 ) # give it time to move, if it goes for a dry, the _chnNBSoakings is set to 0
+                #self.logger.info("self._chnNBSoakings  %d " % self._chnNBSoakings.getValue() )
+                if self.get_current_tool() == TOOL_DOUBLE_GRIPPER: 
+                    if self._chnNBSoakings.getValue() == 0: 
+                        self.logger.info("A dry will now be done, waiting %d seconds" % DOUBLE_GRIPPER_DRY_WAIT_TIME)
+                        time.sleep( DOUBLE_GRIPPER_DRY_WAIT_TIME ) # long timeout because of possible dry of the double gripper
+                    else: 
+                        #self.logger.info("no dry, waiting 3 seconds" )
+                        time.sleep( 3 ) # allow the gripper time to move on
+                if not self._check_incoherent_sample_info()[0] : # this could be replaced by checking return value of _check_coherence, see TODO there
+                    # the behaviour of the SPINE gripper is different when failing put or when failing get. For put, it does a dry, for get, it doesnt
+                    if self.get_current_tool() == TOOL_SPINE: 
+                        time.sleep( 16 )
+                    self.recover_cats_from_failed_put()
+                    msg = "Your sample was NOT loaded! Click OK to recover, please make sure your sample is there"
+                else:
+                    self._doRecoverFailure()
+                    msg = "The CATS device indicates there was a problem in unmounting the sample, click ok to recover from a Fix Fail Get"
+                self._updateState()
+                raise Exception( msg )
+                
         else:
             self.logger.info(
                 "AUTO_PREPARE_DIFF (Off) sample loading done / or changing tool (%s)" %
