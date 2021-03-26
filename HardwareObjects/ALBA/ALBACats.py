@@ -172,14 +172,18 @@ class ALBACats(Cats90):
         ret = self._wait_phase_done('TRANSFER')
         return ret
 
-    def diff_send_sampleview(self):
+    # When the double gripper does a dry, it takes a long time, therefore the timeout
+    def diff_send_sampleview(self, timeout = DOUBLE_GRIPPER_DRY_WAIT_TIME + 10):
         """
-        Checks if beamline supervisor is in SAMPLE phase (i.e. sample changer in SAMPLE
-        phase too). If is not the case, It sends the sample changer to SAMPLE phase.
-        Returns a boolean value indication if the sample changer is in SAMPLE phase.
+        Do a phased go to sample view. 
+        First send the diff to sample view
+        Then wait for supervisor to be ready and send supervisor to sample view
+        Returns a boolean value indication if the diff is in SAMPLE phase.
 
         @return: boolean
         """
+        self.diff_go_sampleview_cmd()
+        
         if self.read_super_phase().upper() == "SAMPLE":
             self.logger.error("Supervisor is already in sample view phase")
             return True
@@ -190,13 +194,13 @@ class ALBACats(Cats90):
             if str(state) == "ON":
                 break
 
-            if (time.time() - t0) > TIMEOUT:
+            if (time.time() - t0) > timeout:
                 self.logger.error("Supervisor timeout waiting for ON state. Returning")
                 return False
 
-            time.sleep(0.1)
+            time.sleep(5)
 
-        self.go_sampleview_cmd()
+        self.super_go_sampleview_cmd()
         ret = self._wait_phase_done('SAMPLE')
         return ret
 
