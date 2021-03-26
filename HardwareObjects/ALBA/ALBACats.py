@@ -36,6 +36,7 @@ from __future__ import print_function
 
 import logging
 import time
+import gevent
 
 from sample_changer.Cats90 import Cats90, SampleChangerState, TOOL_SPINE
 
