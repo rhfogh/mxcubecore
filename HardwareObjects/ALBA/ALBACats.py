@@ -204,11 +204,16 @@ class ALBACats(Cats90):
         ret = self._wait_phase_done('SAMPLE')
         return ret
 
+
+    # TODO: Move to ALBASupervisor 
     def _wait_super_ready(self):
         while True:
             state = str(self.super_state_channel.getValue())
             if state == "ON":
-                self.logger.error("Supervisor is in ON state. Returning")
+                self.logger.debug("Supervisor is in ON state. Returning")
+                break
+            time.sleep(0.2)
+
                 break
 
     def _wait_phase_done(self, final_phase):
