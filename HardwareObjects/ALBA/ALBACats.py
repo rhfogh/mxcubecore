@@ -769,6 +769,58 @@ class ALBACats(Cats90):
         else:
             return 0
 
+    def _doReset(self):
+        """
+          Called when user pushes "Fix fail PUT" button
+          Overrides the _doReset in CatsMaint, adding checks whether calling this method is justified
+        """
+        self.recover_cats_from_failed_put()
+
+    def recover_cats_from_failed_put(self):
+        """
+           Deletes sample info on diff, but should retain info of samples on tools, eg when doing picks
+           TODO: tool2 commands are not working, eg SampleNumberInTool2
+        """
+        self.logger.debug("ALBACats recovering from failed put. Failed put is %s" % str( self._check_incoherent_sample_info() ) )
+
+        if not self._check_incoherent_sample_info()[0]:
+            self._cmdAbort()
+            savelidsamptool = self._chnLidSampleOnTool.getValue()
+            savenumsamptool = self._chnNumSampleOnTool.getValue()
+            #savelidsamptool2 = self._chnLidSampleOnTool2() # Not implemented yet
+            #savenumsamptool2 = self._chnNumSampleOnTool2() # Not implemented yet
+            self._cmdClearMemory()
+            if not -1 in [savelidsamptool, savenumsamptool ]:
+                basketno, bsampno = self.lidsample_to_basketsample(savelidsamptool,savenumsamptool)
+                argin = [ str(savelidsamptool), str(savenumsamptool), str( self.get_cassette_type( basketno ) ) ]
+                self.logger.debug("ALBACats recover from failed put. Sending to robot %s" % argin )
+                cmdok = self._executeServerTask( self._cmdSetTool, argin )
+            #if not -1 in [savelidsamptool2, savenumsamptool2 ]:
+            #   basketno, bsampno = self.lidsample_to_basketsample(savelidsamptool2,savenumsamptool2) # Not implemented yet
+            #   argin = [ str(savelidsamptool2), str(savenumsamptool2), str(self.get_cassette_type(basketno)) ]
+            #   self._executeServerTask( self._cmdSetTool2, argin )
+        else: raise Exception("The conditions of the beamline do not fit a failed put situation, "
+                                "Fixed failed PUT is not justified. Find another solution.")
+
+    def _doRecoverFailure(self):
+        """
+          Called when user pushes "Fix fail GET" button
+          Overrides the _doRecoverFailure in CatsMaint, adding checks whether calling this method is justified
+        """
+        self.logger.debug("ALBACats recovering from failed get")
+        self.recover_cats_from_failed_get()
+
+    def recover_cats_from_failed_get(self):
+        """
+           Deletes sample info on diff, but should retain info of samples on tools, eg when doing picks
+           TODO: tool2 commands are not working, eg SampleNumberInTool2
+        """
+        if not self._check_unknown_sample_presence()[0]:
+            self._cmdRecoverFailure()
+        else: raise Exception("The conditions of the beamline do not fit a failed get situation, "
+                                "Fixed failed GET is not justified. Find another solution.")
+        
+        
 
 def test_hwo(hwo):
     hwo._updateCatsContents()
