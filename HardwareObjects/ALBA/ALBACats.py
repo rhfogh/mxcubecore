@@ -40,7 +40,10 @@ __version__ = "2.3"
 __category__ = "General"
 
 TIMEOUT = 3
+DOUBLE_GRIPPER_DRY_WAIT_TIME = 80 # time the double gripper takes in going from home to midway soak during a dry
 
+TOOL_FLANGE, TOOL_UNIPUCK, TOOL_SPINE, TOOL_PLATE, \
+    TOOL_LASER, TOOL_DOUBLE_GRIPPER = (0,1,2,3,4,5)
 
 class ALBACats(Cats90):
     """
@@ -57,14 +60,25 @@ class ALBACats(Cats90):
         self.super_state_channel = None
         self.detdist_position_channel = None
         self._chnPathSafe = None
-
+        self._chnCollisionSensorOK = None
+        self._chnIsCatsIdle = None
+        self._chnIsCatsHome = None
+        self._chnIsCatsRI1 = None
+        self._chnIsCatsRI2 = None
+        self._chnNBSoakings = None
+        self._chnLidSampleOnTool = None
+        self._chnNumSampleOnTool = None
+        
         self.go_transfer_cmd = None
-        self.go_sampleview_cmd = None
+        self.diff_go_sampleview_cmd = None
+        self.super_go_sampleview_cmd = None
         self.super_abort_cmd = None
 
         self._cmdLoadHT = None
         self._cmdChainedLoadHT = None
         self._cmdUnloadHT = None
+        self._cmdClearMemory = None
+        self._cmdSetTool = None
 
         self.auto_prepare_diff = None
 
@@ -76,15 +90,28 @@ class ALBACats(Cats90):
         self.phase_channel = self.getChannelObject("phase")
         self.super_state_channel = self.getChannelObject("super_state")
         self.detdist_position_channel = self.getChannelObject("detdist_position")
-        self._chnPathSafe = self.getChannelObject("_chnPathSafe")
 
+        self._chnPathSafe = self.getChannelObject("_chnPathSafe")
+        self._chnCollisionSensorOK = self.getChannelObject("_chnCollisionSensorOK")
+        self._chnIsCatsIdle = self.getChannelObject( "_chnIsCatsIdle" )
+        self._chnIsCatsHome = self.getChannelObject( "_chnIsCatsHome" )
+        self._chnIsCatsRI1 = self.getChannelObject( "_chnIsCatsRI1" )
+        self._chnIsCatsRI2 = self.getChannelObject( "_chnIsCatsRI2" )
+        self._chnNBSoakings = self.getChannelObject( "_chnNBSoakings" )
+        self._chnLidSampleOnTool = self.getChannelObject( "_chnLidSampleOnTool" )
+        self._chnNumSampleOnTool = self.getChannelObject( "_chnNumSampleOnTool" )
+        
         self.go_transfer_cmd = self.getCommandObject("go_transfer")
-        self.go_sampleview_cmd = self.getCommandObject("go_sampleview")
+        self.diff_go_sampleview_cmd = self.getCommandObject("diff_go_sampleview")
+        self.super_go_sampleview_cmd = self.getCommandObject("super_go_sampleview")
         self.super_abort_cmd = self.getCommandObject("super_abort")
 
         self._cmdLoadHT = self.getCommandObject("_cmdLoadHT")
         self._cmdChainedLoadHT = self.getCommandObject("_cmdChainedLoadHT")
         self._cmdUnloadHT = self.getCommandObject("_cmdUnloadHT")
+        self._cmdClearMemory = self.getCommandObject("_cmdClearMemory")
+        self._cmdSetTool = self.getCommandObject("_cmdSetTool")
+        self._cmdSetTool2 = self.getCommandObject("_cmdSetTool2")
 
         self.auto_prepare_diff = self.getProperty("auto_prepare_diff")
 
