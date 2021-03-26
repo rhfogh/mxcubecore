@@ -607,9 +607,13 @@ class ALBACats(Cats90):
         self.logger.warning("Unload sample, sending to cats:  %s" %
                             argin)
         if loaded_ht == 1:
-            cmd_ret = self._executeServerTask(self._cmdUnloadHT, argin)
+            cmd_ret = self._executeServerTask(self._cmdUnloadHT, argin, waitsafe=True)
         else:
-            cmd_ret = self._executeServerTask(self._cmdUnload, argin)
+            cmd_ret = self._executeServerTask(self._cmdUnload, argin, waitsafe=True)
+
+        # At this point, due to the waitsafe, we can be sure that the robot has left RI2 and will not return
+
+        allok = self._check_coherence()[0]
 
     def _doAbort(self):
         """
