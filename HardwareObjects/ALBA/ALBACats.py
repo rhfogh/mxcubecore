@@ -569,7 +569,9 @@ class ALBACats(Cats90):
         @shifts: mounting position
         """
         if not self._chnPowered.getValue():
-            self._cmdPowerOn()  # try switching power on
+            try: self._cmdPowerOn()  # try switching power on
+            except Exception as e:
+                raise Exception(e)
 
         ret = self.diff_send_transfer()
 
