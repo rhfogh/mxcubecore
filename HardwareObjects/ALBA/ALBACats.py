@@ -214,7 +214,25 @@ class ALBACats(Cats90):
                 break
             time.sleep(0.2)
 
+    def _wait_cats_idle(self):
+        while True:
+            if self._chnIsCatsIdle.getValue():
+                self.logger.debug("_chnIsCatsIdle %s, type %s" % ( str(self._chnIsCatsIdle.getValue()), type(self._chnIsCatsIdle.getValue()) ) )
+                self.logger.debug("CATS is idle. Returning")
                 break
+            time.sleep(0.2)
+
+    def _wait_cats_home(self, timeout):
+        t0 = time.time()
+        while True:
+            if self._chnIsCatsHome.getValue():
+                self.logger.debug("CATS is home. Returning")
+                break
+            time.sleep(0.2)
+            if time.time() - t0 > timeout: return False
+        
+        return True
+
 
     def _wait_phase_done(self, final_phase):
         """
