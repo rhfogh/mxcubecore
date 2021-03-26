@@ -848,6 +848,56 @@ class ALBACats(Cats90):
                                 "Fixed failed GET is not justified. Find another solution.")
         
         
+    def _executeServerTask(self, method, *args, **kwargs):
+        """
+        Executes a task on the CATS Tango device server
+        ALBA: added collision detection while waiting for safe
+
+        :returns: None
+        :rtype: None
+        """
+        self._waitDeviceReady(3.0)
+        try:
+            task_id = method(*args)
+        except:
+            import traceback
+            self.logger.debug("ALBACats exception while executing server task")
+            self.logger.debug(traceback.format_exc())
+            task_id = None
+            raise Exception("The command could not be sent to the robot, check its state.")
+            #TODO: why not return with an Exception here to inform there is a problem with the CATS?
+
+        waitsafe = kwargs.get('waitsafe',False)
+        logging.getLogger("HWR").debug("Cats90. executing method %s / task_id %s / waiting only for safe status is %s" % (str(method), task_id, waitsafe))
+        
+        # What does the first part of the if do? It's not resetting anything...
+        ret=None
+        if task_id is None: #Reset
+            while self._isDeviceBusy():
+                gevent.sleep(0.1)
+            return False
+        else:
+            # introduced wait because it takes some time before the attribute PathRunning is set
+            # after launching a transfer
+            time.sleep(6.0)
+            while True:
+                if waitsafe:
+                    if self.pathSafe():
+                        logging.getLogger("HWR").debug("Cats90. server execution polling finished as path is safe")
+                        break
+                elif not self.pathRunning():
+                        logging.getLogger("HWR").debug("Cats90. server execution polling finished as path is not running")
+                        break
+                elif not self._chnCollisionSensorOK.getValue(): 
+                    self._updateState()
+                    raise Exception ("The robot had a collision, call your LC or floor coordinator")
+
+                if not self._check_unknown_sample_presence()[0] and not self._chnIsCatsRI1.getValue():
+                    break
+                gevent.sleep(0.1)            
+            ret = True
+        return ret
+
 
 def test_hwo(hwo):
     hwo._updateCatsContents()
