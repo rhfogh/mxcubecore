@@ -26,6 +26,10 @@ HwObj used to control the CATS sample changer via Tango.
 [Signals]
 - powerStateChanged
 - runningStateChanged
+
+Comments:
+In case of failed put push button, CatsMaint calls the reset command in the DS
+In case of failed get push button, CatsMaint calls the recoverFailure command in the DS
 """
 
 from __future__ import print_function
@@ -151,6 +155,7 @@ class ALBACats(Cats90):
             self.logger.error("Supervisor is already in transfer phase")
             return True
 
+        # First wait till the diff is ready to accept a go_transfer_cmd
         t0 = time.time()
         while True:
             state = str(self.super_state_channel.getValue())
@@ -372,7 +377,7 @@ class ALBACats(Cats90):
                 "Supervisor cmd transfer phase returned an error.")
             self._updateState()
             raise Exception(
-                "CATS cannot get to transfer phase. Aborting sample changer operation.")
+                "Supervisor cannot get to transfer phase. Aborting sample changer operation. Ask LC or floor coordinator to check the supervisor and diff device servers")
 
         if not self._chnPowered.getValue():
             raise Exception(
@@ -407,7 +412,7 @@ class ALBACats(Cats90):
             selected = None
 
         # some cancel cases
-        if not use_ht and self.hasLoadedSample() and selected == self.getLoadedSample():
+        if not use_ht and self.hasLoadedSample() and selected == self.getLoadedSample(): # sample on diff is the one loaded
             self._updateState()
             raise Exception("The sample " +
                             str(self.getLoadedSample().getAddress()) +
@@ -537,6 +542,8 @@ class ALBACats(Cats90):
                     self.logger.warning("Load sample, sending to cats:  %s" % argin)
                     cmd_ok = self._executeServerTask(
                         self._cmdLoad, argin, waitsafe=True)
+
+        # At this point, due to the waitsafe, we can be sure that the robot has left RI2 and will not return
 
         if not cmd_ok:
             self.logger.info("Load Command failed on device server")
