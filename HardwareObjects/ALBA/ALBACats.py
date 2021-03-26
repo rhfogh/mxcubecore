@@ -143,6 +143,7 @@ class ALBACats(Cats90):
             self.state == SampleChangerState.StandBy or \
             self.state == SampleChangerState.Disabled
 
+    #TODO: rename this method, it is the supervisor that is sent to transfer
     def diff_send_transfer(self):
         """
         Checks if beamline supervisor is in TRANSFER phase (i.e. sample changer in
