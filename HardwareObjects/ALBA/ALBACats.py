@@ -557,6 +557,10 @@ class ALBACats(Cats90):
 
         # load commands are executed until path is safe. Then we have to wait for
         # path to be finished
+        if not self._chnCollisionSensorOK.getValue(): 
+            self._updateState()
+            raise Exception ("The robot had a collision, call your LC or floor coordinator")
+        # Does this do anything? In the trajectory it is already specified a wait safe...
         self._waitDeviceSafe()
         # self._waitDeviceReady()
 
