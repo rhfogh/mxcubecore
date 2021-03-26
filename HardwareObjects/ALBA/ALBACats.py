@@ -121,6 +121,11 @@ class ALBACats(Cats90):
         if self._chnPowered is not None:
             self._chnPowered.connectSignal("update", self._update_powered_state)
 
+        ret,msg = self._check_coherence()
+        if not ret: 
+            logging.getLogger('user_level_log').warning( msg )
+
+
     def isReady(self):
         """
         Returns a boolean value indicating is the sample changer is ready for operation.
@@ -267,7 +272,7 @@ class ALBACats(Cats90):
             "Loading sample %s / type(%s)" %
             (sample, type(sample)))
 
-        ret, msg = self._check_coherence()
+        ret, msg = self._check_incoherent_sample_info()
         if not ret:
             raise Exception(msg)
 
@@ -619,14 +624,44 @@ class ALBACats(Cats90):
         self._updateState()  # remove software flags like Loading.. reflects current hardware state
 
     def _check_coherence(self):
+        
+        sampinfobool, sampinfomessage = self._check_incoherent_sample_info()
+        unknownsampbool, unknownsampmessage = self._check_unknown_sample_presence()
+        msg = sampinfomessage + unknownsampmessage
+        return ( sampinfobool and unknownsampbool ), msg
+
+    def _check_unknown_sample_presence(self):
+        
         detected = self._chnSampleIsDetected.getValue()
         loaded_lid = self._chnLidLoadedSample.getValue()
         loaded_num = self._chnNumLoadedSample.getValue()
+        #self.logger.debug("detected %s, type detected %s, loaded_lid %d, loaded_num %d, loaded_num type %s" % ( str(detected), type(detected), loaded_lid, loaded_num, type(loaded_num)  ) )
+        #self.logger.debug("-1 in [loaded_lid, loaded_num] %s, detected %s" % ( -1 in [loaded_lid, loaded_num], detected ) )
+        #self.logger.debug("-1 in [loaded_lid, loaded_num] and detected: %s" % ( -1 in [loaded_lid, loaded_num] and detected ) )
+
 
         if -1 in [loaded_lid, loaded_num] and detected:
             return False, "Sample detected on Diffract. but there is no info about it"
 
         return True, ""
+
+    def _check_incoherent_sample_info(self):
+        """
+          Check for sample info in CATS but no physically mounted sample
+           (Fix failed PUT)
+          Returns False in case of incoherence, True if all is ok
+        """
+        #self.logger.debug('self._chnSampleIsDetected %s' % self._chnSampleIsDetected.getValue() )
+        detected = self._chnSampleIsDetected.getValue()
+        loaded_lid = self._chnLidLoadedSample.getValue()
+        loaded_num = self._chnNumLoadedSample.getValue()
+        #self.logger.debug("detected %s, loaded_lid %d, loaded_num %d" % ( str(detected), loaded_lid, loaded_num ) )
+
+        if not detected and not ( -1 in [loaded_lid, loaded_num] ):
+            return False, "There is info about a sample but it is not detected on the diffract."
+
+        return True, ""
+
 
     def _get_shifts(self):
         """
