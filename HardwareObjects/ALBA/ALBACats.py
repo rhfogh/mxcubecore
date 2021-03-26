@@ -234,30 +234,26 @@ class ALBACats(Cats90):
         return True
 
 
-    def _wait_phase_done(self, final_phase):
+    def _wait_phase_done(self, final_phase, timeout = 20 ):
         """
         Method to wait a phase change. When supervisor reaches the final phase, the
-        diffractometer returns True.
+        method returns True.
 
         @final_phase: target phase
         @return: boolean
         """
-        time.sleep(1.5)
-        while True:
+       
+        t0 = time.time()
+        while self.read_super_phase().upper() != final_phase:
             state = str(self.super_state_channel.getValue())
             phase = self.read_super_phase().upper()
-            if state == "ON":
-                self.logger.error(
-                    "Supervisor state {0}, phase {1} Returning".format(state, phase))
-                break
-            elif str(state) != "MOVING":
+            if not str(state) in [ "MOVING", "ON" ]:
                 self.logger.error("Supervisor is in a funny state %s" % str(state))
                 return False
 
             self.logger.debug("Supervisor waiting to finish phase change")
             time.sleep(0.2)
-
-        time.sleep(0.1)
+            if time.time() - t0 > timeout: break
 
         if self.read_super_phase().upper() != final_phase:
             self.logger.error("Supervisor is not yet in %s phase. Aborting load" %
