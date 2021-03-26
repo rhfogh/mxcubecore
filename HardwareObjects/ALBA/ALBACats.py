@@ -368,10 +368,6 @@ class ALBACats(Cats90):
     def isPathRunning(self):
         return self._chnPathRunning.getValue()
 
-    # TODO: this overides method from GenericSampleChanger
-    # def hasLoadedSample(self):  # not used.  to use it remove _
-     #   return self._chnSampleIsDetected.getValue()
-
     def _update_running_state(self, value):
         """
         Emits signal with new Running State
