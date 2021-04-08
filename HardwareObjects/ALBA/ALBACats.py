@@ -61,9 +61,15 @@ class ALBACats(Cats90):
         self.detdist_saved = None
 
         self.shifts_channel = None
-        self.phase_channel = None
+        self.diff_phase_channel = None
+        self.diff_state_channel = None
+        self.super_phase_channel = None
         self.super_state_channel = None
         self.detdist_position_channel = None
+        self.omega_position_channel = None
+        self.kappa_position_channel = None
+        self._chnisDetDistSafe = None
+        
         self._chnPathSafe = None
         self._chnCollisionSensorOK = None
         self._chnIsCatsIdle = None
@@ -92,9 +98,14 @@ class ALBACats(Cats90):
         Cats90.init(self)
         # TODO: Migrate to taurus channels instead of tango channels
         self.shifts_channel = self.getChannelObject("shifts")
-        self.phase_channel = self.getChannelObject("phase")
+        self.diff_phase_channel = self.getChannelObject("diff_phase")
+        self.diff_state_channel = self.getChannelObject("diff_state")
+        self.super_phase_channel = self.getChannelObject("super_phase")
         self.super_state_channel = self.getChannelObject("super_state")
         self.detdist_position_channel = self.getChannelObject("detdist_position")
+        self.omega_position_channel = self.getChannelObject("omega_position") # position of the omega axis
+        self.kappa_position_channel = self.getChannelObject("kappa_position") # position of the kappa axis
+        self._chnisDetDistSafe = self.getChannelObject("DetDistanceSafe")
 
         self._chnPathSafe = self.getChannelObject("_chnPathSafe")
         self._chnCollisionSensorOK = self.getChannelObject("_chnCollisionSensorOK")
@@ -144,12 +155,11 @@ class ALBACats(Cats90):
             self.state == SampleChangerState.Disabled
 
     #TODO: rename this method, it is the supervisor that is sent to transfer
-    def diff_send_transfer(self):
+    def diff_send_transfer(self, timeout = 36):
         """
-        Checks if beamline supervisor is in TRANSFER phase (i.e. sample changer in
-        TRANSFER phase too). If is not the case, It sends the sample changer to TRANSFER
-        phase. Returns a boolean value indication if the sample changer is in TRANSFER
-        phase.
+        Checks if beamline diff is in TRANSFER phase (i.e. sample changer in
+        TRANSFER phase too). If is not the case, It sends the supervisor to TRANSFER
+        phase. Then waits for the minimal conditions of the beamline to start the transfer
 
         @return: boolean
         """
@@ -160,19 +170,33 @@ class ALBACats(Cats90):
         # First wait till the diff is ready to accept a go_transfer_cmd
         t0 = time.time()
         while True:
-            state = str(self.super_state_channel.getValue())
+            state = str(self.diff_state_channel.getValue())
             if str(state) == "ON":
                 break
 
-            if (time.time() - t0) > TIMEOUT:
-                self.logger.error("Supervisor timeout waiting for ON state. Returning")
+            if (time.time() - t0) > timeout:
+                self.logger.error("Diff timeout waiting for ON state. Returning")
                 return False
 
             time.sleep(0.1)
 
         self.go_transfer_cmd()
-        ret = self._wait_phase_done('TRANSFER')
-        return ret
+
+        # To improve the speed of sample mounting, the wait for phase done was removed.
+        # Rationale: the time it takes the diff to go to transfer phase is about 7-9 seconds. 
+        # The limiting factor is actually the detector safe position (-70), which takes 19.1 seconds to reach from the minimal distance
+        # The fastest mouting time with pick is in the 7-9 secs range, so mounting without pick 
+        #    will take much longer before arriving at the diff
+        # NOTE For pick mounting, a time sleep may be required.
+        # Another potentially limiting step is omega movement. At an max omega of 2160, it takes 36 seconds to reach 0
+        #  omega is somehow involved in calculating the  diff mounting position, so omega should be at zero before continuing
+        #  TODO check if we can improve the involvement of omega in the calculations.
+        # kappa should also be considered. Max kappa angle is 255, speed 17. Thus, at most kappa to zero takes 15 secs
+        #ret = self._wait_diff_phase_done('TRANSFER')
+        ret1 = self._wait_kappa_zero() 
+        ret2 = self._wait_omega_zero() 
+        ret3 = self._wait_det_safe()
+        return ( ret1 and ret2 and ret3 )
 
     # When the double gripper does a dry, it takes a long time, therefore the timeout
     def diff_send_sampleview(self, timeout = DOUBLE_GRIPPER_DRY_WAIT_TIME + 10):
@@ -184,27 +208,27 @@ class ALBACats(Cats90):
 
         @return: boolean
         """
-        self.diff_go_sampleview_cmd()
         
         if self.read_super_phase().upper() == "SAMPLE":
             self.logger.error("Supervisor is already in sample view phase")
             return True
 
+        self.diff_go_sampleview_cmd()
+
         t0 = time.time()
         while True:
-            state = str(self.super_state_channel.getValue())
+            state = str(self.diff_state_channel.getValue())
             if str(state) == "ON":
                 break
 
             if (time.time() - t0) > timeout:
-                self.logger.error("Supervisor timeout waiting for ON state. Returning")
+                self.logger.error("Diff timeout waiting for ON state. Returning")
                 return False
 
-            time.sleep(5)
-
+            time.sleep(0.5)
+            
         self.super_go_sampleview_cmd()
-        ret = self._wait_phase_done('SAMPLE')
-        return ret
+        return True
 
 
     # TODO: Move to ALBASupervisor 
@@ -235,6 +259,41 @@ class ALBACats(Cats90):
         
         return True
 
+    def _wait_det_safe(self, timeout=30):
+        t0 = time.time()
+        while True:
+            if self._chnisDetDistSafe.getValue():
+                self.logger.debug("Detector is in a safe position. Returning")
+                break
+            time.sleep(0.2)
+            if time.time() - t0 > timeout: return False
+        
+        return True
+        
+    def _wait_kappa_zero(self, timeout = 15.):
+        #self.logger.debug("_wait_kappa_zero timeout %.2f kappa pos %.4f" % (timeout, self.kappa_position_channel.getValue() ) ) 
+        t0 = time.time()
+        while True:
+            if abs( self.kappa_position_channel.getValue() ) < 0.1:# the error in position is very high (0.07 um) when starting from 2160
+                self.logger.debug("kappa is zero. Returning")
+                break
+            time.sleep(0.5)
+            if time.time() - t0 > timeout: return False
+        
+        return True
+
+    def _wait_omega_zero(self, timeout = 37.):
+        #self.logger.debug("_wait_omega_zero timeout %.2f omega pos %.4f" % (timeout, self.omega_position_channel.getValue() ) ) 
+        t0 = time.time()
+        while True:
+            if abs( self.omega_position_channel.getValue() ) < 0.1:# the error in position is very high (0.07 um) when starting from 2160
+                self.logger.debug("Omega is zero. Returning")
+                break
+            time.sleep(0.5)
+            if time.time() - t0 > timeout: return False
+        
+        return True
+
     def _wait_super_moving(self):
         allokret = True # No problems
         while allokret:
@@ -248,6 +307,37 @@ class ALBACats(Cats90):
             time.sleep(0.1)
 
         return allokret
+
+    def _wait_diff_phase_done(self, final_phase, timeout = 20 ):
+        """
+        Method to wait a phase change. When supervisor reaches the final phase, the
+        method returns True.
+
+        @final_phase: target phase
+        @return: boolean
+        """
+       
+        t0 = time.time()
+        while self.read_diff_phase().upper() != final_phase:
+            state = str(self.diff_state_channel.getValue())
+            phase = self.read_diff_phase().upper()
+            if not str(state) in [ "MOVING", "ON" ]:
+                self.logger.error("Diff is in a funny state %s" % str(state))
+                return False
+
+            self.logger.debug("Diff waiting to finish phase change")
+            time.sleep(0.2)
+            if time.time() - t0 > timeout: break
+
+        if self.read_diff_phase().upper() != final_phase:
+            self.logger.error("Diff is not yet in %s phase. Aborting load" %
+                              final_phase)
+            return False
+        else:
+            self.logger.info(
+                "Diff is in %s phase. Beamline ready for the next step..." %
+                final_phase)
+            return True
 
     def _wait_phase_done(self, final_phase, timeout = 20 ):
         """
@@ -289,8 +379,6 @@ class ALBACats(Cats90):
             self.logger.error(
                 "Restoring det.distance to %s" % self.detdist_saved)
             self.detdist_position_channel.setValue(self.detdist_saved)
-            time.sleep(0.4)
-            self._wait_super_ready()
 
     def read_super_phase(self):
         """
@@ -299,7 +387,16 @@ class ALBACats(Cats90):
 
         @return: str
         """
-        return self.phase_channel.getValue()
+        return self.super_phase_channel.getValue()
+
+    def read_diff_phase(self):
+        """
+        Returns supervisor phase (CurrentPhase attribute from Beamline Supervisor
+        TangoDS)
+
+        @return: str
+        """
+        return self.diff_phase_channel.getValue()
 
     def load(self, sample=None, wait=False, wash=False):
         """
@@ -587,10 +684,11 @@ class ALBACats(Cats90):
                 "preparing diff now")
             allok, msg = self._check_coherence()
             if allok:
+                logging.getLogger('user_level_log').info( 'Sample succefully loaded, preparing diff' )
                 self.diff_send_sampleview()
                 self.logger.info("Restoring detector distance")
                 self.restore_detdist_position()
-                self._wait_phase_done('SAMPLE',timeout=10)
+                self._wait_diff_phase_done('SAMPLE',timeout=10)
             else:
                 # Now recover failed put for double gripper
                 # : double should be in soak, single should be ??
@@ -762,6 +860,7 @@ class ALBACats(Cats90):
             shifts = self.shifts_channel.getValue()
         else:
             shifts = None
+        self.logger.debug('Shifts of the diffractometer position: %s' % str(shifts) )
         return shifts
 
     # TODO: fix return type
