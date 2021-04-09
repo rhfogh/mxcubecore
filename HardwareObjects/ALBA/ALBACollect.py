@@ -430,18 +430,19 @@ class ALBACollect(AbstractCollect):
                 )
                 first_image_no += 1
                 omega_pos += 90
-                
-        #
-        #
-        # START of 20210218: Lines only necessary for ni660 collects, remove when switching to pure meshct/ascanct scans   
+                        
+                #
+                #
+                # START of 20210218: Lines only necessary for ni660 collects, remove when switching to pure meshct/ascanct scans   
                 
                 init_pos, final_pos, total_dist, omega_speed = self.calc_omega_scan_values( omega_pos, nb_images )
-        # END of lines for ni660 scans
-        #
-        #
+                # END of lines for ni660 scans
+                #
+                #
 
         elif exp_type == 'Mesh':   # combine all collections
             self.logger.debug("Running a raster collection")
+            self.write_image_headers(omega_pos)
             self.collect_mesh(
                       'test_pilatus_omegax_scan',
                       first_image_no,
