@@ -360,6 +360,8 @@ class GenericParallelProcessing(HardwareObject):
                 #+ " "
                 #+ self.params_dict["process_directory"]
             )
+            
+            line_to_execute = 'ssh opbl13@ctbl1301 \"' + line_to_execute + '\" '
             logging.getLogger("HWR").debug("Processing DOZOR as: %s" % line_to_execute)
 
             self.started = True
