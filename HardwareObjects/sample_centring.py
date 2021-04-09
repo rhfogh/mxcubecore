@@ -22,12 +22,28 @@ except ImportError:
       except ImportError:
           logger.warning("Could not find autocentring library, automatic centring is disabled")
 
+def centres_distance(centre1, centre2):
+    tot = 0
+    #logger.debug("%s" %  ( str(centre1) ) ) 
+    
+    for motor in centre1.keys():
+        #logger.debug("%s" % motor ) 
+        
+        try:
+            tot += pow( centre1[ motor ] - centre2[ motor ] , 2)
+        except:
+            logger.warning("No distnace for %s" %  motor.name() )
+        
+    return math.sqrt(tot)
 
+FITRADIUS = 0 # radius of circle centering fit 
 
 def multiPointCentre(z,phis) :
+    global FITRADIUS
     fitfunc = lambda p,x: p[0] * numpy.sin(x+p[1]) + p[2]
     errfunc = lambda p,x,y: fitfunc(p,x) - y
     p1, success = optimize.leastsq(errfunc,[1.,0.,0.],args = (phis,z))
+    FITRADIUS = math.fabs( p1[ 0 ] )
     return p1
 
 USER_CLICKED_EVENT = None
@@ -351,6 +367,7 @@ def center(phi, phiy, phiz,
     while i < n_points:
       try:
         x, y = USER_CLICKED_EVENT.get()
+        #logging.info("x=%s,y=%s", x, y)
       except:
         raise RuntimeError("Aborted while waiting for point selection")
       USER_CLICKED_EVENT = gevent.event.AsyncResult()
@@ -468,8 +485,12 @@ def auto_center(camera,
                 chi_angle, 
                 n_points,
                 msg_cb, new_point_cb):
+    global FITRADIUS
+    
     imgWidth = camera.getWidth()
     imgHeight = camera.getHeight()
+ 
+    logger.debug("SAVED_INITIAL_POSITIONS %s" % str( SAVED_INITIAL_POSITIONS ) )
  
     #check if loop is there at the beginning
     i = 0
@@ -531,6 +552,8 @@ def auto_center(camera,
               user_click(x,y,wait=True)
 
       centred_pos = centring_greenlet.get()
+      logger.debug("Radius of the fitted centering circle %f" % float(FITRADIUS) )
+      if float(FITRADIUS) < 0.050: break
       end(centred_pos)
                  
     return centred_pos

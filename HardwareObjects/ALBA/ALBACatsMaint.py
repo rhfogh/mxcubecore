@@ -54,6 +54,9 @@ class ALBACatsMaint(CatsMaint):
         self.chan_at_home = self.getChannelObject("_chnAtHome")
         self.cmd_super_abort = self.getCommandObject("super_abort")
 
+        # To get acces to recovery functions
+        self.Cats90 = self.getObjectByRole("cats90")
+
     def _doAbort(self):
         if self.cmd_super_abort is not None:
             self.cmd_super_abort()
@@ -67,13 +70,30 @@ class ALBACatsMaint(CatsMaint):
         if self.chan_at_home.getValue() is True:
             CatsMaint._doResetMemory(self)
 
+    def _check_unknown_sample_presence(self):
+        self.Cats90._check_unknown_sample_presence()
+
+    def _check_incoherent_sample_info(self):
+        """
+          Check for sample info in CATS but no physically mounted sample
+           (Fix failed PUT)
+          Returns False in case of incoherence, True if all is ok
+        """
+        self.Cats90._check_incoherent_sample_info()
+
+    def _doRecoverFailure(self):
+        """
+          Failed get
+        """
+        self.Cats90._doRecoverFailure()
+
     def _doReset(self):
         """
-        Reset CATS system.
+           Reset CATS system after failed put
+           Deletes sample info on diff, but should retain info of samples on tools, eg when doing picks
+           TODO: tool2 commands are not working, eg SampleNumberInTool2
         """
-        self._cmdAbort()
-        self._cmdReset()
-        self._doResetMemory()
+        self.Cats90._doReset()
 
     def _get_shifts(self):
         """

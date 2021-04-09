@@ -80,6 +80,9 @@ class ALBAEnergy(Device):
     def update_values(self):
         self.energy_hwobj.update_values()
 
+    #TODO update resolution. Resolution has a method called energyChanged, which takes a egy but doenst use it
+    #  this calls updateResolution, which also calls update_beam_center, but probably this doesnt affect ALBA
+    #  as the beam center is taken from Variables just before a collect. Check though...
     def energy_position_changed(self, value):
         self.energy_position = value
         if None not in [self.energy_position, self.wavelength_position]:

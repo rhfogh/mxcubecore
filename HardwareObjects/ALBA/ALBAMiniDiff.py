@@ -460,7 +460,7 @@ class ALBAMiniDiff(GenericDiffractometer):
             if super_state != DevState.MOVING:
                 self.logger.debug('Go_sample_view done (%s)' % super_state)
                 return True
-            gevent.sleep(0.2)
+            time.sleep(0.2)
 
     def supervisor_state_changed(self, state):
         """
