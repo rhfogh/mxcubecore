@@ -1137,6 +1137,7 @@ class GraphicsItemGrid(GraphicsItem):
         if self.__reversing_rotation and line % 2 :
             image_serial = self.__first_image_num + \
                 self.__num_images_per_line * (line + 1) - 1 - image
+            image = self.__num_images_per_line - image - 1
         else:
             image_serial = self.__first_image_num + \
                 self.__num_images_per_line * line + image

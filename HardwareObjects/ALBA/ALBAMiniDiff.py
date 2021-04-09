@@ -39,6 +39,7 @@ from __future__ import print_function
 import logging
 import time
 import gevent
+import math
 
 import queue_model_objects_v1 as queue_model_objects
 
@@ -113,6 +114,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 'stateChanged',
                 self.phi_motor_state_changed)
             self.connect(self.phi_motor_hwobj, "positionChanged", self.phi_motor_moved)
+            self.current_motor_positions["phi"] = self.phi_motor_hwobj.getPosition()
         else:
             self.logger.error('Phi motor is not defined')
 
@@ -125,6 +127,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.phiz_motor_hwobj,
                 'positionChanged',
                 self.phiz_motor_moved)
+            self.current_motor_positions["phiz"] = self.phiz_motor_hwobj.getPosition()
         else:
             self.logger.error('Phiz motor is not defined')
 
@@ -137,6 +140,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.phiy_motor_hwobj,
                 'positionChanged',
                 self.phiy_motor_moved)
+            self.current_motor_positions["phiy"] = self.phiy_motor_hwobj.getPosition()
         else:
             self.logger.error('Phiy motor is not defined')
 
@@ -165,6 +169,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.sample_x_motor_hwobj,
                 'positionChanged',
                 self.sampleX_motor_moved)
+            self.current_motor_positions["sampx"] = self.sample_x_motor_hwobj.getPosition()
         else:
             self.logger.error('Sampx motor is not defined')
 
@@ -177,6 +182,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.sample_y_motor_hwobj,
                 'positionChanged',
                 self.sampleY_motor_moved)
+            self.current_motor_positions["sampy"] = self.sample_y_motor_hwobj.getPosition()
         else:
             self.logger.error('Sampx motor is not defined')
 
@@ -195,6 +201,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.kappa_motor_hwobj,
                 "positionChanged",
                 self.kappa_motor_moved)
+            self.current_motor_positions["kappa"] = self.kappa_motor_hwobj.getPosition()
         else:
             self.logger.error('Kappa motor is not defined')
 
@@ -207,6 +214,7 @@ class ALBAMiniDiff(GenericDiffractometer):
                 self.kappa_phi_motor_hwobj,
                 "positionChanged",
                 self.kappa_phi_motor_moved)
+            self.current_motor_positions["kappa_phi"] = self.kappa_phi_motor_hwobj.getPosition()
         else:
             self.logger.error('Kappa-Phi motor is not defined')
 
@@ -255,7 +263,7 @@ class ALBAMiniDiff(GenericDiffractometer):
 
     def getCalibrationData(self, offset=None):
         """
-        Get pixel size for OAV system
+        Get pixel size for OAV system in mm
 
         @offset: Unused
         @return: 2-tuple float
@@ -289,14 +297,16 @@ class ALBAMiniDiff(GenericDiffractometer):
         """
         self.update_pixels_per_mm()
 
-    # TODO: Must be implemented.
     def get_centred_point_from_coord(self, x, y, return_by_names=None):
         """
         Returns a dictionary with motors name and positions centred.
         It is expected in start_move_to_beam and move_to_beam methods in
-        GenericDiffractometer HwObj.
+        GenericDiffractometer HwObj, 
+        Also needed for the calculation of the motor positions after definition of the mesh grid 
+            (Qt4_GraphicsManager, update_grid_motor_positions)
 
-        point x,y is the lower left corner on the camera, this functions returns the motor positions for that point
+        point x,y is relative to the lower left corner on the camera, this functions returns the motor positions for that point,
+        where the motors that are changed are phiy and phiz. 
         
         @return: dict
         """
@@ -305,22 +315,40 @@ class ALBAMiniDiff(GenericDiffractometer):
         self.logger.info('get_centred_point_from_coord beam_position[0] %s and beam_position[1] %s' % 
                                           ( self.beam_position[0], self.beam_position[1] ) 
                                       )
+
+        self.update_zoom_calibration()
+        
         loc_centred_point = {}
         loc_centred_point['phi'] = self.phi_motor_hwobj.getPosition()
         loc_centred_point['kappa'] = self.kappa_motor_hwobj.getPosition()
         loc_centred_point['kappa_phi'] = self.kappa_phi_motor_hwobj.getPosition()
-        loc_centred_point['sampx'] = self.sample_x_motor_hwobj.getPosition()
-        loc_centred_point['sampy'] = self.sample_y_motor_hwobj.getPosition()
         loc_centred_point['phiy'] = self.phiy_motor_hwobj.getPosition() - ( float( x - self.beam_position[0] ) / self.pixels_per_mm_x )
-        loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() + ( float( y - self.beam_position[1] ) / self.pixels_per_mm_y )
 
-        self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
-        
+        # Overwrite phiz, which should remain in the actual position, hopefully the center of rotation
+        omegaz_diff = 0
+        if self.omegaz_reference != None: 
+            loc_centred_point['phiz'] = self.omegaz_reference['position']
+            omegaz_diff = self.phiz_motor_hwobj.getPosition() - self.omegaz_reference['position'] 
+        else: 
+            loc_centred_point['phiz'] = self.phiz_motor_hwobj.getPosition() 
+
+        # Calculate the positions of sampx and sampy that correspond to the camera x,y coordinates
+        vertdist = omegaz_diff + float( y - self.beam_position[1] ) / self.pixels_per_mm_y 
+        sampxpos = self.sample_x_motor_hwobj.getPosition()
+        sampypos = self.sample_y_motor_hwobj.getPosition()
+        phi_angle = math.radians(self.centring_phi.direction * \
+                    self.centring_phi.getPosition())
+
+        dy = math.cos(phi_angle) * vertdist
+        dx = math.sin(phi_angle) * vertdist
+
+        loc_centred_point['sampx'] = sampxpos + dx
+        loc_centred_point['sampy'] = sampypos + dy
+
 #        if return_by_names:
 #            loc_centred_point = self.convert_from_obj_to_name(loc_centred_point)
 
         self.logger.info('get_centred_point_from_coord loc_centred_point %s ' % ( loc_centred_point ) )
-        #self.logger.info('loc_centred_point[phiy] %s ' % ( loc_centred_point['phiy'] ) )
         
         return loc_centred_point
 
@@ -408,12 +436,14 @@ class ALBAMiniDiff(GenericDiffractometer):
         return self.super_hwobj.get_current_phase().upper() == "SAMPLE"
 
     def get_grid_direction(self):
-        #grid_direction = {}
         
-        #self.logger.info('diffr_hwobj grid_direction %s' % self.grid_direction)
-        #self.grid_direction['omega_ref'] = 1
-        #self.grid_direction['fast'] = [ 1, 0 ] # Qt4_GraphicsLib.py line 1184/85 MD2
-        #self.grid_direction['slow'] = [ 0, 1 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        grid_direction = self.getProperty("gridDirection")
+
+        grid_direction = {}
+        self.grid_direction['omega_ref'] = 1
+        self.grid_direction['fast'] = [ 1, 0 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        self.grid_direction['slow'] = [ 0, -1 ] # Qt4_GraphicsLib.py line 1184/85 MD2
+        self.logger.info('diffr_hwobj grid_direction %s' % self.grid_direction)
         
         return self.grid_direction
         
@@ -590,6 +620,7 @@ class ALBAMiniDiff(GenericDiffractometer):
 
         @relpos: target relative position
         """
+        #TODO:Are all these waiting times really necessary??'
         self.wait_device_ready()
         self.phi_motor_hwobj.syncMoveRelative(relpos)
         time.sleep(0.2)
@@ -613,6 +644,18 @@ class ALBAMiniDiff(GenericDiffractometer):
             self.logger.warning(
                 "Diffractometer set_phase asked for un-handled phase: %s" %
                 phase)
+    
+    # Copied from GenericDiffractometer just to improve error loggin
+    def wait_device_ready(self, timeout=30):
+        """ Waits when diffractometer status is ready:
+
+        :param timeout: timeout in second
+        :type timeout: int
+        """
+        gevent.sleep(1) # wait a bit to see if state does not change inmediately
+        with gevent.Timeout(timeout, Exception("Timeout waiting for Diffracometer ready, check bl13/eh/diff. Is omegax close enough to 0??")):
+            while not self.is_ready():
+                time.sleep(0.01)
 
 
 def test_hwo(hwo):

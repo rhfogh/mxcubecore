@@ -87,6 +87,7 @@ class ALBADigitalZoom(Device):
         self.chan_state.connectSignal("update", self.stateChanged)
 
         self.current_position = self.getPosition()
+        self.logger.debug('***** get Position: %s',self.getPosition())
         self.current_state = self.getState()
 
     def getPredefinedPositionsList(self):
@@ -229,6 +230,9 @@ class ALBADigitalZoom(Device):
         return True
 
     def get_calibration(self):
+        """
+          Returns the pixel size in um for the current zoom level (self.current_position)
+        """
         _zoom_lut = {}
         _zoom_lut[1] = 0.0000
         _zoom_lut[2] = 0.1810
@@ -238,6 +242,10 @@ class ALBADigitalZoom(Device):
         _zoom_lut[6] = 0.9540
         _zoom_lut[7] = 1.0000
 
-        x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
-        self.logger.debug("Getting calibration from zoom hwobj: {}".format(x))
+        #x = 2.0040 + (-1.8370 * _zoom_lut[int(self.current_position)])
+        x = 2.784 + (-2.604 * _zoom_lut[int(self.current_position)])
+        #TODO improve calibration.
+        self.logger.debug("Getting calibration from zoom hwobj: position (level) {} pix size (um) {}".
+                          format(self.current_position,x) 
+                          )
         return x, x

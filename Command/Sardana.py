@@ -210,8 +210,8 @@ class SardanaMacro(CommandObject, SardanaObject):
 
             # Handling macro state changed event
             door_state = data.rvalue
-            logging.getLogger('HWR').debug("doorstate changed, now is %s"
-                                           % str(door_state))
+            #logging.getLogger('HWR').debug("doorstate changed, now is %s"
+            #                               % str(door_state))
 
             if door_state != self.door_state:
                 self.door_state = door_state
