@@ -18,6 +18,57 @@ class ALBAImageTracking(Device):
     def __init__(self, *args):
         Device.__init__(self, *args)
         self.logger = logging.getLogger("HWR.ALBAImageTracking")
+
+        # self.cmd_start = None
+        # self.cmd_stop = None
+        self.cmd_send_image = None
+
+        # self.chan_state = None
+        # self.chan_status = None
+        # self.image_tracking_enabled = None
+
+    def init(self):
+
+        # self.chan_state = self.getChannelObject("State")
+        # self.chan_status = self.getChannelObject("Status")
+        # self.connect(self.chan_state, "update", self.state_changed)
+        #
+        # self.cmd_start = self.getCommandObject('start')
+        # self.cmd_stop = self.getCommandObject('stop')
+        self.cmd_send_image = self.getCommandObject('send_image')
+
+    # def enable_image_tracking_changed(self, state):
+    #     self.logger.debug('enable_image_tracking_changed: %s' % state)
+    #     self.image_tracking_enabled = state
+    #     self.emit("imageTrackingEnabledChanged", (self.image_tracking_enabled, ))
+    #
+    # def state_changed(self, state):
+    #     self.logger.debug('state_changed: %s' % state)
+    #     if self.state != state:
+    #         self.state = state
+    #     self.emit("stateChanged", (self.state, ))
+    #
+    # def is_tracking_enabled(self):
+    #     self.logger.debug('is_tracking enabled')
+    #     if self.chan_enable_image_tracking is not None:
+    #         return self.chan_enable_image_tracking.getValue()
+    #
+    # def set_image_tracking_state(self, state):
+    #     self.logger.debug('set image tracking state: %s' % state)
+    #     if self.chan_enable_image_tracking is not None:
+    #         self.chan_enable_image_tracking.setValue(state)
+
+    def load_image(self, image_name):
+        self.logger.debug('load_image: %s' % image_name)
+        self.cmd_send_image(image_name)
+
+
+# This was a first version, not based on the Tango DS for the ADXV
+class ALBAImageTrackingLocal(Device):
+
+    def __init__(self, *args):
+        Device.__init__(self, *args)
+        self.logger = logging.getLogger("HWR.ALBAImageTrackingLocal")
         self.binary = None
         self.host = None
         self.port = None
@@ -63,4 +114,3 @@ class ALBAImageTracking(Device):
             os.system(self.start_adxv_cmd)
             time.sleep(2)
             send()
-
