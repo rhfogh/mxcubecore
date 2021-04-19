@@ -1805,13 +1805,28 @@ class ALBACollect(AbstractCollect):
         if event == "after":
             dc_pars = self.current_dc_parameters
             self.autoprocessing_hwobj.trigger_auto_processing(dc_pars)
-            
+
+    # TODO: Copied from EMBL, need to be evaluated
     def update_lims_with_workflow(self, workflow_id, grid_snapshot_filename):
+        """Updates collection with information about workflow
+
+        :param workflow_id: workflow id
+        :type workflow_id: int
+        :param grid_snapshot_filename: grid snapshot file path
+        :type grid_snapshot_filename: string
         """
-         Triggered from parallel processing, but not implemented
-         update_lims_with_workflow( workflow_id, self.params_dict["grid_snapshot_filename"] ) 
-        """
-        pass
+        if self.lims_client_hwobj is not None:
+            try:
+                self.current_dc_parameters["workflow_id"] = workflow_id
+                if grid_snapshot_filename:
+                    self.current_dc_parameters["xtalSnapshotFullPath3"] =\
+                        grid_snapshot_filename
+                self.lims_client_hwobj.update_data_collection(
+                    self.current_dc_parameters)
+            except Exception as e:
+                logging.getLogger("HWR").exception(
+                    "Could not store data collection into ISPyB\n%s" % e)
+
 
 def test_hwo(hwo):
     print("Energy: ", hwo.get_energy())
