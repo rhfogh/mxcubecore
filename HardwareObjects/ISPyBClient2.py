@@ -156,7 +156,9 @@ class ISPyBClient2(HardwareObject):
         self.beamline_name = self.session_hwobj.beamline_name
 
         self.ws_root = self.getProperty('ws_root')
-        logging.getLogger("HWR").debug( 'Web server used for upload of data processing: %s' % self.ws_root )
+        logging.getLogger("ispyb_client").debug( 'Web server used for upload of data processing: %s' % self.ws_root )
+        if 'test' in self.ws_root:
+            logging.getLogger("user_level_log").error("Using the test version of the ISPyB Client")
         self.ws_username = self.getProperty('ws_username')
         if not self.ws_username:
             self.ws_username = _WS_USERNAME
