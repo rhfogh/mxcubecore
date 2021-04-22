@@ -429,7 +429,7 @@ class SelectedLattice(MessageData):
         return self._strategyWavelength
 
     @property
-    def strategyConrol(self):
+    def strategyControl(self):
         """JSON string of command line options (*without* prefix)
         to use for startcal wrapper call"""
         return self._strategyControl
