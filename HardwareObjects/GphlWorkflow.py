@@ -31,6 +31,7 @@ import datetime
 import os
 import math
 import subprocess
+import json
 import socket
 import f90nml
 
@@ -1639,20 +1640,39 @@ class GphlWorkflow(HardwareObject, object):
         #     )
         #     self._queue_entry.get_queue_controller().pause(True)
 
+        kwArgs = {}
+
+        # NB We do not reset the wavelength at this point. We could, later
+        kwArgs["strategyWavelength"] = api.energy.get_wavelength()
+
         new_resolution = float(params.pop("resolution", 0))
-        if new_resolution and new_resolution != resolution:
-            logging.getLogger("GUI").info(
-                "GphlWorkflow: setting detector distance for resolution %7.3f A"
-                % new_resolution
-            )
-            # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
-            api.resolution.move(new_resolution, timeout=60)
+        if new_resolution:
+            if new_resolution != resolution:
+                logging.getLogger("GUI").info(
+                    "GphlWorkflow: setting detector distance for resolution %7.3f A"
+                    % new_resolution
+                )
+                # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
+                api.resolution.move(new_resolution, timeout=60)
+                resolution = new_resolution
+        kwArgs["strategyResolution"] = resolution
 
         ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
         if ll0[0] == "*":
             del ll0[0]
+
+        options = {}
+        maximum_chi = self.getProperty("maximum_chi")
+        if maximum_chi:
+            options["maxmum_chi"] = float(maximum_chi)
+
+        kwArgs["options"] = json.dumps(options, indent=4, sort_keys=True)
         #
         self._queue_entry.get_data_model().lattice_selected = True
+        # NB ostponedtill later
+        # return GphlMessages.SelectedLattice(
+        #     lattice_format=solution_format, solution=ll0, **kwArgs
+        # )
         return GphlMessages.SelectedLattice(
             lattice_format=solution_format, solution=ll0
         )

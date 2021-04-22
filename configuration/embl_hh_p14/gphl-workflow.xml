@@ -4,6 +4,42 @@
     <!-- combined with instcfgout parameter (see below); see also <newinstr> option -->
     <!--<instcfgout_dir>/MXCuBE/mxcube</instcfgout_dir>-->
 
+
+    <!-- Use multitrigger collection when set -->
+        <use_multitrigger>True</use_multitrigger>
+
+    <!-- Maximum allowed value of Chi, for strategy calculation -->
+    <maximum_chi>48.0</maximum_chi>
+
+    <!-- UI popup specification: -->
+
+    <!-- default values for image width popup; may be overridden by the workflow -->
+    <!-- The first value is the default; values are sorted before use -->
+    <default_image_widths> 0.1 0.05 0.2</default_image_widths>
+
+    <!-- tolerance for deciding whether angles match, in degrees;
+    used to compare kappa and phi to decide if orientation needs separate centring -->
+    <angular_tolerance>1.0</angular_tolerance>
+
+    <!-- Control of suggestions for radiation-dependent dose budget: -->
+
+    <!-- Parameters to control proposal total dose budget -->
+    <!-- The proposed budget is calculated so that radiation damage is predicted -->
+    <!-- to reduce the intensity at the highest expected redolution to this percentaged -->
+    <!-- after the end of the experiment (i.e. value 25 means final intensity -->
+    <!-- at the highest resolution is 25% of t starting intensity -->
+    <!-- Assuming an in increase in B factor of 1 A^2/MGy -->
+    <!-- The formula used is dose_budget =
+          2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
+    <default_decay_limit>25</default_decay_limit>
+
+    <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
+    <maximum_dose_budget>20</maximum_dose_budget>
+
+    <!-- Percentage of dose budget to propose for use in characterisation.  -->
+    <characterisation_budget_percent>5</characterisation_budget_percent>
+
+
     <!-- UI popup specification: -->
 
     <!-- default values for image width popup; may be overridden by the workflow -->
@@ -20,9 +56,6 @@
 <!--        TEST_Characterisation_12_4-->
 <!--        TEST_Characterisation_12_5-->
     </characterisation_strategies>
-
-    <!-- Use multitrigger collection where indicated -->
-    <use_multitrigger>True</use_multitrigger>
 
     <!-- Control of UI default value setting -->
 
@@ -51,28 +84,6 @@
         )
      mode "none" is not allowed as default -->
     <default_recentring_mode>sweep</default_recentring_mode>
-
-    <!-- tolerance for deciding whether angles match, in degrees;
-    used to compare kappa and phi to decide if orientation needs separate centring -->
-    <angular_tolerance>1.0</angular_tolerance>
-
-    <!-- Control of suggestions for radiation-dependent dose budget: -->
-
-    <!-- Parameters to control proposal total dose budget -->
-    <!-- The proposed budget is calculated so that radiation damage is predicted -->
-    <!-- to reduce the intensity at the highest expected redolution to this percentaged -->
-    <!-- after the end of the experiment (i.e. value 25 means final intensity -->
-    <!-- at the highest resolution is 25% of t starting intensity -->
-    <!-- Assuming an in increase in B factor of 1 A^2/MGy -->
-    <!-- The formula used is dose_budget =
-          2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
-    <default_decay_limit>25</default_decay_limit>
-
-    <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
-    <maximum_dose_budget>20</maximum_dose_budget>
-
-    <!-- Percentage of dose budget to propose for use in characterisation.  -->
-    <characterisation_budget_percent>5</characterisation_budget_percent>
 
 
     <!-- Popup of test crystal parameters for Diffreaction calibration -->

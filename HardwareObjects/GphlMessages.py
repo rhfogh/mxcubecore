@@ -389,7 +389,13 @@ class SelectedLattice(MessageData):
 
     INTENT = "DOCUMENT"
 
-    def __init__(self, lattice_format, solution):
+    def __init__(
+        self,
+        lattice_format,
+        solution,
+        strategyResolution=None,
+        strategyWavelength=None,
+        strategyControl=None):
         if lattice_format in INDEXING_FORMATS:
             self._lattice_format = lattice_format
         else:
@@ -398,6 +404,9 @@ class SelectedLattice(MessageData):
                 % (lattice_format, INDEXING_FORMATS)
             )
         self._solution = tuple(solution)
+        self._strategyResolution = strategyResolution
+        self._strategyWavelength = strategyWavelength
+        self._strategyControl = strategyControl
 
     @property
     def lattice_format(self):
@@ -408,6 +417,22 @@ class SelectedLattice(MessageData):
     def solution(self):
         """Tuple of strings containing proposed solution"""
         return self._solution
+
+    @property
+    def strategyResolution(self):
+        """Resolution to use for strategy calculation and acquisition"""
+        return self._strategyResolution
+
+    @property
+    def strategyWavelength(self):
+        """Wavelength to use for strategy calculation adn acquisition"""
+        return self._strategyWavelength
+
+    @property
+    def strategyConrol(self):
+        """JSON string of command line options (*without* prefix)
+        to use for startcal wrapper call"""
+        return self._strategyControl
 
 
 class CollectionDone(MessageData):

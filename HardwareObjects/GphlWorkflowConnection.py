@@ -1105,9 +1105,20 @@ class GphlWorkflowConnection(HardwareObject, object):
         frmt = jvm.co.gphl.beamline.v2_unstable.domain_types.IndexingFormat.valueOf(
             selectedLattice.lattice_format
         )
-        return jvm.astra.messagebus.messages.information.SelectedLatticeImpl(
+        result = jvm.astra.messagebus.messages.information.SelectedLatticeImpl(
             frmt, selectedLattice.solution
         )
+        strategyResolution = selectedLattice.strategyResolution
+        if strategyResolution is not None:
+            result.setStrategyResolution(float(strategyResolution))
+        strategyWavelength = selectedLattice.strategyWavelength
+        if strategyWavelength is not None:
+            result.setStrategyWavelength(float(strategyWavelength))
+        strategyControl = selectedLattice.strategyControl
+        if strategyControl is not None:
+            result.setStrategyControl(float(strategyControl))
+        #
+        return result
 
     def _BeamlineAbort_to_java(self, beamlineAbort):
         return (
