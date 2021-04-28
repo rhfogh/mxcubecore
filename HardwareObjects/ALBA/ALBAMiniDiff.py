@@ -657,6 +657,17 @@ class ALBAMiniDiff(GenericDiffractometer):
             while not self.is_ready():
                 time.sleep(0.01)
 
+    # Overwrites GenericDiffractometer method
+    def get_positions(self):
+        """
+        Descript. :
+        """
+        # Specific for XALOC: do we lose initial position events for these motors?
+        self.current_motor_positions['sampx'] = self.sample_x_motor_hwobj.getPosition()
+        self.current_motor_positions['sampy'] = self.sample_y_motor_hwobj.getPosition()
+
+        return GenericDiffractometer.get_positions(self)
+
 
 def test_hwo(hwo):
     print(hwo.get_phase_list())
