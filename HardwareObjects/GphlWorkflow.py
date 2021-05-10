@@ -791,8 +791,8 @@ class GphlWorkflow(HardwareObject, object):
                     "uiLabel": "%s beam energy (keV)" % tag,
                     "type": "floatstring",
                     "defaultValue": val,
-                    "lowerBound": 4.0,
-                    "upperBound": 20.0,
+                    "lowerBound": 2.0,
+                    "upperBound": 30.0,
                     "decimals": 4,
                 }
             )

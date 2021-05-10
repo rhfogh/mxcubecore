@@ -4,7 +4,7 @@
     - file names below are set as file_name.format(directory_locations) -->
     <directory_locations>
         <!-- Wrapper scripts for GPhL programs - must be reachable from workflow and procesing -->
-<!--        <GPHL_SETUP>/archive/rhfogh/mxcube</GPHL_SETUP>-->
+<!--        <GPHL_SETUP>/archive/rhfogh/GPhL/mxcube_setup</GPHL_SETUP>-->
 <!--        <GPHL_RELEASE>/public/xtal/Server-nightly-alpha-bdg-linux64/</GPHL_RELEASE>-->
         <GPHL_SETUP>/mnt/scratch/rhfogh/GPhL/mxcube_setup</GPHL_SETUP>
         <GPHL_RELEASE>/mnt/scratch/rhfogh/GPhL</GPHL_RELEASE>
