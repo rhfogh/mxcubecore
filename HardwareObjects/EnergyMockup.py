@@ -44,6 +44,8 @@ class EnergyMockup(Equipment):
            return (h_over_e/current_en)
        return None
 
+   get_wavelength = getCurrentWavelength
+
    def get_energy_limits(self):
        return [4, 20]
 
