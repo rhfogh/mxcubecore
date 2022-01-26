@@ -19,7 +19,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with MXCuBE.  If not, see <https://www.gnu.org/licenses/>.
+along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
 """
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
@@ -91,7 +91,6 @@ class GphlWorkflow(HardwareObject, object):
 
     def __init__(self, name):
         super(GphlWorkflow, self).__init__(name)
-        self._state = self.STATES.OFF
 
         # Needed to allow methods to put new actions on the queue
         # And as a place to get hold of other objects
@@ -124,9 +123,8 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
-        # RF no longer needed
-        # #GB: globalize these from setup_data_collection() only to get stuff down to collect_data()
-        # self._last_queryed_collection_strategy_parameters = None
+        # HACK
+        self.strategyWavelength = None
 
     def _init(self):
         super(GphlWorkflow, self)._init()
@@ -150,6 +148,8 @@ class GphlWorkflow(HardwareObject, object):
             "WorkflowCompleted": self.workflow_completed,
             "WorkflowFailed": self.workflow_failed,
         }
+
+        self._state = self.STATES.OFF
 
     def setup_workflow_object(self):
         """Necessary as this set-up cannot be done at init,
@@ -218,11 +218,11 @@ class GphlWorkflow(HardwareObject, object):
         for wf_node in self["workflows"]:
             name = wf_node.name()
             strategy_type = wf_node.getProperty("strategy_type")
-            variant = wf_node.getProperty("variant")
+            variants = wf_node.getProperty("variants")
             wf_dict = {
                 "name": name,
                 "strategy_type": strategy_type,
-                "variant": variant,
+                "variants": variants,
                 "application": wf_node.getProperty("application"),
                 "documentation": wf_node.getProperty("documentation", default_value=""),
                 "interleaveOrder": wf_node.getProperty(
@@ -260,17 +260,17 @@ class GphlWorkflow(HardwareObject, object):
             if wf_node.hasObject("properties"):
                 dd0.update(wf_node["properties"].getProperties())
             # Program-specific properties
-            devmode = dd0.get("co.gphl.wf.devMode")
-            if devmode and devmode[0] not in "fFnN":
-                # We are in developer mode. Add parameters
-                dd0["co.gphl.wf.stratcal.opt.--strategy_type"] = strategy_type
-                if variant:
-                    dd0["co.gphl.wf.stratcal.opt.--variant"] = variant
-                angular_tolerance = self.getProperty("angular_tolerance")
-                if angular_tolerance:
-                    dd0["co.gphl.wf.stratcal.opt.--angular-tolerance"] = float(
-                        angular_tolerance
-                    )
+            # devmode = dd0.get("co.gphl.wf.devMode")
+            # if devmode and devmode[0] not in "fFnN":
+            #     # We are in developer mode. Add parameters
+            #     dd0["co.gphl.wf.stratcal.opt.--strategy_type"] = strategy_type
+            #     if variant:
+            #         dd0["co.gphl.wf.stratcal.opt.--variant"] = variant
+            #     angular_tolerance = self.get_property("angular_tolerance")
+            #     if angular_tolerance:
+            #         dd0["co.gphl.wf.stratcal.opt.--angular-tolerance"] = float(
+            #             angular_tolerance
+            #         )
 
             wf_dict["invocation_properties"] = dd0 = invocation_properties.copy()
             if wf_node.hasObject("invocation_properties"):
@@ -320,7 +320,6 @@ class GphlWorkflow(HardwareObject, object):
                 "Cannot execute workflow - GphlWorkflowConnection not found"
             )
 
-        # try:
         self.set_state(self.STATES.BUSY)
         self._workflow_queue = gevent._threading.Queue()
 
@@ -331,7 +330,7 @@ class GphlWorkflow(HardwareObject, object):
 
         while True:
             if self._workflow_queue is None:
-                # We can only get that value if we have already done post_eecute
+                # We can only get that value if we have already done post_execute
                 # but the mechanics of aborting means we conme back
                 # Stop further processing here
                 raise QueueAbortedException("Aborting...", self)
@@ -413,6 +412,9 @@ class GphlWorkflow(HardwareObject, object):
         """Display collection strategy for user approval,
         and query parameters needed"""
 
+        # Number of decimals for rounding use_dose values
+        use_dose_decimals = 4
+
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
 
@@ -436,7 +438,10 @@ class GphlWorkflow(HardwareObject, object):
             data_model.lattice_selected
             or wf_parameters.get("strategy_type") == "diffractcal"
         ):
-            lines = ["%s strategy" % api.gphl_connection.get_workflow_name()]
+            lines = [
+                "%s strategy, variant '%s'"
+                % (data_model.get_type(), data_model.get_variant())
+            ]
             lines.extend(("-" * len(lines[0]), ""))
             # Data collection TODO: Use workflow info to distinguish
             beam_energies = OrderedDict()
@@ -456,7 +461,7 @@ class GphlWorkflow(HardwareObject, object):
             if not self.getProperty("recentre_before_start"):
                 # replace planned orientation with current orientation
                 current_pos_dict = api.diffractometer.get_motor_positions()
-                dd0 = axis_setting_dicts.values()[0]
+                dd0 = list(axis_setting_dicts.values())[0]
                 for tag in dd0:
                     pos = current_pos_dict.get(tag)
                     if pos is not None:
@@ -491,7 +496,7 @@ class GphlWorkflow(HardwareObject, object):
 
         info_text = "\n".join(lines)
 
-        # Set up  image width pulldown
+        # Set up image width pulldown
         allowed_widths = geometric_strategy.allowedWidths
         if allowed_widths:
             default_width_index = geometric_strategy.defaultWidthIdx or 0
@@ -516,6 +521,7 @@ class GphlWorkflow(HardwareObject, object):
             decay_limit=data_model.get_decay_limit(),
             relative_sensitivity=data_model.get_relative_rad_sensitivity(),
         )
+        round_dose_budget = round(dose_budget, use_dose_decimals)
         default_image_width = float(allowed_widths[default_width_index])
         default_exposure = acq_parameters.exp_time
         exposure_limits = api.detector.get_exposure_time_limits()
@@ -573,6 +579,7 @@ class GphlWorkflow(HardwareObject, object):
                         use_dose = std_dose_rate * experiment_time * transmission / 100
                         dd0["use_dose"] = use_dose + data_model.get_dose_consumed()
                 field_widget.set_values(**dd0)
+                field_widget.color_warning  ("use_dose", use_dose > round_dose_budget)
 
         def update_transmission(field_widget):
             """When transmission changes, update use_dose
@@ -587,6 +594,7 @@ class GphlWorkflow(HardwareObject, object):
                 field_widget.set_values(
                     use_dose=use_dose + data_model.get_dose_consumed()
                 )
+                field_widget.color_warning  ("use_dose", use_dose > round_dose_budget)
 
         def update_resolution(field_widget):
 
@@ -602,6 +610,7 @@ class GphlWorkflow(HardwareObject, object):
             if use_dose < std_dose_rate * experiment_time:
                 field_widget.set_values(use_dose=use_dose)
                 update_dose(field_widget)
+                field_widget.color_warning  ("use_dose", use_dose > round_dose_budget)
             else:
                 field_widget.set_values(transmission=100)
                 update_transmission(field_widget)
@@ -643,6 +652,10 @@ class GphlWorkflow(HardwareObject, object):
                             transmission=100,
                             use_dose=use_dose + data_model.get_dose_consumed(),
                         )
+                field_widget.color_warning (
+                    "use_dose",
+                    use_dose + data_model.get_dose_consumed() > round_dose_budget
+                )
 
         reslimits = api.resolution.get_limits()
         if None in reslimits:
@@ -697,7 +710,7 @@ class GphlWorkflow(HardwareObject, object):
                 "type": "floatstring",
                 "defaultValue": use_dose_start,
                 "lowerBound": 0.01,
-                "decimals": 4,
+                "decimals": use_dose_decimals,
                 "update_function": update_dose,
                 "readOnly": use_dose_frozen,
             },
@@ -926,13 +939,13 @@ class GphlWorkflow(HardwareObject, object):
         angular_tolerance = float(self.getProperty("angular_tolerance", 0))
 
         # enqueue data collection group
+        strategy_type = gphl_workflow_model.get_workflow_parameters()[
+            "strategy_type"
+        ]
         if gphl_workflow_model.lattice_selected:
             # Data collection TODO: Use workflow info to distinguish
             new_dcg_name = "GPhL Data Collection"
         else:
-            strategy_type = gphl_workflow_model.get_workflow_parameters()[
-                "strategy_type"
-            ]
             if strategy_type == "diffractcal":
                 new_dcg_name = "GPhL DiffractCal"
             else:
@@ -954,7 +967,7 @@ class GphlWorkflow(HardwareObject, object):
             # Preset energy
             # First set beam_energy and give it time to settle,
             # so detector distance will trigger correct resolution later
-            initial_energy = ConvertUtils.H_OVER_E / bst.wavelength
+            initial_energy = api.energy._calculate_energy(bst.wavelength)
             # TODO NBNB put in wait-till ready to make sure value settles
             api.energy.move_energy(initial_energy)
         else:
@@ -984,26 +997,17 @@ class GphlWorkflow(HardwareObject, object):
         # Set transmission, detector_disance/resolution to final (unchanging) values
         # Also set energy to first energy value, necessary to get resolution consistent
 
-        # Set beamline to match parameters
+        # Set beam_energies to match parameters
         # get wavelengths
         h_over_e = ConvertUtils.H_OVER_E
         beam_energies = parameters.pop("beam_energies")
         wavelengths = list(
-            GphlMessages.PhasingWavelength(wavelength=h_over_e / val, role=tag)
+            GphlMessages.PhasingWavelength(
+                wavelength=api.energy._calculate_wavelength(val), role=tag)
             for tag, val in beam_energies.items()
         )
-        # new_energy = list(beam_energies.items())[0][1]
-        # if new_energy != initial_energy:
-        #     # NB, this should not happen
-        #     # set to wavelength of first energy
-        #     # necessary so that resolution setting below gives right detector distance
-        #     logging.getLogger("GUI").info(
-        #         "GphlWorkflow: resetting energy from %7.3f to %7.3f keV"
-        #         % (initial_energy, new_energy)
-        #     )
-        #
-        #     api.energy.move_wavelength(wavelengths[0].wavelength)
-        # # TODO ensure that move is finished before resolution is set
+        if self.strategyWavelength is not None:
+            wavelengths[0] = self.strategyWavelength
 
         transmission = parameters["transmission"]
         logging.getLogger("GUI").info(
@@ -1063,10 +1067,6 @@ class GphlWorkflow(HardwareObject, object):
             )
             goniostatTranslations.append(translation)
             gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-            # current_okp = tuple(
-            #     int(settings.get(x, 0)) for x in self.rotation_axis_roles
-            # )
-            # self.collect_centring_snapshots("%s_%s_%s" % current_okp)
         else:
             # Sample was centred already, possibly during earlier characterisation
             # - use current position for recentring
@@ -1224,9 +1224,12 @@ class GphlWorkflow(HardwareObject, object):
             id_ = dds._id
         else:
             id_ = None
-        detectorSetting = GphlMessages.BcsDetectorSetting(
-            resolution, id_=id_, orgxy=orgxy, Distance=distance
-        )
+        if gphl_workflow_model.lattice_selected or strategy_type == "diffractcal":
+            detectorSetting = None
+        else:
+            detectorSetting = GphlMessages.BcsDetectorSetting(
+                resolution, id_=id_, orgxy=orgxy, Distance=distance
+            )
 
         # Return SampleCentred message
         sampleCentred = GphlMessages.SampleCentred(
@@ -1423,18 +1426,12 @@ class GphlWorkflow(HardwareObject, object):
                 acq_parameters.first_image,
                 acq_parameters.osc_start,
             )
-            # acq_parameters.kappa = self._get_kappa_axis_position()
-            # acq_parameters.kappa_phi = self._get_kappa_phi_axis_position()
-            # acq_parameters.overlap = overlap
             acq_parameters.exp_time = scan.exposure.time
             acq_parameters.num_passes = 1
 
-            # HACK! value 0.0 is treated as 'do not set' when setting up queue
-            # These have been set to the correct value earlier (setup_data_collection)
-
             ##
             wavelength = sweep.beamSetting.wavelength
-            acq_parameters.wavelength = wavelength
+            acq_parameters.energy = api.energy._calculate_energy(wavelength)
             detdistance = sweep.detectorSetting.axisSettings["Distance"]
             # not needed when detdistance is set :
             # acq_parameters.resolution = resolution
@@ -1453,7 +1450,6 @@ class GphlWorkflow(HardwareObject, object):
             # Edna also sets osc_end
 
             # Path_template
-            # path_template = queue_model_objects.PathTemplate()
             path_template = api.beamline_setup.get_default_path_template()
             # Naughty, but we want a clone, right?
             # NBNB this ONLY works because all the attributes are immutable values
@@ -1490,10 +1486,6 @@ class GphlWorkflow(HardwareObject, object):
                 )
             ):
                 # Put centring on queue and collect using the resulting position
-                # if mode 'sweep' and orientation has changed
-                # or "scan" and we are not at the start
-                # Never recentre on first scan - that is taken care of in setup
-                #
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
                 self.enqueue_sample_centring(
@@ -1566,12 +1558,17 @@ class GphlWorkflow(HardwareObject, object):
         return GphlMessages.CollectionDone(
             status=status,
             proposalId=collection_proposal.id_,
+            procWithLatticeParams=gphl_workflow_model.get_use_cell_for_processing(),
             # Only if you want to override prior information rootdir, which we do not
             # imageRoot=path_template.directory
         )
 
     def select_lattice(self, payload, correlation_id):
         choose_lattice = payload
+
+        data_model = self._queue_entry.get_data_model()
+        wf_parameters = data_model.get_workflow_parameters()
+        variants = wf_parameters["variants"]
 
         solution_format = choose_lattice.lattice_format
 
@@ -1608,8 +1605,47 @@ class GphlWorkflow(HardwareObject, object):
                 "upperBound": reslimits[1],
                 "decimals": 3,
                 "readOnly": False,
-            }
+            },
         ]
+        if not api.energy.read_only:
+            energy = round(api.energy.get_value(), 3)
+            energyLimits = api.energy.get_limits()
+            field_list.append(
+                {
+                    "variableName": "energy",
+                    "uiLabel": "Main aquisition energy (keV)",
+                    "type": "floatstring",
+                    "defaultValue":energy,
+                    "lowerBound": energyLimits[0],
+                    "upperBound": energyLimits[1],
+                    "decimals": 3,
+                    "readOnly": False,
+                }
+            )
+        if api.gphl_workflow.get_property("advanced_mode", False):
+            choices = variants
+        else:
+            choices = variants[:2]
+
+        field_list.append(
+            {
+                "variableName": "variant",
+                "uiLabel": "Strategy variant",
+                "type": "combo",
+                "defaultValue": choices[0],
+                "textChoices": choices,
+            }
+        )
+        if  api.gphl_workflow.get_property("advanced_mode", False):
+            field_list.append(
+                {
+                    "variableName": "use_cell_for_processing",
+                    "uiLabel": "Use cell and symmetry for processing?",
+                    "type": "boolean",
+                    "defaultValue":False,
+                    "readOnly": False,
+                }
+            )
 
         # colour matching lattices green
         colour_check = lattices
@@ -1634,16 +1670,18 @@ class GphlWorkflow(HardwareObject, object):
         params = self._return_parameters.get()
         if params is StopIteration:
             return StopIteration
-        # if self.getProperty("starting_beamline_energy") == "current":
-        #     logging.getLogger("user_level_log").warning(
-        #         "Please set acquisition energy and resolution and press Continue."
-        #     )
-        #     self._queue_entry.get_queue_controller().pause(True)
 
         kwArgs = {}
 
-        # NB We do not reset the wavelength at this point. We could, later
-        kwArgs["strategyWavelength"] = api.energy.get_wavelength()
+        prev_energy = api.energy.get_value()
+        if not api.energy.read_only:
+            energy = float(params.pop("energy", prev_energy))
+            if round(energy, 3) != round(prev_energy, 3):
+                api.energy.set_value(energy, timeout=60)
+        wavelength = api.energy._calculate_wavelength(energy)
+        role = self._queue_entry.get_data_model().get_beam_energy_tags()[0]
+        self.strategyWavelength = GphlMessages.PhasingWavelength(wavelength, role=role)
+        kwArgs["strategyWavelength"] = self.strategyWavelength
 
         new_resolution = float(params.pop("resolution", 0))
         if new_resolution:
@@ -1655,7 +1693,13 @@ class GphlWorkflow(HardwareObject, object):
                 # timeout in seconds: max move is ~2 meters, velocity 4 cm/sec
                 api.resolution.move(new_resolution, timeout=60)
                 resolution = new_resolution
-        kwArgs["strategyResolution"] = resolution
+
+        orgxy = api.detector.get_beam_position()
+        distance = api.detector.distance.get_value()
+        detectorSetting = GphlMessages.BcsDetectorSetting(
+            resolution, id_=None, orgxy=orgxy, Distance=distance
+        )
+        kwArgs["strategyDetectorSetting"] = detectorSetting
 
         ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
         if ll0[0] == "*":
@@ -1664,17 +1708,21 @@ class GphlWorkflow(HardwareObject, object):
         options = {}
         maximum_chi = self.getProperty("maximum_chi")
         if maximum_chi:
-            options["maxmum_chi"] = float(maximum_chi)
-
-        kwArgs["options"] = json.dumps(options, indent=4, sort_keys=True)
+            options["maximum_chi"] = float(maximum_chi)
+        angular_tolerance = self.get_property("angular_tolerance")
+        if maximum_chi:
+            options["angular_tolerance"] = float(angular_tolerance)
+        data_model.set_use_cell_for_processing(
+            params.pop("use_cell_for_processing", False)
+        )
+        options["strategy_type"] = wf_parameters["strategy_type"]
+        options["variant"] = variant = params["variant"]
+        data_model.set_variant(variant)
+        kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
         #
-        self._queue_entry.get_data_model().lattice_selected = True
-        # NB ostponedtill later
-        # return GphlMessages.SelectedLattice(
-        #     lattice_format=solution_format, solution=ll0, **kwArgs
-        # )
+        data_model.lattice_selected = True
         return GphlMessages.SelectedLattice(
-            lattice_format=solution_format, solution=ll0
+            lattice_format=solution_format, solution=ll0,**kwArgs
         )
 
     def parse_indexing_solution(self, solution_format, text):
@@ -1894,7 +1942,7 @@ class GphlWorkflow(HardwareObject, object):
     def collect_centring_snapshots(self, file_name_prefix="snapshot"):
         """
 
-        :param file_prefix: str
+        :param file_name_prefix: str
         :return:
         """
 
@@ -1963,8 +2011,16 @@ class GphlWorkflow(HardwareObject, object):
         workflow_model = self._queue_entry.get_data_model()
         sample_model = workflow_model.get_sample_node()
 
-        cell_params = workflow_model.get_cell_parameters()
-        if cell_params:
+        # cell_params = workflow_model.get_cell_parameters()
+        crystalObj = sample_model.crystals[0]
+        cell_params = list(
+            getattr(crystalObj, tag)
+            for tag in (
+                "cell_a", "cell_b", "cell_c",
+                "cell_alpha", "cell_beta", "cell_gamma",
+            )
+        )
+        if all(cell_params):
             unitCell = GphlMessages.UnitCell(*cell_params)
         else:
             unitCell = None
@@ -2035,14 +2091,6 @@ class GphlWorkflow(HardwareObject, object):
         priorInformation = GphlMessages.PriorInformation(
             sampleId=sampleId,
             sampleName=workflow_model.path_template.base_prefix,
-            # Changed to use MXCuBE prefix for naming purposes
-            # sampleName=(
-            #     sample_model.name
-            #     or sample_model.code
-            #     or sample_model.lims_code
-            #     or workflow_model.path_template.get_prefix()
-            #     or ConvertUtils.text_type(sampleId)
-            # ),
             rootDirectory=image_root,
             userProvidedInfo=userProvidedInfo,
         )
@@ -2069,7 +2117,7 @@ class GphlWorkflow(HardwareObject, object):
         return min(result, max_budget) / relative_sensitivity
 
     def get_emulation_samples(self):
-        """ Get list of lims_sample informatoin dictionaries for mock/emulation
+        """ Get list of lims_sample information dictionaries for mock/emulation
 
         Returns: LIST[DICT]
 
@@ -2088,7 +2136,7 @@ class GphlWorkflow(HardwareObject, object):
                     ]
                     space_group = indata.get("sg_name")
                     cell_lengths = indata.get("cell_dim")
-                    cell_angles = indata.get("cell_angles")
+                    cell_angles = indata.get("cell_ang_deg")
                     resolution = indata.get("res_limit_def")
 
                     location = (serial // 10 + 1, serial % 10 + 1)

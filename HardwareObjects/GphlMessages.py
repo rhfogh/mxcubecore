@@ -17,7 +17,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with MXCuBE.  If not, see <https://www.gnu.org/licenses/>.
+along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
 """
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
@@ -33,11 +33,6 @@ __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
 
-# Data Structures
-
-ParsedMessage = namedtuple(
-    "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
-)
 
 # Enumerations
 
@@ -183,6 +178,9 @@ CRYSTAL_SYSTEM_MAP = dict(zip("amothhc", CRYSTAL_SYSTEMS))
 
 POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
 
+ParsedMessage = namedtuple(
+    "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
+)
 
 # TEMPORARY. Stand-in for HardwareObject states
 @enum.unique
@@ -393,7 +391,7 @@ class SelectedLattice(MessageData):
         self,
         lattice_format,
         solution,
-        strategyResolution=None,
+        strategyDetectorSetting=None,
         strategyWavelength=None,
         strategyControl=None):
         if lattice_format in INDEXING_FORMATS:
@@ -404,7 +402,7 @@ class SelectedLattice(MessageData):
                 % (lattice_format, INDEXING_FORMATS)
             )
         self._solution = tuple(solution)
-        self._strategyResolution = strategyResolution
+        self._strategyDetectorSetting = strategyDetectorSetting
         self._strategyWavelength = strategyWavelength
         self._strategyControl = strategyControl
 
@@ -419,9 +417,9 @@ class SelectedLattice(MessageData):
         return self._solution
 
     @property
-    def strategyResolution(self):
-        """Resolution to use for strategy calculation and acquisition"""
-        return self._strategyResolution
+    def strategyDetectorSetting(self):
+        """Detector setting to use for strategy calculation and acquisition"""
+        return self._strategyDetectorSetting
 
     @property
     def strategyWavelength(self):
@@ -440,10 +438,11 @@ class CollectionDone(MessageData):
 
     INTENT = "EVENT"
 
-    def __init__(self, proposalId, status, imageRoot=None):
+    def __init__(self, proposalId, status, procWithLatticeParams=False, imageRoot=None):
         self._proposalId = proposalId
         self._imageRoot = imageRoot
         self._status = status
+        self._procWithLatticeParams = procWithLatticeParams
 
     @property
     def proposalId(self):
@@ -460,6 +459,11 @@ class CollectionDone(MessageData):
     def status(self):
         """Integer status code for collection result"""
         return self._status
+
+    @property
+    def procWithLatticeParams(self):
+        """Boolean, whether lattice parameters should be used for processing"""
+        return self._procWithLatticeParams
 
 
 # Complex payloads
@@ -617,6 +621,12 @@ class PhasingWavelength(IdentifiedElement):
     def wavelength(self):
         """Wavelength setting for beam"""
         return self._wavelength
+
+    @wavelength.setter
+    def wavelength(self, value):
+        if self._wavelength:
+            raise TypeError("PhasingWavelength values cannot be re-set if non-zero")
+        self._wavelength = value
 
 
 class BeamSetting(IdentifiedElement):

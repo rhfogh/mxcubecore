@@ -478,7 +478,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                 )
             elif self._enactment_id != enactment_id:
                 logging.getLogger("HWR").warning(
-                    "Workflow enactment I(D %s != info message enactment ID %s."
+                    "Workflow enactment ID %s != info message enactment ID %s."
                     % (self._enactment_id, enactment_id)
                 )
             if self.workflow_queue is not None:
@@ -487,7 +487,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                     (message_type, payload, correlation_id, None)
                 )
 
-        logging.getLogger("HWR").debug("Text info message - return None")
+        # logging.getLogger("HWR").debug("Text info message - return None")
         #
         return None
 
@@ -623,10 +623,11 @@ class GphlWorkflowConnection(HardwareObject, object):
 
         xx0 = py4j_message.getCorrelationId()
         correlation_id = xx0 and xx0.toString()
-        logging.getLogger("HWR").debug(
-            "GPhL incoming: message=%s, jobId=%s,  messageId=%s"
-            % (message_type, enactment_id, correlation_id)
-        )
+        if message_type != "String":
+            logging.getLogger("HWR").debug(
+                "GPhL incoming: message=%s, jobId=%s,  messageId=%s"
+                % (message_type, enactment_id, correlation_id)
+            )
 
         if message_type == "String":
             payload = py4j_message.getPayload()
@@ -1097,7 +1098,10 @@ class GphlWorkflowConnection(HardwareObject, object):
             ConvertUtils.text_type(collectionDone.proposalId)
         )
         return jvm.astra.messagebus.messages.information.CollectionDoneImpl(
-            proposalId, collectionDone.imageRoot, collectionDone.status
+            proposalId,
+            collectionDone.imageRoot,
+            collectionDone.status,
+            collectionDone.procWithLatticeParams,
         )
 
     def _SelectedLattice_to_java(self, selectedLattice):
@@ -1106,17 +1110,12 @@ class GphlWorkflowConnection(HardwareObject, object):
             selectedLattice.lattice_format
         )
         result = jvm.astra.messagebus.messages.information.SelectedLatticeImpl(
-            frmt, selectedLattice.solution
+            frmt,
+            selectedLattice.solution,
+            self._BcsDetectorSetting_to_java(selectedLattice.strategyDetectorSetting),
+            self._PhasingWavelength_to_java(selectedLattice.strategyWavelength),
+            selectedLattice.strategyControl,
         )
-        strategyResolution = selectedLattice.strategyResolution
-        if strategyResolution is not None:
-            result.setStrategyResolution(float(strategyResolution))
-        strategyWavelength = selectedLattice.strategyWavelength
-        if strategyWavelength is not None:
-            result.setStrategyWavelength(float(strategyWavelength))
-        strategyControl = selectedLattice.strategyControl
-        if strategyControl is not None:
-            result.setStrategyControl(float(strategyControl))
         #
         return result
 

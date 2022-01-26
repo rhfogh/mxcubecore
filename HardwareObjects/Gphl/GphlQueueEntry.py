@@ -53,6 +53,11 @@ class GphlWorkflowQueueEntry(BaseQueueEntry):
         #workflow_params.append("%d" % group_node_id)
         api.gphl_workflow.execute()
 
+    def parameter_query(self, field_list, return_parameters):
+        msg = "Workflow waiting for input, verify parameters and press continue."
+        logging.getLogger("user_level_log").warning(msg)
+        self.get_queue_controller().show_workflow_tab()
+
     def pre_execute(self):
         BaseQueueEntry.pre_execute(self)
         api.gphl_workflow.pre_execute(self)

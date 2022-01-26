@@ -1751,7 +1751,7 @@ class CentredPosition(object):
             else:
                 cpos_pos = getattr(cpos, motor_name)
 
-            if self_pos == cpos_pos == None:
+            if self_pos == cpos_pos is None:
                 eq[i] = True
             elif None in (self_pos, cpos_pos):
                 continue
@@ -1802,6 +1802,7 @@ class GphlWorkflow(TaskNode):
         self.path_template = PathTemplate()
         self._name = str()
         self._type = str()
+        self._variant = str()
         self._characterisation_strategy = str()
         self._interleave_order = str()
         self._number = 0
@@ -1811,6 +1812,7 @@ class GphlWorkflow(TaskNode):
         self._crystal_system = None
         self._point_group = None
         self._cell_parameters = None
+        self._use_cell_for_processing = False
         self._snapshot_count = int(
             workflow_hwobj.getProperty("default_snapshot_count", 0)
         )
@@ -1877,6 +1879,7 @@ class GphlWorkflow(TaskNode):
     # role:value beam_energy dictionary (in keV)
     def get_beam_energy_tags(self):
         return self._beam_energy_tags
+
     def set_beam_energy_tags(self, value):
         self._beam_energy_tags = tuple(value)
 
@@ -1886,6 +1889,13 @@ class GphlWorkflow(TaskNode):
 
     def set_space_group(self, value):
         self._space_group = value
+
+    # Strategy variant
+    def get_variant(self):
+        return self._variant
+
+    def set_variant(self, value):
+        self._variant = value
 
     # Characterisation strategy.
     def get_characterisation_strategy(self):
@@ -1908,7 +1918,6 @@ class GphlWorkflow(TaskNode):
     def set_point_group(self, value):
         self._point_group = value
 
-    
     # Dose budget (MGy, float).
     def get_dose_budget(self):
         return self._dose_budget
@@ -1969,21 +1978,32 @@ class GphlWorkflow(TaskNode):
         else:
             self._cell_parameters = None
 
+    # Use cell parameters and symmetry as given for characterisation / main processinhg
+    # Value changes afer characterisation
+    def get_use_cell_for_processing(self):
+        return self._use_cell_for_processing
+
+    def set_use_cell_for_processing(self, value):
+        self._use_cell_for_processing = value
+
     # Number of snapshots to take at start of data collection.
     def get_snapshot_count(self):
         return self._snapshot_count
+
     def set_snapshot_count(self, value):
         self._snapshot_count = value
 
     # (Re)centre before each sweep?.
     def get_recentring_mode(self):
         return self._recentring_mode
+
     def set_recentring_mode(self, value):
         self._recentring_mode = value
 
     # id_ of GonioostatRotation matching current goniostat position
     def get_current_rotation_id(self):
         return self._current_rotation_id
+
     def set_current_rotation_id(self, value):
         self._current_rotation_id = value
 
