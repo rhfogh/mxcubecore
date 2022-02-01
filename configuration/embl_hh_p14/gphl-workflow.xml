@@ -4,9 +4,11 @@
     <!-- combined with instcfgout parameter (see below); see also <newinstr> option -->
     <!--<instcfgout_dir>/MXCuBE/mxcube</instcfgout_dir>-->
 
-
     <!-- Use multitrigger collection when set -->
-        <use_multitrigger>True</use_multitrigger>
+    <!--    <use_multitrigger>True</use_multitrigger>-->
+
+    <!-- Use advanced_mode for adidtional UI options. Uncoment to set -->
+    <advanced_mode>True</advanced_mode>
 
     <!-- Maximum allowed value of Chi, for strategy calculation -->
     <maximum_chi>48.0</maximum_chi>
@@ -51,6 +53,7 @@
     <!-- names refer to stategies in  strategylib.nml -->
     <characterisation_strategies>
         Char_6_5_multitrigger
+        Char_24deg
 <!--        Characterisation_6_5-->
 <!--        TEST_Characterisation_12_3-->
 <!--        TEST_Characterisation_12_4-->
@@ -239,46 +242,28 @@
     <!-- Other parameters are passed to the workflow, see workflow documentation for details -->
     <workflows>
 
-        <Native-full>
+        <Native>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>native</strategy_type>
-            <variant>full</variant>
+            <variants>full quick minimal long</variants>
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
-                Optimised for high-quality balanced data,
+                - full: Optimised for high-quality balanced data,
                 2-4 sweeps, ca. 600-1000 degrees.
+                - quick: 1-2 orientations, 360-400 degrees
+                Quick, cusp-free acquisition,
+                - 1 sweep of 180+ degrees, 1-2 centrings.
+                Absolute minimum for cusp-free acquisition. Not recommended.
+                - long: Optimised for high-quality balanced data, with additional sweep.
+                For some symmetries, otherwise defaults to full. Not recommended.
             </documentation>
-        </Native-full>
-
-        <Native-quick>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
-            <strategy_type>native</strategy_type>
-            <variant>quick</variant>
-            <documentation>
-                Single wavelength data acquisition for native data collection
-                Includes initial characterisation and complete collection.
-                1-2 orientations, 360-400 degrees
-                Quick, cusp-free acqiusition,
-            </documentation>
-        </Native-quick>
-
-        <Native-minimal>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
-            <strategy_type>native</strategy_type>
-            <variant>minimal</variant>
-            <documentation>
-                Single wavelength data acquisition for native data collection
-                Includes initial characterisation and complete collection.
-                1 sweep of 180+ degrees, 1-2 centrings.
-                Absolute minimum for cusp-free acquisition
-            </documentation>
-        </Native-minimal>
+        </Native>
 
         <SingleAnomalousDispersion>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
-            <variant>full</variant>
+            <variants>full quick</variants>
             <documentation>
                 Single wavelength SAD data acquisition, full strategy.
                 Includes initial characterisation and complete collection
@@ -297,7 +282,7 @@
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_2wvl</variant>-->
-            <variant>quick</variant>
+            <variants>quick full</variants>
             <documentation>
                 Two-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
@@ -317,7 +302,7 @@
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_3wvl</variant>-->
-            <variant>quick</variant>
+            <variants>quick full</variants>
             <documentation>
                 Three-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
@@ -336,10 +321,11 @@
         <TranslationalCalibration>
             <application>co.gphl.wf.workflows.WFTransCal</application>
             <strategy_type>transcal</strategy_type>
+            <variants>full</variants>
             <documentation>Translational calibration.
                 Designed for use by beamline personnel.
                 Calibrates centring motors to allow prediction of centring positions
-                Consissts of mulltiple centrings, requiring a glass or tungsten tip.
+                Consists of mulltiple centrings, requiring a glass or tungsten tip.
             </documentation>
             <options>
                 <!-- file: File containing settings of rotation axes for calibration -->
@@ -360,11 +346,11 @@
         <DiffractometerCalibration>
             <application>co.gphl.wf.workflows.WFDiffractCal</application>
             <strategy_type>diffractcal</strategy_type>
-            <variant>full</variant>
+            <variants>full</variants>
             <documentation>Diffractometer calibration, full-length
                 Designed for use by beamline personnel.
                 Calibrates axis directions, detector pane orientation, and beam centre.
-                Long daa collectoin and processing, requiring a high-quality, high-symmetry
+                Long data collection and processing, requiring a high-quality, high-symmetry
                 crystal of precisely known cell parameters.
             </documentation>
             <options>
@@ -386,11 +372,11 @@
         <DiffractometerCalibration-short>
             <application>co.gphl.wf.workflows.WFDiffractCal</application>
             <strategy_type>diffractcal</strategy_type>
-            <variant>short</variant>
+            <variants>minimal</variants>
             <documentation>Diffractometer calibration, short.
                 Designed for use by beamline personnel.
                 Calibrates axis directions, detector pane orientation, and beam centre.
-                Long daa collectoin and processing, requiring a high-quality, high-symmetry
+                Long data collection and processing, requiring a high-quality, high-symmetry
                 crystal of precisely known cell parameters.
             </documentation>
             <options>
