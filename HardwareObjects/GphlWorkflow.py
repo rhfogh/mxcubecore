@@ -1364,6 +1364,8 @@ class GphlWorkflow(HardwareObject, object):
 
     def collect_data(self, payload, correlation_id):
         collection_proposal = payload
+
+        angular_tolerance = float(self.get_property("angular_tolerance", 0))
         queue_manager = self._queue_entry.get_queue_controller()
 
         gphl_workflow_model = self._queue_entry.get_data_model()
@@ -1406,9 +1408,17 @@ class GphlWorkflow(HardwareObject, object):
             scans = scans[:1]
 
         sweeps = set()
+        last_orientation = ()
+        maxdev = -1
         snapshotted_rotation_ids = set()
         for scan in scans:
             sweep = scan.sweep
+            goniostatRotation = sweep.goniostatSweepSetting
+            rotation_id = goniostatRotation.id_
+            initial_settings = sweep.get_initial_settings()
+            orientation = tuple(
+                initial_settings.get(tag) for tag in ("kappa", "kappa_phi")
+            )
             acq = queue_model_objects.Acquisition()
 
             # Get defaults, even though we override most of them
@@ -1475,19 +1485,28 @@ class GphlWorkflow(HardwareObject, object):
             path_template.start_num = acq_parameters.first_image
             path_template.num_files = acq_parameters.num_images
 
-            goniostatRotation = sweep.goniostatSweepSetting
-            rotation_id = goniostatRotation.id_
-            initial_settings = sweep.get_initial_settings()
+            if last_orientation:
+                maxdev = max(
+                    abs(orientation[ind] - last_orientation[ind])
+                    for ind in range(2)
+                )
             if sweeps and (
                 recentring_mode == "scan"
                 or (
                     recentring_mode == "sweep"
-                    and rotation_id != gphl_workflow_model.get_current_rotation_id()
+                    and not (
+                        rotation_id == gphl_workflow_model.get_current_rotation_id()
+                        or (0 <= maxdev < angular_tolerance)
+                    )
                 )
             ):
                 # Put centring on queue and collect using the resulting position
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
+                #
+                # Done if 1) we centre for each acan
+                # 2) we centre for each sweep unless the rotation ID is unchanged
+                #    or the kappa and phi values are unchanged anyway
                 self.enqueue_sample_centring(
                     motor_settings=initial_settings, in_queue=True
                 )
@@ -1513,6 +1532,7 @@ class GphlWorkflow(HardwareObject, object):
 
             sweeps.add(sweep)
 
+            last_orientation = orientation
 
             if repeat_count and sweep_offset and self.getProperty("use_multitrigger"):
                 # Multitrigger sweep - add in parameters.
