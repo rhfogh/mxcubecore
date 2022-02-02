@@ -83,8 +83,8 @@ class ActuatorMockup(AbstractActuator.AbstractActuator):
         Raises:
             ValueError: Value not valid or attemp to set read-only actuator.
         """
-        if self.read_only:
-            raise ValueError("Attempt to set value for read-only Actuator")
+        # if self.read_only:
+        #     raise ValueError("Attempt to set value for read-only Actuator")
         if self.validate_value(value):
             self.update_state(self.STATES.BUSY)
             if timeout or timeout is None:

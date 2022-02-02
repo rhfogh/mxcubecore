@@ -107,3 +107,27 @@ class AbstractEnergy(HardwareObject):
 
     def update_values(self):
         self.emit("energyChanged", self._energy_value, h_over_e / self._energy_value)
+
+    def _calculate_wavelength(self, energy=None):
+        """Calculate wavelength from energy
+        Args:
+            energy(float): Energy [keV]
+        Returns:
+            (float): wavelength [A]
+        """
+        energy = energy or self.get_value()
+
+        # energy in KeV to get wavelength in A
+        energy = energy / 1000.0 if energy > 1000 else energy
+
+        return h_over_e / energy
+
+    def _calculate_energy(self, wavelength=None):
+        """Calculate energy from wavelength
+        Args:
+            value((float): wavelength [A]
+        Returns:
+            (float): Energy [keV]
+        """
+        wavelength = wavelength or self.get_wavelength()
+        return h_over_e / wavelength

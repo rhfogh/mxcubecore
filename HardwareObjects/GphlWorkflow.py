@@ -218,7 +218,7 @@ class GphlWorkflow(HardwareObject, object):
         for wf_node in self["workflows"]:
             name = wf_node.name()
             strategy_type = wf_node.getProperty("strategy_type")
-            variants = wf_node.getProperty("variants")
+            variants = wf_node.getProperty("variants").strip().split()
             wf_dict = {
                 "name": name,
                 "strategy_type": strategy_type,
@@ -266,7 +266,7 @@ class GphlWorkflow(HardwareObject, object):
             #     dd0["co.gphl.wf.stratcal.opt.--strategy_type"] = strategy_type
             #     if variant:
             #         dd0["co.gphl.wf.stratcal.opt.--variant"] = variant
-            #     angular_tolerance = self.get_property("angular_tolerance")
+            #     angular_tolerance = self.getProperty("angular_tolerance")
             #     if angular_tolerance:
             #         dd0["co.gphl.wf.stratcal.opt.--angular-tolerance"] = float(
             #             angular_tolerance
@@ -936,7 +936,7 @@ class GphlWorkflow(HardwareObject, object):
         geometric_strategy = payload
         sweeps = geometric_strategy.get_ordered_sweeps()
         gphl_workflow_model = self._queue_entry.get_data_model()
-        angular_tolerance = float(self.getProperty("angular_tolerance", 0))
+        angular_tolerance = float(self.getProperty("angular_tolerance", 1.0))
 
         # enqueue data collection group
         strategy_type = gphl_workflow_model.get_workflow_parameters()[
@@ -1113,7 +1113,7 @@ class GphlWorkflow(HardwareObject, object):
                     for role in self.translation_axis_roles
                 )
 
-            tol = angular_tolerance if recen_parameters else 0.1
+            tol = angular_tolerance if recen_parameters else 1.0
             if maxdev <= tol:
                 # first orientation matches current, set to current centring
                 # Use sweepSetting as is, recentred or very close
@@ -1365,7 +1365,7 @@ class GphlWorkflow(HardwareObject, object):
     def collect_data(self, payload, correlation_id):
         collection_proposal = payload
 
-        angular_tolerance = float(self.get_property("angular_tolerance", 0))
+        angular_tolerance = float(self.getProperty("angular_tolerance", 1.0))
         queue_manager = self._queue_entry.get_queue_controller()
 
         gphl_workflow_model = self._queue_entry.get_data_model()
@@ -1627,22 +1627,22 @@ class GphlWorkflow(HardwareObject, object):
                 "readOnly": False,
             },
         ]
-        if not api.energy.read_only:
-            energy = round(api.energy.get_value(), 3)
-            energyLimits = api.energy.get_limits()
-            field_list.append(
-                {
-                    "variableName": "energy",
-                    "uiLabel": "Main aquisition energy (keV)",
-                    "type": "floatstring",
-                    "defaultValue":energy,
-                    "lowerBound": energyLimits[0],
-                    "upperBound": energyLimits[1],
-                    "decimals": 3,
-                    "readOnly": False,
-                }
-            )
-        if api.gphl_workflow.get_property("advanced_mode", False):
+        # if not api.energy.read_only:
+        energy = round(api.energy.get_value(), 3)
+        energyLimits = api.energy.get_limits()
+        field_list.append(
+            {
+                "variableName": "energy",
+                "uiLabel": "Main aquisition energy (keV)",
+                "type": "floatstring",
+                "defaultValue":energy,
+                "lowerBound": energyLimits[0],
+                "upperBound": energyLimits[1],
+                "decimals": 3,
+                "readOnly": False,
+            }
+        )
+        if api.gphl_workflow.getProperty("advanced_mode", False):
             choices = variants
         else:
             choices = variants[:2]
@@ -1656,7 +1656,7 @@ class GphlWorkflow(HardwareObject, object):
                 "textChoices": choices,
             }
         )
-        if  api.gphl_workflow.get_property("advanced_mode", False):
+        if  api.gphl_workflow.getProperty("advanced_mode", False):
             field_list.append(
                 {
                     "variableName": "use_cell_for_processing",
@@ -1694,10 +1694,10 @@ class GphlWorkflow(HardwareObject, object):
         kwArgs = {}
 
         prev_energy = api.energy.get_value()
-        if not api.energy.read_only:
-            energy = float(params.pop("energy", prev_energy))
-            if round(energy, 3) != round(prev_energy, 3):
-                api.energy.set_value(energy, timeout=60)
+        # if not api.energy.read_only:
+        energy = float(params.pop("energy", prev_energy))
+        if round(energy, 3) != round(prev_energy, 3):
+            api.energy.set_value(energy, timeout=60)
         wavelength = api.energy._calculate_wavelength(energy)
         role = self._queue_entry.get_data_model().get_beam_energy_tags()[0]
         self.strategyWavelength = GphlMessages.PhasingWavelength(wavelength, role=role)
@@ -1714,8 +1714,8 @@ class GphlWorkflow(HardwareObject, object):
                 api.resolution.move(new_resolution, timeout=60)
                 resolution = new_resolution
 
-        orgxy = api.detector.get_beam_position()
-        distance = api.detector.distance.get_value()
+        orgxy = api.beam_info.get_beam_position()
+        distance = api.detector.get_distance()
         detectorSetting = GphlMessages.BcsDetectorSetting(
             resolution, id_=None, orgxy=orgxy, Distance=distance
         )
@@ -1729,9 +1729,9 @@ class GphlWorkflow(HardwareObject, object):
         maximum_chi = self.getProperty("maximum_chi")
         if maximum_chi:
             options["maximum_chi"] = float(maximum_chi)
-        angular_tolerance = self.get_property("angular_tolerance")
-        if maximum_chi:
-            options["angular_tolerance"] = float(angular_tolerance)
+        angular_tolerance = float(self.getProperty("angular_tolerance", 0))
+        if angular_tolerance:
+            options["angular_tolerance"] = angular_tolerance
         data_model.set_use_cell_for_processing(
             params.pop("use_cell_for_processing", False)
         )
