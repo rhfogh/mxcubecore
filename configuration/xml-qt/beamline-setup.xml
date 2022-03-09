@@ -100,7 +100,7 @@
   </default_advanced_values>
 
   <acquisition_limit_values>
-    <kappa>0, 180</kappa>
+    <kappa>0, 230</kappa>
     <osc_range>-1000,10000</osc_range>
     <exposure_time>0.04,6000</exposure_time>
     <number_of_images>1,99999</number_of_images>

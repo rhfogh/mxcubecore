@@ -29,8 +29,8 @@ class EnergyMockup(AbstractEnergy):
     def init(self):
         self._tunable = True
         self._moving = False
-        self._energy_value = 12.7
-        self.set_energy_limits((4, 20))
+        self._energy_value = 25.0
+        self.set_energy_limits((2, 25))
 
     def move_energy(self, value, wait=True):
         if wait:

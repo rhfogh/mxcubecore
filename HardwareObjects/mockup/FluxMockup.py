@@ -24,11 +24,14 @@ from HardwareRepository.HardwareObjects.abstract.AbstractFlux import AbstractFlu
 __credits__ = ["MXCuBE collaboration"]
 __category__ = "General"
 
+DEFAULT_FLUX = 3.0e11
+# DEFAULT_FLUX = 1.0e10
+
 
 class FluxMockup(AbstractFlux):
     def __init__(self, name):
         AbstractFlux.__init__(self, name)
-        self._default_flux = self.getProperty("defaultFlux", 3.0e11)
+        self._default_flux = self.getProperty("defaultFlux", DEFAULT_FLUX)
         self._value = self._default_flux
 
     def measure_flux(self):
