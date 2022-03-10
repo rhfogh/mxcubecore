@@ -233,7 +233,8 @@
         <!-- NB the following should be moved to a simcal-specific file -->
         <co.gphl.wf.simcal_predict.b_wilson>26.0</co.gphl.wf.simcal_predict.b_wilson>
         <co.gphl.wf.simcal_predict.cell_dim_sd_scale>1.5e-3</co.gphl.wf.simcal_predict.cell_dim_sd_scale>
-        <co.gphl.wf.simcal_predict.mosaicity>0.2</co.gphl.wf.simcal_predict.mosaicity>
+<!--        <co.gphl.wf.simcal_predict.mosaicity>0.2</co.gphl.wf.simcal_predict.mosaicity>-->
+        <co.gphl.wf.simcal_predict.mosaicity>0.05</co.gphl.wf.simcal_predict.mosaicity>
     </workflow_properties>
 
     <!-- List of supported workflows, with control options for each -->
