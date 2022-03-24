@@ -12,8 +12,8 @@ coord_sys_name= 'UNKNOWN'
 
 ! Beam specification
 nominal_beam_dir= 0.0  0.0  1.0
-beam_sd_deg= 0.03 0.03
-lambda_sd= 0.0002
+beam_sd_deg= 0.01 0.01
+lambda_sd= 0.00005
 pol_plane_n= 0.0 1.0 0.0
 pol_frac= 0.99
 
