@@ -1810,6 +1810,7 @@ class GphlWorkflow(HardwareObject, object):
         angular_tolerance = float(self.getProperty("angular_tolerance", 0))
         if angular_tolerance:
             options["angular_tolerance"] = angular_tolerance
+            options["clip_kappa"] = float(angular_tolerance)
         data_model.set_use_cell_for_processing(
             params.pop("use_cell_for_processing", False)
         )
