@@ -274,10 +274,12 @@ class CollectEmulator(CollectMockup):
 
         # Get program locations
         simcal_executive = gphl_connection.get_executable("simcal")
-        # Get environmental variables
+
+        # Get environmental variables. GPHL_INSTALLATION masy not be required in std situation
         envs = {
-            "BDG_home": gphl_connection.software_paths["BDG_home"],
             "GPHL_INSTALLATION": gphl_connection.software_paths["GPHL_INSTALLATION"],
+            "GPHL_CCP4_PATH": gphl_connection.software_paths["GPHL_CCP4_PATH"],
+            "GPHL_XDS_PATH": gphl_connection.software_paths["GPHL_XDS_PATH"],
         }
         text_type = ConvertUtils.text_type
         for tag, val in self["environment_variables"].getProperties().items():
@@ -325,7 +327,7 @@ class CollectEmulator(CollectMockup):
         )
 
         if compress_data:
-            command_list.append(" --gzip-img")
+            command_list.append("--gzip-img")
 
         fp1 = open(logfile, "w")
         fp2 = subprocess.STDOUT

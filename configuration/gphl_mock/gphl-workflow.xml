@@ -206,7 +206,7 @@
     <workflow_properties>
 
         <!-- Set to false to switch off pre-start checks for directory existence -->
-        <!-- in cases where the directoriesare are created after the workflow starts -->
+        <!-- in cases where the directories are created after the workflow starts -->
         <!-- Checks for data directory tree -->
         <co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>
         <!-- Chcks for data processing directory tree -->

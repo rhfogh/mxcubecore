@@ -123,7 +123,11 @@ class GphlWorkflowConnection(HardwareObject, object):
         locations = next(self.getObjects("directory_locations")).getProperties()
         paths = self.software_paths
         props = self.java_properties
-        dd0 = next(self.getObjects("software_paths")).getProperties()
+        try:
+            dd0 = next(self.getObjects("software_paths")).getProperties()
+        except StopIteration:
+            # If software_paths is empty
+            dd0 = {}
         for tag, val in dd0.items():
             val2 = val.format(**locations)
             if not os.path.isabs(val2):
@@ -131,7 +135,17 @@ class GphlWorkflowConnection(HardwareObject, object):
                 if val2 is None:
                     raise ValueError("File path %s not recognised" % val)
             paths[tag] = val2
-        dd0 = next(self.getObjects("software_properties")).getProperties()
+        paths["GPHL_INSTALLATION"] = locations["GPHL_INSTALLATION"]
+        paths["java_binary"] = dd0.get("java_binary", "java")
+        paths["gphl_java_classpath"] = os.path.join(
+            locations["GPHL_INSTALLATION"], "ASTRAWorkflows/lib/*"
+        )
+
+        try:
+            dd0 = next(self.getObjects("software_properties")).getProperties()
+        except StopIteration:
+            # If software_properties is empty
+            dd0 = {}
         for tag, val in dd0.items():
             val2 = val.format(**locations)
             if not os.path.isabs(val2):
@@ -139,9 +153,11 @@ class GphlWorkflowConnection(HardwareObject, object):
                 if val2 is None:
                     raise ValueError("File path %s not recognised" % val)
             paths[tag] = props[tag] = val2
-        #
-        pp0 = props["co.gphl.wf.bin"] = paths["GPHL_INSTALLATION"]
-        paths["BDG_home"] = paths.get("co.gphl.wf.bdg_licence_dir") or pp0
+
+        # Set master location, based on known release directory structure
+        props["co.gphl.wf.bin"] = os.path.join(locations["GPHL_INSTALLATION"], "exe")
+        if "GPHL_XDS_PATH" in paths:
+            props["co.gphl.wf.xds.bin"] = os.path.join(paths["GPHL_XDS_PATH"], "xds_par")
 
     def get_state(self):
         """Returns a member of the self.STATES enumeration"""
@@ -169,7 +185,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         tag = "co.gphl.wf.%s.bin" % name
         result = self.software_paths.get(tag)
         if not result:
-            result = os.path.join(self.software_paths["GPHL_INSTALLATION"], name)
+            result = os.path.join(self.software_paths["GPHL_INSTALLATION"], "exe", name)
         #
         return result
 
@@ -346,21 +362,19 @@ class GphlWorkflowConnection(HardwareObject, object):
         # envs["AutoPROCWorkFlowUser"] = "1"
 
         # These env variables are needed in some cases for wrapper scripts
-        # Specifically for the stratcal wrapper.
         envs["GPHL_INSTALLATION"] = self.software_paths["GPHL_INSTALLATION"]
-        envs["BDG_home"] = self.software_paths["BDG_home"]
-        envs["GPHL_XDS_PATH"] = os.path.dirname(
-            self.software_paths["co.gphl.wf.xds.bin"]
-        )
+        GPHL_XDS_PATH = self.software_paths.get("GPHL_XDS_PATH")
+        if GPHL_XDS_PATH:
+            envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH
         GPHL_CCP4_PATH = self.software_paths.get("GPHL_CCP4_PATH")
         if GPHL_CCP4_PATH:
             envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
-        # Hack to pass alternative installation dir for processing
-        val = self.software_paths.get("gphl_wf_processing_installation")
-        if val:
-            envs["GPHL_PROC_INSTALLATION"] = val
-        else:
-            envs["GPHL_PROC_INSTALLATION"] = envs["GPHL_INSTALLATION"]
+        GPHL_AUTOPROC_PATH = self.software_paths.get("GPHL_AUTOPROC_PATH")
+        if GPHL_AUTOPROC_PATH:
+            envs["GPHL_AUTOPROC_PATH"] = GPHL_AUTOPROC_PATH
+        GPHL_MINICONDA_PATH = self.software_paths.get("GPHL_MINICONDA_PATH")
+        if GPHL_MINICONDA_PATH:
+            envs["GPHL_MINICONDA_PATH"] = GPHL_MINICONDA_PATH
 
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs
@@ -368,7 +382,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         try:
             self._running_process = subprocess.Popen(command_list, env=envs)
         except BaseException:
-            logging.getLogger().error("Error in spawning workflow application")
+            logging.getLogger().exception("Error in spawning workflow application")
             raise
 
         self.workflow_queue = workflow_queue

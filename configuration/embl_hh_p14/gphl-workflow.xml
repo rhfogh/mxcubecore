@@ -42,13 +42,6 @@
     <characterisation_budget_percent>5</characterisation_budget_percent>
 
 
-    <!-- UI popup specification: -->
-
-    <!-- default values for image width popup; may be overridden by the workflow -->
-    <!-- The first value is the default; values are sorted before use -->
-    <default_image_widths> 0.1 0.05 0.2</default_image_widths>
-
-
     <!-- Characterisation strategies popup. -->
     <!-- names refer to stategies in  strategylib.nml -->
     <characterisation_strategies>
@@ -213,7 +206,7 @@
     <workflow_properties>
 
         <!-- Set to false to switch off pre-start checks for directory existence -->
-        <!-- in cases where the directoriesare are created after the workflow starts -->
+        <!-- in cases where the directories are created after the workflow starts -->
         <!-- Checks for data directory tree -->
         <co.gphl.wf.blRootCheck>false</co.gphl.wf.blRootCheck>
         <!-- Chcks for data processing directory tree -->

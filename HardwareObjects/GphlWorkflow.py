@@ -1355,7 +1355,13 @@ class GphlWorkflow(HardwareObject, object):
         # Get program locations
         recen_executable = api.gphl_connection.get_executable("recen")
         # Get environmental variables
-        envs = {"BDG_home": api.gphl_connection.software_paths["BDG_home"]}
+        envs = {}
+        GPHL_XDS_PATH =  api.gphl_connection.software_paths.get("GPHL_XDS_PATH")
+        if GPHL_XDS_PATH:
+            envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH
+        GPHL_CCP4_PATH =  api.gphl_connection.software_paths.get("GPHL_CCP4_PATH")
+        if GPHL_CCP4_PATH:
+            envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
         # Run recen
         command_list = [
             recen_executable,
