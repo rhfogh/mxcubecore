@@ -276,11 +276,14 @@ class CollectEmulator(CollectMockup):
         simcal_executive = gphl_connection.get_executable("simcal")
 
         # # Get environmental variables.
-        envs = {
-            "autoPROC_home": gphl_connection.software_paths["GPHL_INSTALLATION"],
-            "GPHL_CCP4_PATH": gphl_connection.software_paths["GPHL_CCP4_PATH"],
-            "GPHL_XDS_PATH": gphl_connection.software_paths["GPHL_XDS_PATH"],
-        }
+        envs = {"autoPROC_home": gphl_connection.software_paths["GPHL_INSTALLATION"]}
+        GPHL_XDS_PATH = self.software_paths.get("GPHL_XDS_PATH")
+        if GPHL_XDS_PATH:
+            envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH
+        GPHL_CCP4_PATH = self.software_paths.get("GPHL_CCP4_PATH")
+        if GPHL_CCP4_PATH:
+            envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
+
         text_type = ConvertUtils.text_type
         for tag, val in self["environment_variables"].getProperties().items():
             envs[text_type(tag)] = text_type(val)
@@ -333,9 +336,16 @@ class CollectEmulator(CollectMockup):
         fp2 = subprocess.STDOUT
         # resource.setrlimit(resource.RLIMIT_STACK, (-1,-1))
 
+        def set_ulimit():
+            import resource
+            resource.setrlimit(
+                resource.RLIMIT_STACK,
+                (resource.RLIM_INFINITY, resource.RLIM_INFINITY)
+            )
+
         try:
             running_process = subprocess.Popen(
-                command_list, stdout=fp1, stderr=fp2, env=envs
+                command_list, stdout=fp1, stderr=fp2, env=envs, preexec_fn=set_ulimit
             )
             gphl_connection.collect_emulator_process = running_process
 
