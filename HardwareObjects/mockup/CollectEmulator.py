@@ -277,10 +277,10 @@ class CollectEmulator(CollectMockup):
 
         # # Get environmental variables.
         envs = {"autoPROC_home": gphl_connection.software_paths["GPHL_INSTALLATION"]}
-        GPHL_XDS_PATH = self.software_paths.get("GPHL_XDS_PATH")
+        GPHL_XDS_PATH = gphl_connection.software_paths.get("GPHL_XDS_PATH")
         if GPHL_XDS_PATH:
             envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH
-        GPHL_CCP4_PATH = self.software_paths.get("GPHL_CCP4_PATH")
+        GPHL_CCP4_PATH = gphl_connection.software_paths.get("GPHL_CCP4_PATH")
         if GPHL_CCP4_PATH:
             envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
 
