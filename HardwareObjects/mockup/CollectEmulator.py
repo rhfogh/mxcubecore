@@ -275,9 +275,9 @@ class CollectEmulator(CollectMockup):
         # Get program locations
         simcal_executive = gphl_connection.get_executable("simcal")
 
-        # Get environmental variables. GPHL_INSTALLATION masy not be required in std situation
+        # # Get environmental variables.
         envs = {
-            "GPHL_INSTALLATION": gphl_connection.software_paths["GPHL_INSTALLATION"],
+            "autoPROC_home": gphl_connection.software_paths["GPHL_INSTALLATION"],
             "GPHL_CCP4_PATH": gphl_connection.software_paths["GPHL_CCP4_PATH"],
             "GPHL_XDS_PATH": gphl_connection.software_paths["GPHL_XDS_PATH"],
         }

@@ -89,8 +89,8 @@
         <!--        <co.gphl.wf.recen.bin>{GPHL_WRAPPERS}/scripts/recen</co.gphl.wf.recen.bin>-->
         <!--        <co.gphl.wf.recen.bdg_licence_dir>/fill/me/in</co.gphl.wf.recen.bdg_licence_dir>-->
 
-<!--        &lt;!&ndash; OPTIONAL. For Mock collection emulation only. Not used by ASTRA workflow &ndash;&gt;-->
-<!--        <co.gphl.wf.simcal.bin>{GPHL_WRAPPERS}/simcal</co.gphl.wf.simcal.bin>-->
+        <!-- OPTIONAL. For Mock collection emulation only. Not used by ASTRA workflow -->
+        <co.gphl.wf.simcal.bin>{GPHL_INSTALLATION}/exe/simcal</co.gphl.wf.simcal.bin>
 
     </software_properties>
 
