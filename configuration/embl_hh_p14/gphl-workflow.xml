@@ -60,6 +60,9 @@
     <!-- 'current': use current value -->
     <starting_beamline_energy>current</starting_beamline_energy>
 
+    <!-- Number of decimals for rounding energyu values - in keV -->
+    <display_energy_decimals>4</display_energy_decimals>
+
     <!-- Default wedge width in degrees, for interleaved data collection -->
     <default_wedge_width>15</default_wedge_width>
 

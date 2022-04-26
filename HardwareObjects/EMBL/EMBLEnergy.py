@@ -278,6 +278,9 @@ class EMBLEnergy(Device):
         # gevent.spawn(self.move_energy_task(energy))
         self.move_energy_task(energy)
 
+    def set_value(self, value, timeout=None):
+        self.move_energy(value=value, wait=(timeout is not None))
+
     def move_energy_task(self, energy):
         """
         Actual energy change task

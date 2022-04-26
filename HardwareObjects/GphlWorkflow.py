@@ -1640,6 +1640,8 @@ class GphlWorkflow(HardwareObject, object):
     def select_lattice(self, payload, correlation_id):
         choose_lattice = payload
 
+        display_energy_decimals = int(self.getProperty("display_energy_decimals", 4))
+
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
         variants = wf_parameters["variants"]
@@ -1682,7 +1684,7 @@ class GphlWorkflow(HardwareObject, object):
             },
         ]
         # if not api.energy.read_only:
-        energy = round(api.energy.get_value(), 3)
+        prev_energy = round(api.energy.get_value(), display_energy_decimals)
         energyLimits = api.energy.get_limits()
         field_list.append(
             {
@@ -1692,7 +1694,7 @@ class GphlWorkflow(HardwareObject, object):
                 "defaultValue":energy,
                 "lowerBound": energyLimits[0],
                 "upperBound": energyLimits[1],
-                "decimals": 3,
+                "decimals": display_energy_decimals,
                 "readOnly": False,
             }
         )
@@ -1777,10 +1779,9 @@ class GphlWorkflow(HardwareObject, object):
 
         kwArgs = {}
 
-        prev_energy = api.energy.get_value()
         # if not api.energy.read_only:
         energy = float(params.pop("energy", prev_energy))
-        if round(energy, 3) != round(prev_energy, 3):
+        if round(energy, display_energy_decimals) != prev_energy:
             api.energy.set_value(energy, timeout=60)
         wavelength = api.energy._calculate_wavelength(energy)
         role = self._queue_entry.get_data_model().get_beam_energy_tags()[0]
@@ -1798,7 +1799,8 @@ class GphlWorkflow(HardwareObject, object):
                 api.resolution.move(new_resolution, timeout=60)
                 resolution = new_resolution
 
-        orgxy = api.beam_info.get_beam_position()
+        # orgxy = api.beam_info.get_beam_position()
+        orgxy = api.detector.get_beam_centre_pix()
         distance = api.detector.get_distance()
         detectorSetting = GphlMessages.BcsDetectorSetting(
             resolution, id_=None, orgxy=orgxy, Distance=distance
