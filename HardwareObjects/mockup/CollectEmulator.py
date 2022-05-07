@@ -276,7 +276,11 @@ class CollectEmulator(CollectMockup):
         simcal_executive = gphl_connection.get_executable("simcal")
 
         # # Get environmental variables.
-        envs = {"autoPROC_home": gphl_connection.software_paths["GPHL_INSTALLATION"]}
+        licence_dir = (
+            gphl_connection.software_paths.get("co.gphl.wf.simcal.bdg_licence_dir")
+            or gphl_connection.software_paths.get("GPHL_INSTALLATION")
+        )
+        envs = {"autoPROC_home": licence_dir}
         GPHL_XDS_PATH = gphl_connection.software_paths.get("GPHL_XDS_PATH")
         if GPHL_XDS_PATH:
             envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH

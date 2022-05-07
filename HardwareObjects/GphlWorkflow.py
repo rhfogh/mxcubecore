@@ -1691,7 +1691,7 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "energy",
                 "uiLabel": "Main aquisition energy (keV)",
                 "type": "floatstring",
-                "defaultValue":energy,
+                "defaultValue":prev_energy,
                 "lowerBound": energyLimits[0],
                 "upperBound": energyLimits[1],
                 "decimals": display_energy_decimals,

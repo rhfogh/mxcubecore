@@ -121,6 +121,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             self._connection_parameters["python_address"] = socket.gethostname()
 
         locations = next(self.getObjects("directory_locations")).getProperties()
+        installdir = locations["GPHL_INSTALLATION"]
         paths = self.software_paths
         props = self.java_properties
         try:
@@ -135,10 +136,12 @@ class GphlWorkflowConnection(HardwareObject, object):
                 if val2 is None:
                     raise ValueError("File path %s not recognised" % val)
             paths[tag] = val2
-        paths["GPHL_INSTALLATION"] = locations["GPHL_INSTALLATION"]
-        paths["java_binary"] = dd0.get("java_binary", "java")
-        paths["gphl_java_classpath"] = os.path.join(
-            locations["GPHL_INSTALLATION"], "ASTRAWorkflows/lib/*"
+        paths["GPHL_INSTALLATION"] = installdir
+        if "java_binary" not in paths:
+            paths["java_binary"] = "java"
+        paths["gphl_java_classpath"] = (
+            "%s/ASTRAWorkflows/config:%s/ASTRAWorkflows/lib/*"
+            % (installdir, installdir)
         )
 
         try:
