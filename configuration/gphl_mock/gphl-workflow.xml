@@ -84,6 +84,9 @@
      mode "none" is not allowed as default -->
     <default_recentring_mode>sweep</default_recentring_mode>
 
+    <!-- If set (to *any* non-empty value) will disable precalculation of centrings-->
+<!--    <disable_recen>True</disable_recen>-->
+
 
     <!-- Popup of test crystal parameters for Diffreaction calibration -->
     <!-- The cell dimensions will be used for aP_wf_rotcal calculation -->
