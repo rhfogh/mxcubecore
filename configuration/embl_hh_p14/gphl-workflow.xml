@@ -32,7 +32,7 @@
     <!-- at the highest resolution is 25% of t starting intensity -->
     <!-- Assuming an in increase in B factor of 1 A^2/MGy -->
     <!-- The formula used is dose_budget =
-          2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
+          2 * resolution**2 * log(100. / decay_limit) -->
     <default_decay_limit>25</default_decay_limit>
 
     <!-- Maximum dose budget to propose when converting from resolution, in MGy-->

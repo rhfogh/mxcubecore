@@ -519,7 +519,6 @@ class GphlWorkflow(HardwareObject, object):
         dose_budget = self.resolution2dose_budget(
             resolution,
             decay_limit=data_model.get_decay_limit(),
-            relative_sensitivity=data_model.get_relative_rad_sensitivity(),
         )
         round_dose_budget = round(dose_budget, use_dose_decimals)
         default_image_width = float(allowed_widths[default_width_index])
@@ -535,6 +534,7 @@ class GphlWorkflow(HardwareObject, object):
             std_dose_rate = (
                 api.flux.dose_rate_per_photon_per_mmsq(initial_energy)
                 * flux_density
+                * data_model.get_relative_rad_sensitivity()
                 * 1.0e-6  # convert to MGy/s
             )
         else:
@@ -593,7 +593,6 @@ class GphlWorkflow(HardwareObject, object):
             dbg = self.resolution2dose_budget(
                 resolution,
                 decay_limit=data_model.get_decay_limit(),
-                relative_sensitivity=data_model.get_relative_rad_sensitivity(),
             )
             use_dose = dbg * budget_use_fraction
             field_widget.set_values(
@@ -2151,13 +2150,12 @@ class GphlWorkflow(HardwareObject, object):
 
     # Utility functions
 
-    def resolution2dose_budget(self, resolution, decay_limit, relative_sensitivity=1.0):
+    def resolution2dose_budget(self, resolution, decay_limit):
         """
 
         Args:
             resolution (float): resolution in A
             decay_limit (float): min. intensity at resolution edge at experiment end (%)
-            relative_sensitivity (float) : relative radiation sensitivity of crystal
 
         Returns (float): Dose budget (MGy)
 
@@ -2166,7 +2164,7 @@ class GphlWorkflow(HardwareObject, object):
         max_budget = self.getProperty("maximum_dose_budget", 20)
         result = 2 * resolution * resolution * math.log(100.0 / decay_limit)
         #
-        return min(result, max_budget) / relative_sensitivity
+        return min(result, max_budget)
 
     def get_emulation_samples(self):
         """ Get list of lims_sample information dictionaries for mock/emulation
