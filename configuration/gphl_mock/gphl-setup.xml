@@ -42,7 +42,7 @@
 
     <software_paths>
 
-        <!-- MAndatory: Directory with workflow config input, e.g. instrumentation.nml -->
+        <!-- Mandatory: Directory with workflow config input, e.g. instrumentation.nml -->
         <gphl_beamline_config>gphl_beamline_config</gphl_beamline_config>
 
         <!-- MANDATORY for CCP4 => $GPHL_CCP4_PATH/bin/ccp4.setup-sh,
@@ -57,7 +57,7 @@
         <!-- OPTIONAL for autoPROC => $GPHL_AUTOPROC_PATH/autoPROC/bin/linux64 -->
         <!--        <GPHL_AUTOPROC_PATH >/write/me/here</GPHL_AUTOPROC_PATH>-->
         <!-- OPTIONAL for miniconda Pythyon installation => $GPHL_MINICONDA_PATH/bin/activate -->
-        <!--        <GPHL_MINICONDA_PATH >/write/me/here</GPHL_MINICONDA_PATH>-->
+<!--                <GPHL_MINICONDA_PATH >/alt/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_BETA_beta-academic/.mc38/</GPHL_MINICONDA_PATH>-->
 
         <!-- OPTIONAL for java binary =>defaults to just 'java' -->
         <java_binary >/alt/rhfogh/Software/GPhL/mxcube_setup/jre1.8.0_144/bin/java</java_binary>
@@ -74,6 +74,7 @@
 
         <!-- MANDATORY pending change in workflow -->
         <co.gphl.wf.stratcal.bin>{GPHL_INSTALLATION}/exe/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>
+<!--        <co.gphl.wf.stratcal.bin>/alt/rhfogh/Software/GPhL/mxcube_setup/stratcal/scripts/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>-->
         <!--        <co.gphl.wf.stratcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.stratcal.bdg_licence_dir>-->
 
         <!-- OPTIONAL location of alternative executables (wrappers) supported by the workflow -->
@@ -88,9 +89,9 @@
         <!--        <co.gphl.wf.transcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.transcal.bdg_licence_dir>-->
         <!--        <co.gphl.wf.recen.bin>{GPHL_WRAPPERS}/scripts/recen</co.gphl.wf.recen.bin>-->
         <!--        <co.gphl.wf.recen.bdg_licence_dir>/fill/me/in</co.gphl.wf.recen.bdg_licence_dir>-->
-        <!-- OPTIONAL. simcal *binary* nad licence dir. For Mock collection emulation only. Not used by ASTRA workflow -->
-        <co.gphl.wf.simcal.bin>/alt/rhfogh/Software/GPhL/nightly_20220506/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
-        <co.gphl.wf.simcal.bdg_licence_dir>/alt/rhfogh/Software/GPhL/nightly_20220506/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
+        <!-- OPTIONAL. simcal *binary* and licence dir. For Mock collection emulation only. Not used by ASTRA workflow -->
+        <co.gphl.wf.simcal.bin>/alt/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
+        <co.gphl.wf.simcal.bdg_licence_dir>/alt/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
     </software_properties>
 
 </object>
