@@ -242,7 +242,7 @@
         <Native>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>native</strategy_type>
-            <variants>full quick minimal long extended</variants>
+            <variants>full quick minimal long ultralong</variants>
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
