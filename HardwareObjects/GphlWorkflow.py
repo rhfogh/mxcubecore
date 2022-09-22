@@ -1135,7 +1135,7 @@ class GphlWorkflow(HardwareObject, object):
                     gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
                     if recentring_mode == "start":
                         # We want snapshots in this mode,
-                        # and the first sweepmis skipped in the loop below
+                        # and the first sweep is skipped in the loop below
                         okp = tuple(
                             int(settings.get(x, 0)) for x in self.rotation_axis_roles
                         )
@@ -1488,31 +1488,29 @@ class GphlWorkflow(HardwareObject, object):
                     abs(orientation[ind] - last_orientation[ind])
                     for ind in range(2)
                 )
-            if sweeps and (
-                recentring_mode == "scan"
-                or (
-                    recentring_mode == "sweep"
-                    and not (
-                        rotation_id == gphl_workflow_model.get_current_rotation_id()
-                        or (0 <= maxdev < angular_tolerance)
-                    )
-                )
-            ):
-                # Put centring on queue and collect using the resulting position
-                # NB this means that the actual translational axis positions
-                # will NOT be known to the workflow
-                #
-                # Done if 1) we centre for each acan
-                # 2) we centre for each sweep unless the rotation ID is unchanged
-                #    or the kappa and phi values are unchanged anyway
-                self.enqueue_sample_centring(
-                    motor_settings=initial_settings, in_queue=True
-                )
-            else:
-                # Collect using precalculated centring position
+
+            if not sweeps or recentring_mode in ("start", "none"):
+                # First sweep (previously centred), or necessary centrings already done
+                # Collect using precalculated or stored centring position
                 initial_settings[goniostatRotation.scanAxis] = scan.start
                 acq_parameters.centred_position = queue_model_objects.CentredPosition(
                     initial_settings
+                )
+            elif recentring_mode == "sweep" and  (
+                rotation_id == gphl_workflow_model.get_current_rotation_id()
+                or (0 <= maxdev < angular_tolerance)
+            ):
+                # Use same postion as previous sweep, set only omega start
+                acq_parameters.centred_position = queue_model_objects.CentredPosition(
+                    {goniostatRotation.scanAxis: scan.start}
+                )
+            else:
+                # We need to recentre
+                # Put centring on queue and collect using the resulting position
+                # NB this means that the actual translational axis positions
+                # will NOT be known to the workflow
+                self.enqueue_sample_centring(
+                    motor_settings=initial_settings, in_queue=True
                 )
 
             if (
