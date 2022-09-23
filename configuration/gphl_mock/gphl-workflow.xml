@@ -263,7 +263,7 @@
         <SingleAnomalousDispersion>
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
-            <variants>full quick</variants>
+            <variants>full quick ultralong</variants>
             <documentation>
                 Single wavelength SAD data acquisition, full strategy.
                 Includes initial characterisation and complete collection
@@ -282,7 +282,7 @@
             <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_2wvl</variant>-->
-            <variants>quick full</variants>
+            <variants>quick full ultralong</variants>
             <documentation>
                 Two-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
