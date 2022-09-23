@@ -198,6 +198,7 @@ class CollectEmulator(CollectMockup):
             detector_distance = self.get_detector_distance()
         # Add sweeps
         sweeps = []
+        prev_motors = {}
         for osc in data_collect_parameters["oscillation_sequence"]:
             motors = data_collect_parameters["motors"]
             sweep = OrderedDict()
@@ -207,7 +208,9 @@ class CollectEmulator(CollectMockup):
             sweep["res_limit"] = setup_data["res_limit_def"]
             sweep["exposure"] = osc["exposure_time"]
             ll0 = api.gphl_workflow.translation_axis_roles
-            sweep["trans_xyz"] = list(motors.get(x) or 0.0 for x in ll0)
+            sweep["trans_xyz"] = list(
+                motors.get(x) or prev_motors.get(x) or 0.0 for x in ll0
+            )
             sweep["det_coord"] = detector_distance
             # NBNB hardwired for omega scan TODO
             sweep["axis_no"] = 3
@@ -250,6 +253,7 @@ class CollectEmulator(CollectMockup):
             # Skipped: spindle_deg=0.0, two_theta_deg=0.0, mu_air=-1, mu_sensor=-1
 
             sweeps.append(sweep)
+            prev_motors = motors
 
         if sweep_count == 1:
             # NBNB in current code we can have only one sweep here,
