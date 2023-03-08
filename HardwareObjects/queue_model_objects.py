@@ -1826,6 +1826,7 @@ class GphlWorkflow(TaskNode):
         self._dose_consumed = 0.0
         self._exposure_time = 0.0
         self._image_width = 0.0
+        self._repetition_count = 1
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1947,6 +1948,12 @@ class GphlWorkflow(TaskNode):
 
     def get_image_width(self):
         return self._image_width
+
+    def set_repetition_count(self, value):
+        self._repetition_count = value
+
+    def get_repetition_count(self):
+        return self._repetition_count
 
     def set_image_width(self, value):
         self._image_width = value

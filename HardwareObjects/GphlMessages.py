@@ -1214,6 +1214,7 @@ class SampleCentred(Payload):
         detectorSetting=None,
         goniostatTranslations=(),
         wavelengths=(),
+        repetition_count=1,
     ):
 
         super(SampleCentred, self).__init__()
@@ -1226,6 +1227,7 @@ class SampleCentred(Payload):
         self._detectorSetting = detectorSetting
         self._goniostatTranslations = frozenset(goniostatTranslations)
         self._wavelengths = frozenset(wavelengths)
+        self._repetition_count = repetition_count
 
     @property
     def imageWidth(self):
@@ -1262,3 +1264,6 @@ class SampleCentred(Payload):
     @property
     def wavelengths(self):
         return self._wavelengths
+    @property
+    def repetition_count(self):
+        return self._repetition_count

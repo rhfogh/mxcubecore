@@ -1097,6 +1097,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             list(sampleCentred.interleaveOrder),
             list(self._PhasingWavelength_to_java(x) for x in sampleCentred.wavelengths),
             self._BcsDetectorSetting_to_java(sampleCentred.detectorSetting),
+            sampleCentred.repetition_count,
         )
 
         beamstopSetting = sampleCentred.beamstopSetting
