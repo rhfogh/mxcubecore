@@ -448,16 +448,14 @@ class GphlWorkflow(HardwareObject, object):
             energies = [initial_energy, initial_energy + 0.01, initial_energy - 0.01]
             for ii, tag in enumerate(data_model.get_beam_energy_tags()):
                 beam_energies[tag] = energies[ii]
-            budget_use_fraction = 1.0
-            dose_label = "Total dose (MGy)"
+            dose_label = "Dose/repetition (MGy)"
 
         else:
             # Characterisation
             lines = ["Characterisation strategy"]
             lines.extend(("=" * len(lines[0]), ""))
             beam_energies = OrderedDict((("Characterisation", initial_energy),))
-            budget_use_fraction = data_model.get_characterisation_budget_fraction()
-            dose_label = "Charcterisation dose (MGy)"
+            dose_label = "Characterisation dose (MGy)"
             if not self.getProperty("recentre_before_start"):
                 # replace planned orientation with current orientation
                 current_pos_dict = api.diffractometer.get_motor_positions()
@@ -524,10 +522,16 @@ class GphlWorkflow(HardwareObject, object):
         default_exposure = acq_parameters.exp_time
         exposure_limits = api.detector.get_exposure_time_limits()
         total_strategy_length = strategy_length * len(beam_energies)
-        experiment_time = total_strategy_length * default_exposure / default_image_width
-        proposed_dose = round(
-            max(dose_budget * budget_use_fraction, 0.0), use_dose_decimals
-        )
+        if (
+            data_model.lattice_selected
+            or wf_parameters.get("strategy_type") == "diffractcal"
+        ):
+            proposed_dose = dose_budget - data_model.get_characterisation_dose()
+        else:
+            proposed_dose = (
+                dose_budget * data_model.get_characterisation_budget_fraction()
+            )
+        proposed_dose = round(max(proposed_dose,0), use_dose_decimals)
 
         # For calculating dose-budget transmission
         flux_density = api.flux.get_average_flux_density(transmission=100.0)
@@ -555,20 +559,14 @@ class GphlWorkflow(HardwareObject, object):
             repetition_count = int(parameters.get("repetition_count") or 1)
             if image_width and exposure_time:
                 rotation_rate = image_width / exposure_time
-                experiment_time = (
-                    repetition_count * total_strategy_length / rotation_rate
-                )
-                dd0 = {
-                    "rotation_rate": rotation_rate,
-                    "experiment_time": experiment_time,
-                }
-
+                dd0 = {"rotation_rate": rotation_rate,}
+                experiment_time = total_strategy_length / rotation_rate
                 if std_dose_rate and transmission:
-                    # Adjust the dose
+                    # NB - dose is calculated for *one* repetition
                     dd0["use_dose"] = (
                         std_dose_rate * experiment_time * transmission / 100.
-                        + data_model.get_dose_consumed()
                     )
+                dd0["experiment_time"] =  experiment_time * repetition_count
                 field_widget.set_values(**dd0)
 
         def update_transmission(field_widget):
@@ -578,19 +576,15 @@ class GphlWorkflow(HardwareObject, object):
             exposure_time = float(parameters.get("exposure") or 0.0)
             image_width = float(parameters.get("imageWidth") or 0.0)
             transmission = float(parameters.get("transmission") or 0.0)
-            repetition_count = int(parameters.get("repetition_count") or 1)
             if image_width and exposure_time and std_dose_rate and transmission:
                 # If we get here, Adjust dose
+                # NB dose is calculated for *one* repetition
                 experiment_time = (
-                    repetition_count
-                    * exposure_time
+                    exposure_time
                     * total_strategy_length
                     / image_width
                 )
-                use_dose = (
-                    std_dose_rate * experiment_time * transmission / 100
-                    + data_model.get_dose_consumed()
-                )
+                use_dose = (std_dose_rate * experiment_time * transmission / 100)
                 field_widget.set_values(use_dose=use_dose, exposure=exposure_time)
 
         def update_resolution(field_widget):
@@ -601,75 +595,57 @@ class GphlWorkflow(HardwareObject, object):
                 resolution,
                 decay_limit=data_model.get_decay_limit(),
             )
-            use_dose = dbg * budget_use_fraction
+            characterisation_dose = data_model.get_characterisation_dose()
+            if characterisation_dose:
+                use_dose = dbg - data_model.get_characterisation_dose()
+            else:
+                use_dose = dbg * data_model.get_characterisation_budget_fraction()
             field_widget.set_values(
                 dose_budget=dbg, use_dose=use_dose, exposure=default_exposure
             )
             update_dose(field_widget)
-            # field_widget.set_values(dose_budget=dbg)
-            # if use_dose < std_dose_rate * experiment_time:
-            #     field_widget.set_values(use_dose=use_dose)
-            #     update_dose(field_widget)
-            #     field_widget.color_warning  ("use_dose", use_dose > round_dose_budget)
-            # else:
-            #     field_widget.set_values(transmission=100)
-            #     update_transmission(field_widget)
 
         def update_dose(field_widget):
             """When use_dose changes, update transmission and/or exposure_time
             In parameter popup"""
             parameters = field_widget.get_parameters_map()
             image_width = float(parameters.get("imageWidth") or 0.0)
-            repetition_count = int(parameters.get("repetition_count") or 1)
-            use_dose = (
-                float(parameters.get("use_dose") or 0.0) - data_model.get_dose_consumed()
-            )
-            if use_dose <= 0:
-                return
+            exposure_time = float(parameters.get("exposure") or 0.0)
+            use_dose = float(parameters.get("use_dose") or 0.0)
 
-            # Try first with default exposure time
-            # NB we could try with exposure_limits[0] instead if desired
-            exposure_time = default_exposure
-            experiment_time = exposure_time * total_strategy_length / image_width
-            experiment_time = (
-                repetition_count
-                * exposure_time
-                * total_strategy_length
-                / image_width
-            )
-            transmission = 100 * use_dose / (std_dose_rate * experiment_time)
+            # NB total_strategy_length use_dose aned experiment_time
+            # all relate to a single repetition
 
-            if transmission > 100.:
-                # Transmission too high. Try max transmission and longer exposure
-                transmission = 100.
-                experiment_time = use_dose / std_dose_rate
-                exposure_time = experiment_time * image_width / total_strategy_length
+            if image_width and exposure_time and std_dose_rate and use_dose:
+                experiment_time = exposure_time * total_strategy_length / image_width
+                transmission = 100 * use_dose / (std_dose_rate * experiment_time)
 
-            max_exposure = exposure_limits[1]
-            if max_exposure and exposure_time > max_exposure:
-                # exposure_time over max; set does to highest achievable dose
-                experiment_time = (
-                    max_exposure
-                    * repetition_count
-                    * total_strategy_length
-                    / image_width
-                )
-                use_dose = (
-                    std_dose_rate * experiment_time
-                    + data_model.get_dose_consumed()
-                )
-                field_widget.set_values(
-                    exposure=max_exposure,
-                    transmission=100,
-                    use_dose=use_dose,
-                    experiment_time=experiment_time,
-                )
-            else:
-                field_widget.set_values(
-                    exposure=exposure_time,
-                    transmission=transmission,
-                    experiment_time=experiment_time,
-                )
+                if transmission > 100.:
+                    # Transmission too high. Try max transmission and longer exposure
+                    transmission = 100.
+                    experiment_time = use_dose / std_dose_rate
+                    exposure_time = experiment_time * image_width / total_strategy_length
+                max_exposure = exposure_limits[1]
+                if max_exposure and exposure_time > max_exposure:
+                    # exposure_time over max; set dose to highest achievable dose
+                    experiment_time = (
+                        max_exposure
+                        * total_strategy_length
+                        / image_width
+                    )
+                    use_dose = (std_dose_rate * experiment_time)
+                    field_widget.set_values(
+                        exposure=max_exposure,
+                        transmission=100,
+                        use_dose=use_dose,
+                        experiment_time=experiment_time,
+                    )
+                else:
+                    field_widget.set_values(
+                        exposure=exposure_time,
+                        transmission=transmission,
+                        experiment_time=experiment_time,
+                    )
 
         reslimits = api.resolution.get_limits()
         if None in reslimits:
@@ -707,28 +683,10 @@ class GphlWorkflow(HardwareObject, object):
                 "uiLabel": dose_label,
                 "type": "floatstring",
                 "defaultValue": use_dose_start,
-                "lowerBound": 0.001,
+                "lowerBound": 0.000001,
                 "decimals": use_dose_decimals,
                 "update_function": update_dose,
                 "readOnly": use_dose_frozen,
-            },
-            {
-                "variableName": "exposure",
-                "uiLabel": "Exposure Time (s)",
-                "type": "floatstring",
-                "defaultValue": default_exposure,
-                "lowerBound": exposure_limits[0],
-                "upperBound": exposure_limits[1],
-                "decimals": 6,
-                "update_function": update_exptime,
-            },
-            {
-                "variableName": "imageWidth",
-                "uiLabel": "Oscillation range",
-                "type": "combo",
-                "defaultValue": str(default_image_width),
-                "textChoices": [str(x) for x in allowed_widths],
-                "update_function": update_dose,
             },
         ]
         if data_model.lattice_selected:
@@ -744,6 +702,28 @@ class GphlWorkflow(HardwareObject, object):
                     "update_function": update_exptime,
                 }
             )
+        field_list.extend(
+            [
+                {
+                    "variableName": "exposure",
+                    "uiLabel": "Exposure Time (s)",
+                    "type": "floatstring",
+                    "defaultValue": default_exposure,
+                    "lowerBound": exposure_limits[0],
+                    "upperBound": exposure_limits[1],
+                    "decimals": 6,
+                    "update_function": update_exptime,
+                },
+                {
+                    "variableName": "imageWidth",
+                    "uiLabel": "Oscillation range",
+                    "type": "combo",
+                    "defaultValue": str(default_image_width),
+                    "textChoices": [str(x) for x in allowed_widths],
+                    "update_function": update_dose,
+                },
+            ]
+        )
         # Add third column of non-edited values
         field_list[-1]["NEW_COLUMN"] = "True"
         field_list.append(
@@ -765,7 +745,7 @@ class GphlWorkflow(HardwareObject, object):
         field_list.append(
             {
                 "variableName": "dose_budget",
-                "uiLabel": "Total dose budget (MGy)",
+                "uiLabel": "Dose budget (MGy)",
                 "type": "floatstring",
                 "defaultValue": dose_budget,
                 "lowerBound": 0.0,
@@ -773,6 +753,8 @@ class GphlWorkflow(HardwareObject, object):
                 "readOnly": True,
             }
         )
+        # NB - this is the default starting value, so repetition_count is 1 at this point
+        experiment_time = total_strategy_length * default_exposure / default_image_width
         field_list.extend(
             [
                 {
@@ -953,7 +935,13 @@ class GphlWorkflow(HardwareObject, object):
             data_model.set_dose_budget(float(params.get("dose_budget", 0)))
             # Register the dose (about to be) consumed
             if std_dose_rate:
-                data_model.set_dose_consumed(float(params.get("use_dose", 0)))
+                if (
+                    data_model.lattice_selected
+                    or wf_parameters.get("strategy_type") == "diffractcal"
+                ):
+                    data_model.set_acquisition_dose(float(params.get("use_dose", 0)))
+                else:
+                    data_model.set_characterisation_dose(float(params.get("use_dose", 0)))
         #
         return result
 

@@ -1823,7 +1823,8 @@ class GphlWorkflow(TaskNode):
         self._decay_limit = workflow_hwobj.getProperty("default_decay_limit", 25)
         self._characterisation_budget_fraction = 0.05
         self._relative_rad_sensitivity = 1.0
-        self._dose_consumed = 0.0
+        self._characterisation_dose = 0.0
+        self._acquisition_dose = 0.0
         self._exposure_time = 0.0
         self._image_width = 0.0
         self._repetition_count = 1
@@ -1933,12 +1934,16 @@ class GphlWorkflow(TaskNode):
     def set_decay_limit(self, value):
         self._decay_limit = value
 
-    # Dose already consumed, typically in characterisation
-    def get_dose_consumed(self):
-        return self._dose_consumed
+    def get_characterisation_dose(self):
+        return self._characterisation_dose
 
-    def set_dose_consumed(self, value):
-        self._dose_consumed = value
+    def set_characterisation_dose(self, value):
+        self._characterisation_dose = value
+    def get_acquisition_dose(self):
+        return self._acquisition_dose
+
+    def set_acquisition_dose(self, value):
+        self._acquisition_dose = value
 
     def get_exposure_time(self):
         return self._exposure_time
