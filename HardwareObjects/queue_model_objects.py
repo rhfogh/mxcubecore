@@ -1809,7 +1809,7 @@ class GphlWorkflow(TaskNode):
         self._beam_energy_tags = ("Acquisition",)
         self._detector_resolution = None
         self._space_group = None
-        self._crystal_system = None
+        self._crystal_family = None
         self._point_group = None
         self._cell_parameters = None
         self._use_cell_for_processing = False
@@ -1907,11 +1907,11 @@ class GphlWorkflow(TaskNode):
         self._characterisation_strategy = value
 
     # Crystal system.
-    def get_crystal_system(self):
-        return self._crystal_system
+    def get_crystal_family(self):
+        return self._crystal_family
 
-    def set_crystal_system(self, value):
-        self._crystal_system = value
+    def set_crystal_family(self, value):
+        self._crystal_family = value
 
     # Point Group.
     def get_point_group(self):

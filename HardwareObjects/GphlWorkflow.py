@@ -24,6 +24,7 @@ along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
+import collections
 import logging
 import uuid
 import time
@@ -1611,18 +1612,16 @@ class GphlWorkflow(HardwareObject, object):
         wf_parameters = data_model.get_workflow_parameters()
         variants = wf_parameters["variants"]
 
-        solution_format = choose_lattice.lattice_format
-
         # Must match bravaisLattices column
         lattices = choose_lattice.lattices
 
         # First letter must match first letter of BravaisLattice
-        crystal_system = choose_lattice.crystalSystem
+        crystal_family_char = choose_lattice.crystalFamilyChar
 
         # Color green (figuratively) if matches lattices,
         # or otherwise if matches crystalSystem
 
-        dd0 = self.parse_indexing_solution(solution_format, choose_lattice.solutions)
+        header, soldict, select_row = self.parse_indexing_solution(choose_lattice)
 
         reslimits = api.resolution.get_limits()
         resolution = api.resolution.get_value()
@@ -1633,9 +1632,10 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "_cplx",
                 "uiLabel": "Select indexing solution:",
                 "type": "selection_table",
-                "header": dd0["header"],
+                "header": (header,),
+                "select_row": select_row,
                 "colours": None,
-                "defaultValue": (dd0["solutions"],),
+                "defaultValue": (list(soldict),),
             },
             {
                 "variableName": "resolution",
@@ -1710,22 +1710,22 @@ class GphlWorkflow(HardwareObject, object):
         )
         field_list.append(
             {
-                "variableName": "crystal_system",
-                "uiLabel": "Prior crystal system",
+                "variableName": "crystal_family",
+                "uiLabel": "Prior crystal family",
                 "type": "text",
-                "defaultValue": data_model.get_crystal_system() or "",
+                "defaultValue": data_model.get_crystal_family() or "",
                 "readOnly": True,
             }
         )
 
         # colour matching lattices green
         colour_check = lattices
-        if crystal_system and not colour_check:
-            colour_check = (crystal_system,)
+        if crystal_family_char and not colour_check:
+            colour_check = crystal_family_char
         if colour_check:
-            colours = [None] * len(dd0["solutions"])
-            for ii, line in enumerate(dd0["solutions"]):
-                if any(x in line for x in colour_check):
+            colours = [None] * len(soldict)
+            for ii,solution in enumerate(soldict.values()):
+                if any(x in solution.bravaisLattice for x in colour_check):
                     colours[ii] = "LIGHT_GREEN"
             field_list[0]["colours"] = colours
 
@@ -1772,9 +1772,7 @@ class GphlWorkflow(HardwareObject, object):
         )
         kwArgs["strategyDetectorSetting"] = detectorSetting
 
-        ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
-        if ll0[0] == "*":
-            del ll0[0]
+        soltext = ConvertUtils.text_type(params["_cplx"][0])
 
         options = {}
         maximum_chi = self.getProperty("maximum_chi")
@@ -1791,13 +1789,22 @@ class GphlWorkflow(HardwareObject, object):
         options["variant"] = variant = params["variant"]
         data_model.set_variant(variant)
         kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
+        # kwArgs["userPointGroup"] = data_model.get_point_group()
         #
         data_model.lattice_selected = True
         return GphlMessages.SelectedLattice(
-            lattice_format=solution_format, solution=ll0,**kwArgs
+            indexingSolution=soldict[soltext],**kwArgs
         )
 
-    def parse_indexing_solution(self, solution_format, text):
+    def parse_indexing_solution(self, choose_lattice):
+        """
+
+        Args:
+            choose_lattice GphlMessages.ChooseLattice:
+
+        Returns: tuple
+
+        """
 
         # Solution table. for format IDXREF will look like
         """
@@ -1865,36 +1872,100 @@ class GphlWorkflow(HardwareObject, object):
 
  For protein crystals the possible space group numbers corresponding  to"""
 
-        # find headers lines
-        solutions = []
-        if solution_format == "IDXREF":
-            lines = text.splitlines()
-            for indx, line in enumerate(lines):
-                if "BRAVAIS-" in line:
-                    # Used as marker for first header line
-                    header = ["%s\n%s" % (line, lines[indx + 1])]
-                    break
-            else:
-                raise ValueError("Substring 'BRAVAIS-' missing in %s indexing solution")
+        solutions = choose_lattice.indexingSolutions
+        indexing_format = choose_lattice.indexingFormat
+        solutions_dict = collections.OrderedDict()
 
-            for line in lines[indx:]:
-                ss0 = line.strip()
-                if ss0:
-                    # we are skipping blank line at the start
-                    if solutions or ss0[0] == "*":
-                        # First real line will start with a '*
-                        # Subsequent non-empty lines will also be used
-                        solutions.append(line)
-                elif solutions:
-                    # we have finished - empty non-initial line
-                    break
+        if indexing_format == "IDXREF":
+            header = """  LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
+ CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma"""
 
-            #
-            return {"header": header, "solutions": solutions}
+            line_format = " %s  %2i        %s %12.1f    %6.1f %6.1f %6.1f %5.1f %5.1f %5.1f"
+            consistent_solutions = []
+            for solution in solutions:
+                if solution.isConsistent :
+                    char1 = "*"
+                    consistent_solutions.append(solution)
+                else:
+                    char1 = " "
+                tpl = (
+                    char1,
+                    solution.latticeCharacter,
+                    solution.bravaisLattice,
+                    solution.qualityOfFit,
+                )
+                solutions_dict[
+                    line_format % (tpl + solution.cell.lengths + solution.cell.angles)
+                 ] = solution
+
+            lattices = choose_lattice.lattices or ()
+            select_row = None
+            if lattices:
+                # Select best solution matching lattices
+                for ii, solution in enumerate(consistent_solutions):
+                    if solution.bravaisLattice in lattices:
+                        select_row = ii
+                        break
+            if select_row is None:
+                crystal_family_char = choose_lattice.crystalFamilyChar
+                if lattices and not crystal_family_char:
+                    # NBNB modify? If no lattice match and no crystal family
+                    # filter on having same crystal family
+                    aset = set(lattice[0] for lattice in lattices)
+                    if len(aset) == 1:
+                        crystal_family_char = aset.pop()
+                if crystal_family_char:
+                    # Select best solution based on crystal family
+                    for ii, solution in enumerate(consistent_solutions):
+                        if solution.bravaisLattice.startswith(crystal_family_char):
+                            select_row = ii
+                            break
+
+            if select_row is None:
+                # No match found, select on solutions only
+                lattice = consistent_solutions[-1].bravaisLattice
+                for ii, solution in enumerate(consistent_solutions):
+                    if solution.bravaisLattice == lattice:
+                        select_row = ii
+                        break
+
         else:
-            raise ValueError(
-                "GPhL: Indexing format %s is not known" % repr(solution_format)
+            raise RuntimeError(
+                "Indexing format %s not supported" % indexing_format
             )
+        #
+        return header, solutions_dict, select_row
+
+        # # find headers lines
+        # solutions = []
+        # if solution_format == "IDXREF":
+        #     lines = text.splitlines()
+        #     for indx, line in enumerate(lines):
+        #         if "BRAVAIS-" in line:
+        #             # Used as marker for first header line
+        #             header = ["%s\n%s" % (line, lines[indx + 1])]
+        #             break
+        #     else:
+        #         raise ValueError("Substring 'BRAVAIS-' missing in %s indexing solution")
+        #
+        #     for line in lines[indx:]:
+        #         ss0 = line.strip()
+        #         if ss0:
+        #             # we are skipping blank line at the start
+        #             if solutions or ss0[0] == "*":
+        #                 # First real line will start with a '*
+        #                 # Subsequent non-empty lines will also be used
+        #                 solutions.append(line)
+        #         elif solutions:
+        #             # we have finished - empty non-initial line
+        #             break
+        #
+        #     #
+        #     return {"header": header, "solutions": solutions}
+        # else:
+        #     raise ValueError(
+        #         "GPhL: Indexing format %s is not known" % repr(solution_format)
+        #     )
 
     def process_centring_request(self, payload, correlation_id):
         # Used for transcal only - anything else is data collection related
@@ -2102,15 +2173,15 @@ class GphlWorkflow(HardwareObject, object):
         )
         space_group = obj.number if obj else None
 
-        crystal_system = workflow_model.get_crystal_system()
-        if crystal_system:
-            crystal_system = crystal_system.upper()
+        crystal_family = workflow_model.get_crystal_family()
+        if crystal_family:
+            crystal_family = crystal_family.upper()
 
         # NB Expected resolution is deprecated.
         # It is set to the current resolution value, for now
         userProvidedInfo = GphlMessages.UserProvidedInfo(
             scatterers=(),
-            lattice=crystal_system,
+            crystal_family=crystal_family,
             pointGroup=workflow_model.get_point_group(),
             spaceGroup=space_group,
             cell=unitCell,
@@ -2121,7 +2192,7 @@ class GphlWorkflow(HardwareObject, object):
         for tag in (
             "expectedResolution",
             "isAnisotropic",
-            "lattice",
+            "crystal_family",
             "pointGroup",
             "scatterers",
             "spaceGroup",

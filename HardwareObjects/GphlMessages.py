@@ -163,21 +163,6 @@ CHEMICAL_ELEMENTS = OrderedDict(
     )
 )
 
-CRYSTAL_SYSTEMS = (
-    "TRICLINIC",
-    "MONOCLINIC",
-    "ORTHORHOMBIC",
-    "TETRAGONAL",
-    "TRIGONAL",
-    "HEXAGONAL",
-    "CUBIC",
-)
-# Map from single letter code tro Crystal system name
-# # NB trigonal and hexagonal DO both have code 'h'
-CRYSTAL_SYSTEM_MAP = dict(zip("amothhc", CRYSTAL_SYSTEMS))
-
-POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
-
 ParsedMessage = namedtuple(
     "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
 )
@@ -342,44 +327,64 @@ class ChooseLattice(Payload):
 
     INTENT = "COMMAND"
 
-    def __init__(self, lattice_format, solutions, crystalSystem=None, lattices=None):
+    def __init__(
+        self,
+        indexingSolutions,
+        indexingFormat="IDXREF",
+        crystalFamilyChar=None,
+        lattices=None,
+        userProvidedCell=None,
+        indexingHeader=None
+    ):
+        """
+
+        Args:
+            indexingSolutions (list(IndexingSolution):
+            indexingFormat (str):
+            crystalFamily (str):
+            lattices sequence(str): string or sequence with one, or two unique strings
+            userProvidedCell (UnitCell):
+            indexingHeader (str):
+        """
         super(ChooseLattice, self).__init__()
-        if lattice_format in INDEXING_FORMATS:
-            self._lattice_format = lattice_format
-        else:
-            raise ValueError(
-                "Indexing format %s not in supported formats: %s"
-                % (lattice_format, INDEXING_FORMATS)
-            )
+
+        self._indexingSolutions = indexingSolutions
+        self._indexingFormat = indexingFormat
+        self._crystalFamilyChar = crystalFamilyChar
         if not lattices:
-            self._lattices = ()
+            self._lattices = frozenset()
         elif isinstance(lattices, string_types):
             # Allows you to pass in lattices as a string without silly errors
             self._lattices = frozenset((lattices,))
         else:
             self._lattices = frozenset(lattices)
-        self._solutions = solutions
-        self._crystalSystem = crystalSystem
+        self._userProvidedCell = userProvidedCell
+        self._indexingHeader = indexingHeader
 
     @property
-    def lattice_format(self):
-        """format of solutions string"""
-        return self._lattice_format
-
-    @property
-    def crystalSystem(self):
-        """One-letter code for crystal system (one of 'amothhc')"""
-        return self._crystalSystem
+    def crystalFamilyChar(self):
+        """One-letter code for crystal system (one of 'amothc')"""
+        return self._crystalFamilyChar
 
     @property
     def lattices(self):
-        """Expected lattices for solution"""
+        """ set of expected lattices for solution"""
         return self._lattices
 
     @property
-    def solutions(self):
-        """String containing proposed solutions"""
-        return self._solutions
+    def indexingSolutions(self):
+        """List of IndexingSolution"""
+        return self._indexingSolutions
+
+    @property
+    def indexingFormat(self):
+        """Indexing format"""
+        return self._indexingFormat
+
+    @property
+    def indexingHeader(self):
+        """INnexing tabnle header"""
+        return self._indexingHeader
 
 
 class SelectedLattice(MessageData):
@@ -389,32 +394,22 @@ class SelectedLattice(MessageData):
 
     def __init__(
         self,
-        lattice_format,
-        solution,
+        indexingSolution,
         strategyDetectorSetting=None,
         strategyWavelength=None,
-        strategyControl=None):
-        if lattice_format in INDEXING_FORMATS:
-            self._lattice_format = lattice_format
-        else:
-            raise ValueError(
-                "Indexing format %s not in supported formats: %s"
-                % (lattice_format, INDEXING_FORMATS)
-            )
-        self._solution = tuple(solution)
+        strategyControl=None,
+        userPointGroup=None,
+    ):
+        self._indexingSolution = indexingSolution
         self._strategyDetectorSetting = strategyDetectorSetting
         self._strategyWavelength = strategyWavelength
         self._strategyControl = strategyControl
+        self._userPointGroup = userPointGroup
 
     @property
-    def lattice_format(self):
-        """format of solutions string"""
-        return self._lattice_format
-
-    @property
-    def solution(self):
-        """Tuple of strings containing proposed solution"""
-        return self._solution
+    def indexingSolution(self):
+        """Proposed solution"""
+        return self._indexingSolution
 
     @property
     def strategyDetectorSetting(self):
@@ -431,6 +426,65 @@ class SelectedLattice(MessageData):
         """JSON string of command line options (*without* prefix)
         to use for startcal wrapper call"""
         return self._strategyControl
+
+    @property
+    def userPointGroup(self):
+        """Point group given by user for strategy calculation"""
+        return self._userPointGroup
+
+class IndexingSolution(MessageData):
+    """Indexing solution data"""
+
+    def __init__(
+        self,
+        bravaisLattice,
+        cell,
+        isConsistent=None,
+        latticeCharacter=None,
+        qualityOfFit=None
+    ):
+        """
+
+        Args:
+            bravaisLattice (string): One of the 14 Bravais lattices ('aP' etc.)
+            cell (UnitCell):
+            isConsistent (bool): Is solution consistent with know symmetry?
+            latticeCharacter (int):  Integer 1-44
+            qualityOfFit (float):
+        """
+        self._bravaisLattice = bravaisLattice
+        self._cell = cell
+        self._isConsistent = isConsistent
+        self._latticeCharacter = latticeCharacter
+        self._qualityOfFit = qualityOfFit
+
+    def bravaisLattice(self):
+        """One of the 14 Bravais lattices ('aP' etc.) """
+        return self._bravaisLattice
+
+    @property
+    def bravaisLattice(self):
+        """"""
+        return self._bravaisLattice
+    @property
+    def cell(self):
+        """Unit ce;;"""
+        return self._cell
+
+    @property
+    def isConsistent(self):
+        """ Is solution consistent with know symmetry? """
+        return self._isConsistent
+
+    @property
+    def latticeCharacter(self):
+        """Integer 1-44 """
+        return self._latticeCharacter
+
+    @property
+    def qualityOfFit(self):
+        """"""
+        return self._qualityOfFit
 
 
 class CollectionDone(MessageData):
@@ -826,7 +880,7 @@ class UserProvidedInfo(MessageData):
     def __init__(
         self,
         scatterers=(),
-        lattice=None,
+        crystal_family=None,
         pointGroup=None,
         spaceGroup=None,
         cell=None,
@@ -835,7 +889,7 @@ class UserProvidedInfo(MessageData):
     ):
 
         self._scatterers = scatterers
-        self._lattice = lattice
+        self._crystal_family = crystal_family
         self._pointGroup = pointGroup
         self._spaceGroup = spaceGroup
         self._cell = cell
@@ -847,8 +901,8 @@ class UserProvidedInfo(MessageData):
         return self._scatterers
 
     @property
-    def lattice(self):
-        return self._lattice
+    def crystal_family(self):
+        return self._crystal_family
 
     @property
     def pointGroup(self):
