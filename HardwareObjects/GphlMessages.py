@@ -341,7 +341,7 @@ class ChooseLattice(Payload):
         Args:
             indexingSolutions (list(IndexingSolution):
             indexingFormat (str):
-            crystalFamily (str):
+            crystalFamilyChar (str):
             lattices sequence(str): string or sequence with one, or two unique strings
             userProvidedCell (UnitCell):
             indexingHeader (str):
@@ -383,7 +383,7 @@ class ChooseLattice(Payload):
 
     @property
     def indexingHeader(self):
-        """INnexing tabnle header"""
+        """Indexing table header"""
         return self._indexingHeader
 
 

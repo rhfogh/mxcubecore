@@ -124,6 +124,9 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
+        # Configuration data for recentring calculations
+        self. recentring_data = OrderedDict()
+
         # HACK
         self.strategyWavelength = None
 
@@ -178,6 +181,97 @@ class GphlWorkflow(HardwareObject, object):
             detector._set_beam_centre(
                 (instrument_data["det_org_x"], instrument_data["det_org_y"])
             )
+        self.setup_recentring()
+
+    def setup_recentring(self, force=True):
+
+        recen_data = self.recentring_data
+
+        transcal_data = None
+        fp0 = self.file_paths.get("transcal_file")
+        if os.path.isfile(fp0):
+            try:
+                transcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
+            except:
+                logging.getLogger("HWR").warning(
+                    "reading transcal.nml file failed: %s. Continuing", fp0
+                )
+            else:
+                home_position = transcal_data.get("trans_home")
+                cross_sec_of_soc = transcal_data.get("trans_cross_sec_of_soc")
+                if home_position is None or cross_sec_of_soc is None:
+                    logging.getLogger("HWR").warning("load_transcal_parameters failed")
+                    transcal_data = None
+
+
+        minikappa_correction = api.diffractometer.getObjectByRole(
+            "minikappa_correction"
+        )
+        if minikappa_correction and (force or not transcal_data):
+            posk = minikappa_correction.kappa["position"]
+            dirk = minikappa_correction.kappa["direction"]
+            posp = minikappa_correction.phi["position"]
+            dirp = minikappa_correction.phi["direction"]
+            aval = dirk.dot(dirp)
+            bvec = posk - posp
+            kappahome = (
+                -posk + (aval * bvec.dot(dirp) - bvec.dot(dirk)) * dirk
+                / (aval * aval - 1)
+            )
+            phihome = (
+                -posp - (aval * bvec.dot(dirk) - bvec.dot(dirp)) * dirp
+                / (aval * aval - 1)
+            )
+            home_position = 0.5 * (kappahome + phihome)
+            # For some reason the original formula gave the wrong sign
+            # # (http://confluence.globalphasing.com/display/SDCP/EMBL+MiniKappaCorrection)
+            home_position = - home_position
+            cross_sec_of_soc = 0.5 * (kappahome - phihome)
+            # Set omega axis to be teh basis vactor most slose to phi axis
+            omega = [0, 0, 0]
+            val = abs(dirp[0])
+            indx = 0
+            for iii in 1,2:
+                if abs(dirp[iii]) > val:
+                    val = dirp[iii]
+                    indx = iii
+            omega[indx] = 1
+            recen_data["omega_axis"] = omega
+            recen_data["kappa_axis"] = dirk
+            recen_data["phi_axis"] = dirp
+            recen_data["trans_1_axis"] = [1, 0, 0]
+            recen_data["trans_2_axis"] = [0, 1, 0]
+            recen_data["trans_3_axis"] = [0, 0, 1]
+            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
+            recen_data["home"] = home_position
+
+
+        else:
+            fp0 = self.file_paths.get("instrumentation_file")
+            instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
+            diffractcal_data = instrumentation_data
+
+            fp0 = self.file_paths.get("diffractcal_file")
+            try:
+                diffractcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
+            except:
+                logging.getLogger("HWR").debug(
+                    "diffractcal file not present - using instrumentation.nml %s", fp0
+                )
+            ll0 = diffractcal_data["gonio_axis_dirs"]
+            recen_data["omega_axis"] = ll0[:3]
+            recen_data["kappa_axis"] = ll0[3:6]
+            recen_data["phi_axis"] = ll0[6:]
+            ll0 = instrumentation_data["gonio_centring_axis_dirs"]
+            recen_data["trans_1_axis"] = ll0[:3]
+            recen_data["trans_2_axis"] = ll0[3:6]
+            recen_data["trans_3_axis"] = ll0[6:]
+            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
+            recen_data["home"] = home_position
+
+
+
+        indata = {"recen_list": recen_data}
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -591,9 +685,8 @@ class GphlWorkflow(HardwareObject, object):
         def update_resolution(field_widget):
 
             parameters = field_widget.get_parameters_map()
-            resolution = float(parameters.get("resolution"))
             dbg = self.resolution2dose_budget(
-                resolution,
+                float(parameters.get("resolution")),
                 decay_limit=data_model.get_decay_limit(),
             )
             characterisation_dose = data_model.get_characterisation_dose()
@@ -835,7 +928,7 @@ class GphlWorkflow(HardwareObject, object):
             use_modes.append("start")
         if data_model.get_interleave_order():
             use_modes.append("scan")
-        if self.load_transcal_parameters() and (
+        if self.recentring_data and (
             data_model.lattice_selected
             or wf_parameters.get("strategy_type") == "diffractcal"
         ):
@@ -1047,10 +1140,6 @@ class GphlWorkflow(HardwareObject, object):
 
         recentring_mode = parameters.pop("recentring_mode")
         gphl_workflow_model.set_recentring_mode(recentring_mode)
-        if self.getProperty("disable_recen"):
-            recen_parameters =  None
-        else:
-            recen_parameters =  self.load_transcal_parameters()
         goniostatTranslations = []
 
         # Get all sweepSettings, in order
@@ -1092,16 +1181,6 @@ class GphlWorkflow(HardwareObject, object):
             current_pos_dict[role] for role in self.translation_axis_roles
         )
 
-        if recen_parameters:
-            # Currrent position is now centred one way or the other
-            # Update recentring parameters
-            recen_parameters["ref_xyz"] = current_xyz
-            recen_parameters["ref_okp"] = current_okp
-            logging.getLogger("HWR").debug(
-                "Recentring set-up. Parameters are: %s",
-                sorted(recen_parameters.items()),
-            )
-
         if goniostatTranslations:
             # We had recentre_before_start and already have the goniosatTranslation
             # matching the sweepSetting
@@ -1113,10 +1192,10 @@ class GphlWorkflow(HardwareObject, object):
             okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
             maxdev = max(abs(okp[1] - current_okp[1]), abs(okp[2] - current_okp[2]))
 
-            if recen_parameters:
+            if self.recentring_data:
                 # recentre first sweep from okp
                 translation_settings = self.calculate_recentring(
-                    okp, **recen_parameters
+                    okp, ref_xyz=current_xyz, ref_okp=current_okp
                 )
                 logging.getLogger("HWR").debug(
                     "GPHL Recentring. okp, motors, %s, %s"
@@ -1129,7 +1208,7 @@ class GphlWorkflow(HardwareObject, object):
                     for role in self.translation_axis_roles
                 )
 
-            tol = angular_tolerance if recen_parameters else 1.0
+            tol = angular_tolerance if self.recentring_data else 1.0
             if maxdev <= tol:
                 # first orientation matches current, set to current centring
                 # Use sweepSetting as is, recentred or very close
@@ -1142,14 +1221,14 @@ class GphlWorkflow(HardwareObject, object):
             else:
 
                 if recentring_mode == "none":
-                    if recen_parameters:
+                    if self.recentring_data:
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
                         goniostatTranslations.append(translation)
                     else:
                         raise RuntimeError(
-                            "Coding error, mode 'none' requires recen_parameters"
+                            "Coding error, mode 'none' requires recentring parameters"
                         )
                 else:
                     settings.update(translation_settings)
@@ -1191,10 +1270,12 @@ class GphlWorkflow(HardwareObject, object):
             )
         for sweepSetting in sweepSettings[1:]:
             settings = sweepSetting.get_motor_settings()
-            if recen_parameters:
+            if self.recentring_data:
                 # Update settings
                 okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
-                centring_settings = self.calculate_recentring(okp, **recen_parameters)
+                centring_settings = self.calculate_recentring(
+                    okp, ref_xyz=current_xyz, ref_okp=current_okp
+                )
                 logging.getLogger("HWR").debug(
                     "GPHL Recentring. okp, motors, %s, %s"
                     % (okp, sorted(centring_settings.items()))
@@ -1209,7 +1290,7 @@ class GphlWorkflow(HardwareObject, object):
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
                 okp = tuple(int(settings.get(x, 0)) for x in self.rotation_axis_roles)
                 self.collect_centring_snapshots("%s_%s_%s" % okp)
-            elif recen_parameters:
+            elif self.recentring_data:
                 # put recalculated translations back to workflow
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **centring_settings
@@ -1256,36 +1337,32 @@ class GphlWorkflow(HardwareObject, object):
         )
         return sampleCentred
 
-    def load_transcal_parameters(self):
-        """Load home_position and cross_sec_of_soc from transcal.nml"""
-        fp0 = self.file_paths.get("transcal_file")
-        if os.path.isfile(fp0):
-            try:
-                transcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
-            except BaseException:
-                logging.getLogger("HWR").error(
-                    "Error reading transcal.nml file: %s", fp0
-                )
-            else:
-                result = {}
-                result["home_position"] = transcal_data.get("trans_home")
-                result["cross_sec_of_soc"] = transcal_data.get("trans_cross_sec_of_soc")
-                if None in result.values():
-                    logging.getLogger("HWR").warning("load_transcal_parameters failed")
-                else:
-                    return result
-        else:
-            logging.getLogger("HWR").warning("transcal.nml file not found: %s", fp0)
-        # If we get here reading failed
-        return {}
+    # def load_transcal_parameters(self):
+    #     """Load home_position and cross_sec_of_soc from transcal.nml"""
+    #     fp0 = self.file_paths.get("transcal_file")
+    #     if os.path.isfile(fp0):
+    #         try:
+    #             transcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
+    #         except BaseException:
+    #             logging.getLogger("HWR").error(
+    #                 "Error reading transcal.nml file: %s", fp0
+    #             )
+    #         else:
+    #             result = {}
+    #             result["home_position"] = transcal_data.get("trans_home")
+    #             result["cross_sec_of_soc"] = transcal_data.get("trans_cross_sec_of_soc")
+    #             if None in result.values():
+    #                 logging.getLogger("HWR").warning("load_transcal_parameters failed")
+    #             else:
+    #                 return result
+    #     else:
+    #         logging.getLogger("HWR").warning("transcal.nml file not found: %s", fp0)
+    #     # If we get here reading failed
+    #     return {}
 
-    def calculate_recentring(
-        self, okp, home_position, cross_sec_of_soc, ref_okp, ref_xyz
-    ):
+    def calculate_recentring(self, okp, ref_okp, ref_xyz):
         """Add predicted traslation values using recen
         okp is the omega,gamma,phi tuple of the target position,
-        home_position is the translation calibration home position,
-        and cross_sec_of_soc is the cross-section of the sphere of confusion
         ref_okp and ref_xyz are the reference omega,gamma,phi and the
         corresponding x,y,z translation position"""
 
@@ -1293,31 +1370,7 @@ class GphlWorkflow(HardwareObject, object):
         infile = os.path.join(
             api.gphl_connection.software_paths["GPHL_WDIR"], "temp_recen.in"
         )
-        recen_data = OrderedDict()
-        indata = {"recen_list": recen_data}
-
-        fp0 = self.file_paths.get("instrumentation_file")
-        instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
-        diffractcal_data = instrumentation_data
-
-        fp0 = self.file_paths.get("diffractcal_file")
-        try:
-            diffractcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
-        except BaseException:
-            logging.getLogger("HWR").debug(
-                "diffractcal file not present - using instrumentation.nml %s", fp0
-            )
-        ll0 = diffractcal_data["gonio_axis_dirs"]
-        recen_data["omega_axis"] = ll0[:3]
-        recen_data["kappa_axis"] = ll0[3:6]
-        recen_data["phi_axis"] = ll0[6:]
-        ll0 = instrumentation_data["gonio_centring_axis_dirs"]
-        recen_data["trans_1_axis"] = ll0[:3]
-        recen_data["trans_2_axis"] = ll0[3:6]
-        recen_data["trans_3_axis"] = ll0[6:]
-        recen_data["cross_sec_of_soc"] = cross_sec_of_soc
-        recen_data["home"] = home_position
-        #
+        indata = {"recen_list": self.recentring_data}
         f90nml.write(indata, infile, force=True)
 
         # Get program locations
@@ -1381,6 +1434,23 @@ class GphlWorkflow(HardwareObject, object):
                 "Recen failed with normal termination=%s. Output was:\n" % terminated_ok
                 + output
             )
+
+        for tag, val in result.items():
+            motor = api.diffractometer.getObjectByRole(tag)
+            limits = motor.get_limits()
+            if limits:
+                limit = limits[0]
+                if limit is not None and val < limit:
+                    logging.getLogger("HWR").warning(
+                        "WARNING, centring motor "
+                        "%s position %s recentred to below minimum limit %s"
+                    % (tag, val, limit))
+                limit = limits[1]
+                if limit is not None and val > limit:
+                    logging.getLogger("HWR").warning(
+                        "WARNING, centring motor "
+                        "%s position %s recentred to above maximum limit %s"
+                    % (tag, val, limit))
         #
         return result
 
