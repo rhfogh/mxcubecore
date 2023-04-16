@@ -251,8 +251,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         self.software_paths["GPHL_WDIR"] = os.path.join(
             api.session.get_base_process_directory(), self.getProperty("gphl_subdir")
         )
-        if api.gphl_workflow.getProperty("disable_recen"):
-            self.java_properties["co.gphl.wf.recen.bin"] = ""
+        # if api.gphl_workflow.getProperty("disable_recen"):
+        #     self.java_properties["co.gphl.wf.recen.bin"] = ""
 
         self._workflow_name = workflow_model_obj.get_type()
         params = workflow_model_obj.get_workflow_parameters()
