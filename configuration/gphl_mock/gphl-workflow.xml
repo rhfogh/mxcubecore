@@ -35,6 +35,9 @@
           2 * resolution**2 * log(100. / decay_limit) -->
     <default_decay_limit>25</default_decay_limit>
 
+    <!-- Default force use input unit cell and space group for processing -->
+    <use_cell_for_processing>True</use_cell_for_processing>
+
     <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
     <maximum_dose_budget>20</maximum_dose_budget>
 
