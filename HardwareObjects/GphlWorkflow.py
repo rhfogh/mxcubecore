@@ -1748,12 +1748,15 @@ class GphlWorkflow(HardwareObject, object):
             }
         )
         if  api.gphl_workflow.getProperty("advanced_mode", False):
+            use_cell_for_processing = self.getProperty(
+                "use_cell_for_processing", False
+            )
             field_list.append(
                 {
                     "variableName": "use_cell_for_processing",
                     "uiLabel": "Use cell and symmetry for processing?",
                     "type": "boolean",
-                    "defaultValue":False,
+                    "defaultValue":use_cell_for_processing,
                     "readOnly": False,
                 }
             )
