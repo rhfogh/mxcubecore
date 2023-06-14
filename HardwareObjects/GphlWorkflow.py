@@ -123,8 +123,10 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
-        # Configuration data for recentring calculations
-        self. recentring_data = OrderedDict()
+        # Options "GPHL", "MINIKAPPA", None
+        self.recentring = None
+        # Configuration data for GPhL recentring calculations
+        self._recentring_data = OrderedDict()
 
         # HACK
         self.strategyWavelength = None
@@ -182,9 +184,17 @@ class GphlWorkflow(HardwareObject, object):
             )
         self.setup_recentring()
 
-    def setup_recentring(self, force=True):
+    def setup_recentring(self, preferred_mode="MINIKAPPA"):
+        """
 
-        recen_data = self.recentring_data
+        Args:
+            preferred_mode: (str)  "GPHL"; anything else defaults to "MINIKAPPA"
+
+        Returns:
+
+        """
+
+        recen_data = self._recentring_data
 
         transcal_data = None
         fp0 = self.file_paths.get("transcal_file")
@@ -206,46 +216,9 @@ class GphlWorkflow(HardwareObject, object):
         minikappa_correction = api.diffractometer.getObjectByRole(
             "minikappa_correction"
         )
-        if minikappa_correction and (force or not transcal_data):
-            posk = minikappa_correction.kappa["position"]
-            dirk = minikappa_correction.kappa["direction"]
-            posp = minikappa_correction.phi["position"]
-            dirp = minikappa_correction.phi["direction"]
-            aval = dirk.dot(dirp)
-            bvec = posk - posp
-            kappahome = (
-                -posk + (aval * bvec.dot(dirp) - bvec.dot(dirk)) * dirk
-                / (aval * aval - 1)
-            )
-            phihome = (
-                -posp - (aval * bvec.dot(dirk) - bvec.dot(dirp)) * dirp
-                / (aval * aval - 1)
-            )
-            home_position = 0.5 * (kappahome + phihome)
-            # For some reason the original formula gave the wrong sign
-            # # (http://confluence.globalphasing.com/display/SDCP/EMBL+MiniKappaCorrection)
-            home_position = - home_position
-            cross_sec_of_soc = 0.5 * (kappahome - phihome)
-            # Set omega axis to be teh basis vactor most slose to phi axis
-            omega = [0, 0, 0]
-            val = abs(dirp[0])
-            indx = 0
-            for iii in 1,2:
-                if abs(dirp[iii]) > val:
-                    val = dirp[iii]
-                    indx = iii
-            omega[indx] = 1
-            recen_data["omega_axis"] = omega
-            recen_data["kappa_axis"] = dirk
-            recen_data["phi_axis"] = dirp
-            recen_data["trans_1_axis"] = [1, 0, 0]
-            recen_data["trans_2_axis"] = [0, 1, 0]
-            recen_data["trans_3_axis"] = [0, 0, 1]
-            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
-            recen_data["home"] = home_position
 
-
-        else:
+        if transcal_data and (preferred_mode == "GPHL" or not minikappa_correction):
+            self.recentring = "GPHL"
             fp0 = self.file_paths.get("instrumentation_file")
             instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
             diffractcal_data = instrumentation_data
@@ -268,9 +241,47 @@ class GphlWorkflow(HardwareObject, object):
             recen_data["cross_sec_of_soc"] = cross_sec_of_soc
             recen_data["home"] = home_position
 
+        elif minikappa_correction:
+            self.recentring = "MINIKAPPA"
+            posk = minikappa_correction.kappa["position"]
+            dirk = minikappa_correction.kappa["direction"]
+            posp = minikappa_correction.phi["position"]
+            dirp = minikappa_correction.phi["direction"]
+            aval = dirk.dot(dirp)
+            bvec = posk - posp
+            kappahome = (
+                -posk + (aval * bvec.dot(dirp) - bvec.dot(dirk)) * dirk
+                / (aval * aval - 1)
+            )
+            phihome = (
+                -posp - (aval * bvec.dot(dirk) - bvec.dot(dirp)) * dirp
+                / (aval * aval - 1)
+            )
+            home_position = 0.5 * (kappahome + phihome)
+            # For some reason the original formula gave the wrong sign
+            # # (http://confluence.globalphasing.com/display/SDCP/EMBL+MiniKappaCorrection)
+            home_position = - home_position
+            cross_sec_of_soc = 0.5 * (kappahome - phihome)
+            # Set omega axis to be the basis vector most close to phi axis
+            omega = [0, 0, 0]
+            val = abs(dirp[0])
+            indx = 0
+            for iii in 1,2:
+                if abs(dirp[iii]) > val:
+                    val = dirp[iii]
+                    indx = iii
+            omega[indx] = 1
+            recen_data["omega_axis"] = omega
+            recen_data["kappa_axis"] = dirk
+            recen_data["phi_axis"] = dirp
+            recen_data["trans_1_axis"] = [1, 0, 0]
+            recen_data["trans_2_axis"] = [0, 1, 0]
+            recen_data["trans_3_axis"] = [0, 0, 1]
+            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
+            recen_data["home"] = home_position
 
-
-        indata = {"recen_list": recen_data}
+        else:
+            self.recentring = None
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -927,7 +938,7 @@ class GphlWorkflow(HardwareObject, object):
             use_modes.append("start")
         if data_model.get_interleave_order():
             use_modes.append("scan")
-        if self.recentring_data and (
+        if self.recentring and (
             data_model.lattice_selected
             or wf_parameters.get("strategy_type") == "diffractcal"
         ):
@@ -1191,8 +1202,8 @@ class GphlWorkflow(HardwareObject, object):
             okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
             maxdev = max(abs(okp[1] - current_okp[1]), abs(okp[2] - current_okp[2]))
 
-            if self.recentring_data:
-                # recentre first sweep from okp
+            if self.recentring:
+                # calculate recentre first sweep recentring from okp
                 translation_settings = self.calculate_recentring(
                     okp, ref_xyz=current_xyz, ref_okp=current_okp
                 )
@@ -1207,7 +1218,7 @@ class GphlWorkflow(HardwareObject, object):
                     for role in self.translation_axis_roles
                 )
 
-            tol = angular_tolerance if self.recentring_data else 1.0
+            tol = angular_tolerance if self.recentring else 1.0
             if maxdev <= tol:
                 # first orientation matches current, set to current centring
                 # Use sweepSetting as is, recentred or very close
@@ -1220,7 +1231,7 @@ class GphlWorkflow(HardwareObject, object):
             else:
 
                 if recentring_mode == "none":
-                    if self.recentring_data:
+                    if self.recentring:
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
@@ -1230,7 +1241,8 @@ class GphlWorkflow(HardwareObject, object):
                             "Coding error, mode 'none' requires recentring parameters"
                         )
                 else:
-                    settings.update(translation_settings)
+                    if self.recentring == "GPHL":
+                        settings.update(translation_settings)
                     qe = self.enqueue_sample_centring(motor_settings=settings)
                     translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                     goniostatTranslations.append(translation)
@@ -1268,8 +1280,8 @@ class GphlWorkflow(HardwareObject, object):
                 "Coding error, first sweepSetting should have been set here"
             )
         for sweepSetting in sweepSettings[1:]:
-            settings = sweepSetting.get_motor_settings()
-            if self.recentring_data:
+            settings = dict(sweepSetting.axisSettings)
+            if self.recentring:
                 # Update settings
                 okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
                 centring_settings = self.calculate_recentring(
@@ -1279,17 +1291,18 @@ class GphlWorkflow(HardwareObject, object):
                     "GPHL Recentring. okp, motors, %s, %s"
                     % (okp, sorted(centring_settings.items()))
                 )
-                settings.update(centring_settings)
 
             if recentring_mode == "start":
                 # Recentre now, using updated values if available
+                if self.recentring == "GPHL":
+                    settings.update(centring_settings)
                 qe = self.enqueue_sample_centring(motor_settings=settings)
                 translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                 goniostatTranslations.append(translation)
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
                 okp = tuple(int(settings.get(x, 0)) for x in self.rotation_axis_roles)
                 self.collect_centring_snapshots("%s_%s_%s" % okp)
-            elif self.recentring_data:
+            elif self.recentring:
                 # put recalculated translations back to workflow
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **centring_settings
@@ -1336,40 +1349,23 @@ class GphlWorkflow(HardwareObject, object):
         )
         return sampleCentred
 
-    # def load_transcal_parameters(self):
-    #     """Load home_position and cross_sec_of_soc from transcal.nml"""
-    #     fp0 = self.file_paths.get("transcal_file")
-    #     if os.path.isfile(fp0):
-    #         try:
-    #             transcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
-    #         except BaseException:
-    #             logging.getLogger("HWR").error(
-    #                 "Error reading transcal.nml file: %s", fp0
-    #             )
-    #         else:
-    #             result = {}
-    #             result["home_position"] = transcal_data.get("trans_home")
-    #             result["cross_sec_of_soc"] = transcal_data.get("trans_cross_sec_of_soc")
-    #             if None in result.values():
-    #                 logging.getLogger("HWR").warning("load_transcal_parameters failed")
-    #             else:
-    #                 return result
-    #     else:
-    #         logging.getLogger("HWR").warning("transcal.nml file not found: %s", fp0)
-    #     # If we get here reading failed
-    #     return {}
-
     def calculate_recentring(self, okp, ref_okp, ref_xyz):
-        """Add predicted traslation values using recen
+        """Calculate predicted translation values using recen
         okp is the omega,gamma,phi tuple of the target position,
         ref_okp and ref_xyz are the reference omega,gamma,phi and the
-        corresponding x,y,z translation position"""
+        corresponding x,y,z translation position
+
+        NB for recentring mode MINIKAPPA the values are taken from MiniKAppaCorrection
+        In this case recentring is done automatically, but the values calculated here
+        are still used to pass to the ASTRA workflow.
+
+        """
 
         # Make input file
         infile = os.path.join(
             api.gphl_connection.software_paths["GPHL_WDIR"], "temp_recen.in"
         )
-        indata = {"recen_list": self.recentring_data}
+        indata = {"recen_list": self._recentring_data}
         f90nml.write(indata, infile, force=True)
 
         # Get program locations
@@ -1582,10 +1578,16 @@ class GphlWorkflow(HardwareObject, object):
                     for ind in range(2)
                 )
 
+            if recentring_mode == "start" or self.recentring != "MINIKAPPA":
+                # We want to use the preset translation positions
+                # For MINIKAPPA we rely on built-in recentring
+                goniostatTranslation = goniostatRotation.translation
+                if goniostatTranslation:
+                    initial_settings.update(goniostatTranslation.axisSettings)
+
             if not sweeps or recentring_mode in ("start", "none"):
                 # First sweep (previously centred), or necessary centrings already done
                 # Collect using precalculated or stored centring position
-                initial_settings[goniostatRotation.scanAxis] = scan.start
                 acq_parameters.centred_position = queue_model_objects.CentredPosition(
                     initial_settings
                 )
@@ -2050,6 +2052,8 @@ class GphlWorkflow(HardwareObject, object):
 
         settings = goniostatRotation.axisSettings.copy()
         if goniostatTranslation is not None:
+            # Here we DO want to set translation motors,
+            # even if MiniKappaCorrection is active
             settings.update(goniostatTranslation.axisSettings)
         centring_queue_entry = self.enqueue_sample_centring(motor_settings=settings)
         goniostatTranslation, dummy = self.execute_sample_centring(

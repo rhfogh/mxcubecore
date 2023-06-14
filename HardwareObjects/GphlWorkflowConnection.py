@@ -307,11 +307,12 @@ class GphlWorkflowConnection(HardwareObject, object):
         )
         # Set the workflow root subdirectory parameter from the base image directory
         image_root = os.path.abspath(api.session.get_base_image_directory())
-        rootsubdir = path_template.directory[len(image_root) :]
-        if rootsubdir.startswith(os.path.sep):
-            rootsubdir = rootsubdir[1:]
-        if rootsubdir:
-            workflow_options["rootsubdir"] = rootsubdir
+        if params.get("strategy_type") != "transcal":
+            rootsubdir = path_template.directory[len(image_root) :]
+            if rootsubdir.startswith(os.path.sep):
+                rootsubdir = rootsubdir[1:]
+            if rootsubdir:
+                workflow_options["rootsubdir"] = rootsubdir
 
         # Hardcoded - location for log output
         command_list.extend(

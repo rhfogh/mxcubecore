@@ -878,16 +878,18 @@ class SampleCentringQueueEntry(BaseQueueEntry):
                 not hasattr(self.diffractometer_hwobj, "in_kappa_mode")
                 or self.diffractometer_hwobj.in_kappa_mode()
             ):
-                self.diffractometer_hwobj.move_kappa_and_phi(kappa, kappa_phi)
+                # NB the timeout parameter is unnecesary; 60s timeout is the default
+                self.diffractometer_hwobj.move_kappa_and_phi(
+                    kappa, kappa_phi, timeout = 60
+                )
 
-        motor_positions = data_model.get_other_motor_positions()
-        dd = dict(
+        motor_positions = dict(
             tt
             for tt in data_model.get_other_motor_positions().items()
             if tt[1] is not None
         )
         if motor_positions:
-            self.diffractometer_hwobj.move_motors(dd)
+            self.diffractometer_hwobj.move_motors(motor_positions)
 
         log.warning(
             "Please center a new or select an existing point and press continue."
