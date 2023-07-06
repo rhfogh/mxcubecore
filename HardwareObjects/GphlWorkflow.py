@@ -53,6 +53,7 @@ from HardwareRepository.HardwareObjects.queue_entry import (
 )
 
 from HardwareRepository.HardwareObjects import GphlMessages
+from HardwareRepository.HardwareObjects.Gphl.Transcal2MiniKappa import make_home_data
 
 try:
     from collections import OrderedDict
@@ -82,8 +83,7 @@ RECENTRING_MODES = OrderedDict(
 
 
 class GphlWorkflow(HardwareObject, object):
-    """Global Phasing workflow runner.
-    """
+    """Global Phasing workflow runner."""
 
     STATES = GphlMessages.States
 
@@ -153,7 +153,6 @@ class GphlWorkflow(HardwareObject, object):
             "WorkflowCompleted": self.workflow_completed,
             "WorkflowFailed": self.workflow_failed,
         }
-
         self._state = self.STATES.OFF
 
     def setup_workflow_object(self):
@@ -182,9 +181,12 @@ class GphlWorkflow(HardwareObject, object):
             detector._set_beam_centre(
                 (instrument_data["det_org_x"], instrument_data["det_org_y"])
             )
-        self.setup_recentring()
+        recentring_calc_preference = self.getProperty(
+            "recentring_calc_preference", "GPHL"
+        )
+        self.setup_recentring(preferred_mode=recentring_calc_preference)
 
-    def setup_recentring(self, preferred_mode="MINIKAPPA"):
+    def setup_recentring(self, preferred_mode=None):
         """
 
         Args:
@@ -193,6 +195,7 @@ class GphlWorkflow(HardwareObject, object):
         Returns:
 
         """
+        preferred_mode = preferred_mode or "GPHL"
 
         recen_data = self._recentring_data
 
@@ -212,17 +215,33 @@ class GphlWorkflow(HardwareObject, object):
                     logging.getLogger("HWR").warning("load_transcal_parameters failed")
                     transcal_data = None
 
-
         minikappa_correction = api.diffractometer.getObjectByRole(
             "minikappa_correction"
         )
 
+        fp0 = self.file_paths.get("instrumentation_file")
+        instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
+        centring_axes = instrumentation_data["gonio_centring_axis_dirs"]
+
         if transcal_data and (preferred_mode == "GPHL" or not minikappa_correction):
             self.recentring = "GPHL"
-            fp0 = self.file_paths.get("instrumentation_file")
-            instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
-            diffractcal_data = instrumentation_data
 
+        elif minikappa_correction:
+            self.recentring = "MINIKAPPA"
+            home_position, cross_sec_of_soc = make_home_data(
+                centring_axes=centring_axes,
+                axis_names=instrumentation_data["gonio_centring_axis_names"],
+                kappadir=minikappa_correction.kappa["direction"],
+                kappapos=minikappa_correction.kappa["position"],
+                phidir=minikappa_correction.phi["direction"],
+                phipos=minikappa_correction.phi["position"],
+            )
+
+        else:
+            self.recentring = None
+
+        if self.recentring:
+            diffractcal_data = instrumentation_data
             fp0 = self.file_paths.get("diffractcal_file")
             try:
                 diffractcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
@@ -234,54 +253,11 @@ class GphlWorkflow(HardwareObject, object):
             recen_data["omega_axis"] = ll0[:3]
             recen_data["kappa_axis"] = ll0[3:6]
             recen_data["phi_axis"] = ll0[6:]
-            ll0 = instrumentation_data["gonio_centring_axis_dirs"]
-            recen_data["trans_1_axis"] = ll0[:3]
-            recen_data["trans_2_axis"] = ll0[3:6]
-            recen_data["trans_3_axis"] = ll0[6:]
+            recen_data["trans_1_axis"] = list(centring_axes[ind] for ind in (0, 3, 6))
+            recen_data["trans_2_axis"] = list(centring_axes[ind] for ind in (1, 4, 7))
+            recen_data["trans_3_axis"] = list(centring_axes[ind] for ind in (2, 5, 8))
             recen_data["cross_sec_of_soc"] = cross_sec_of_soc
             recen_data["home"] = home_position
-
-        elif minikappa_correction:
-            self.recentring = "MINIKAPPA"
-            posk = minikappa_correction.kappa["position"]
-            dirk = minikappa_correction.kappa["direction"]
-            posp = minikappa_correction.phi["position"]
-            dirp = minikappa_correction.phi["direction"]
-            aval = dirk.dot(dirp)
-            bvec = posk - posp
-            kappahome = (
-                -posk + (aval * bvec.dot(dirp) - bvec.dot(dirk)) * dirk
-                / (aval * aval - 1)
-            )
-            phihome = (
-                -posp - (aval * bvec.dot(dirk) - bvec.dot(dirp)) * dirp
-                / (aval * aval - 1)
-            )
-            home_position = 0.5 * (kappahome + phihome)
-            # For some reason the original formula gave the wrong sign
-            # # (http://confluence.globalphasing.com/display/SDCP/EMBL+MiniKappaCorrection)
-            home_position = - home_position
-            cross_sec_of_soc = 0.5 * (kappahome - phihome)
-            # Set omega axis to be the basis vector most close to phi axis
-            omega = [0, 0, 0]
-            val = abs(dirp[0])
-            indx = 0
-            for iii in 1,2:
-                if abs(dirp[iii]) > val:
-                    val = dirp[iii]
-                    indx = iii
-            omega[indx] = 1
-            recen_data["omega_axis"] = omega
-            recen_data["kappa_axis"] = dirk
-            recen_data["phi_axis"] = dirp
-            recen_data["trans_1_axis"] = [1, 0, 0]
-            recen_data["trans_2_axis"] = [0, 1, 0]
-            recen_data["trans_3_axis"] = [0, 0, 1]
-            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
-            recen_data["home"] = home_position
-
-        else:
-            self.recentring = None
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -572,7 +548,8 @@ class GphlWorkflow(HardwareObject, object):
 
         if len(beam_energies) > 1:
             lines.append(
-                "Experiment length (per repetition): %s * %6.1f°" % (len(beam_energies), strategy_length)
+                "Experiment length (per repetition): %s * %6.1f°"
+                % (len(beam_energies), strategy_length)
             )
         else:
             lines.append("Experiment length (per repetition): %6.1f°" % strategy_length)
@@ -589,7 +566,9 @@ class GphlWorkflow(HardwareObject, object):
                 start = sweep.start
                 width = sweep.width
                 ss1 = "%s= %6.1f°,  sweep width= %6.1f°" % (
-                    sweep.goniostatSweepSetting.scanAxis, start, width
+                    sweep.goniostatSweepSetting.scanAxis,
+                    start,
+                    width,
                 )
                 ll1.append(ss1)
             lines.append(ss0 + ",  " + ll1[0])
@@ -636,7 +615,7 @@ class GphlWorkflow(HardwareObject, object):
             proposed_dose = (
                 dose_budget * data_model.get_characterisation_budget_fraction()
             )
-        proposed_dose = round(max(proposed_dose,0), use_dose_decimals)
+        proposed_dose = round(max(proposed_dose, 0), use_dose_decimals)
 
         # For calculating dose-budget transmission
         flux_density = api.flux.get_average_flux_density(transmission=100.0)
@@ -664,14 +643,16 @@ class GphlWorkflow(HardwareObject, object):
             repetition_count = int(parameters.get("repetition_count") or 1)
             if image_width and exposure_time:
                 rotation_rate = image_width / exposure_time
-                dd0 = {"rotation_rate": rotation_rate,}
+                dd0 = {
+                    "rotation_rate": rotation_rate,
+                }
                 experiment_time = total_strategy_length / rotation_rate
                 if std_dose_rate and transmission:
                     # NB - dose is calculated for *one* repetition
                     dd0["use_dose"] = (
-                        std_dose_rate * experiment_time * transmission / 100.
+                        std_dose_rate * experiment_time * transmission / 100.0
                     )
-                dd0["experiment_time"] =  experiment_time * repetition_count
+                dd0["experiment_time"] = experiment_time * repetition_count
                 field_widget.set_values(**dd0)
 
         def update_transmission(field_widget):
@@ -684,12 +665,8 @@ class GphlWorkflow(HardwareObject, object):
             if image_width and exposure_time and std_dose_rate and transmission:
                 # If we get here, Adjust dose
                 # NB dose is calculated for *one* repetition
-                experiment_time = (
-                    exposure_time
-                    * total_strategy_length
-                    / image_width
-                )
-                use_dose = (std_dose_rate * experiment_time * transmission / 100)
+                experiment_time = exposure_time * total_strategy_length / image_width
+                use_dose = std_dose_rate * experiment_time * transmission / 100
                 field_widget.set_values(use_dose=use_dose, exposure=exposure_time)
 
         def update_resolution(field_widget):
@@ -724,20 +701,18 @@ class GphlWorkflow(HardwareObject, object):
                 experiment_time = exposure_time * total_strategy_length / image_width
                 transmission = 100 * use_dose / (std_dose_rate * experiment_time)
 
-                if transmission > 100.:
+                if transmission > 100.0:
                     # Transmission too high. Try max transmission and longer exposure
-                    transmission = 100.
+                    transmission = 100.0
                     experiment_time = use_dose / std_dose_rate
-                    exposure_time = experiment_time * image_width / total_strategy_length
+                    exposure_time = (
+                        experiment_time * image_width / total_strategy_length
+                    )
                 max_exposure = exposure_limits[1]
                 if max_exposure and exposure_time > max_exposure:
                     # exposure_time over max; set dose to highest achievable dose
-                    experiment_time = (
-                        max_exposure
-                        * total_strategy_length
-                        / image_width
-                    )
-                    use_dose = (std_dose_rate * experiment_time)
+                    experiment_time = max_exposure * total_strategy_length / image_width
+                    use_dose = std_dose_rate * experiment_time
                     field_widget.set_values(
                         exposure=max_exposure,
                         transmission=100,
@@ -944,7 +919,7 @@ class GphlWorkflow(HardwareObject, object):
         ):
             # Not Characteisation
             use_modes.append("none")
-        for indx in range (len(modes) -1, -1, -1):
+        for indx in range(len(modes) - 1, -1, -1):
             if modes[indx] not in use_modes:
                 del modes[indx]
                 del labels[indx]
@@ -1045,7 +1020,9 @@ class GphlWorkflow(HardwareObject, object):
                 ):
                     data_model.set_acquisition_dose(float(params.get("use_dose", 0)))
                 else:
-                    data_model.set_characterisation_dose(float(params.get("use_dose", 0)))
+                    data_model.set_characterisation_dose(
+                        float(params.get("use_dose", 0))
+                    )
         #
         return result
 
@@ -1056,9 +1033,7 @@ class GphlWorkflow(HardwareObject, object):
         angular_tolerance = float(self.getProperty("angular_tolerance", 1.0))
 
         # enqueue data collection group
-        strategy_type = gphl_workflow_model.get_workflow_parameters()[
-            "strategy_type"
-        ]
+        strategy_type = gphl_workflow_model.get_workflow_parameters()["strategy_type"]
         if gphl_workflow_model.lattice_selected:
             # Data collection TODO: Use workflow info to distinguish
             new_dcg_name = "GPhL Data Collection"
@@ -1120,7 +1095,8 @@ class GphlWorkflow(HardwareObject, object):
         beam_energies = parameters.pop("beam_energies")
         wavelengths = list(
             GphlMessages.PhasingWavelength(
-                wavelength=api.energy._calculate_wavelength(val), role=tag)
+                wavelength=api.energy._calculate_wavelength(val), role=tag
+            )
             for tag, val in beam_energies.items()
         )
         if self.strategyWavelength is not None:
@@ -1355,7 +1331,7 @@ class GphlWorkflow(HardwareObject, object):
         ref_okp and ref_xyz are the reference omega,gamma,phi and the
         corresponding x,y,z translation position
 
-        NB for recentring mode MINIKAPPA the values are taken from MiniKAppaCorrection
+        NB for recentring mode MINIKAPPA the values are taken from MiniKappaCorrection
         In this case recentring is done automatically, but the values calculated here
         are still used to pass to the ASTRA workflow.
 
@@ -1371,11 +1347,13 @@ class GphlWorkflow(HardwareObject, object):
         # Get program locations
         recen_executable = api.gphl_connection.get_executable("recen")
         # Get environmental variables
-        envs = {"autoPROC_home": api.gphl_connection.software_paths.get("GPHL_INSTALLATION")}
-        GPHL_XDS_PATH =  api.gphl_connection.software_paths.get("GPHL_XDS_PATH")
+        envs = {
+            "autoPROC_home": api.gphl_connection.software_paths.get("GPHL_INSTALLATION")
+        }
+        GPHL_XDS_PATH = api.gphl_connection.software_paths.get("GPHL_XDS_PATH")
         if GPHL_XDS_PATH:
             envs["GPHL_XDS_PATH"] = GPHL_XDS_PATH
-        GPHL_CCP4_PATH =  api.gphl_connection.software_paths.get("GPHL_CCP4_PATH")
+        GPHL_CCP4_PATH = api.gphl_connection.software_paths.get("GPHL_CCP4_PATH")
         if GPHL_CCP4_PATH:
             envs["GPHL_CCP4_PATH"] = GPHL_CCP4_PATH
         # Run recen
@@ -1429,7 +1407,6 @@ class GphlWorkflow(HardwareObject, object):
                 "Recen failed with normal termination=%s. Output was:\n" % terminated_ok
                 + output
             )
-
         for tag, val in result.items():
             motor = api.diffractometer.getObjectByRole(tag)
             limits = motor.get_limits()
@@ -1439,13 +1416,15 @@ class GphlWorkflow(HardwareObject, object):
                     logging.getLogger("HWR").warning(
                         "WARNING, centring motor "
                         "%s position %s recentred to below minimum limit %s"
-                    % (tag, val, limit))
+                        % (tag, val, limit)
+                    )
                 limit = limits[1]
                 if limit is not None and val > limit:
                     logging.getLogger("HWR").warning(
                         "WARNING, centring motor "
                         "%s position %s recentred to above maximum limit %s"
-                    % (tag, val, limit))
+                        % (tag, val, limit)
+                    )
         #
         return result
 
@@ -1574,8 +1553,7 @@ class GphlWorkflow(HardwareObject, object):
 
             if last_orientation:
                 maxdev = max(
-                    abs(orientation[ind] - last_orientation[ind])
-                    for ind in range(2)
+                    abs(orientation[ind] - last_orientation[ind]) for ind in range(2)
                 )
 
             if recentring_mode == "start" or self.recentring != "MINIKAPPA":
@@ -1591,7 +1569,7 @@ class GphlWorkflow(HardwareObject, object):
                 acq_parameters.centred_position = queue_model_objects.CentredPosition(
                     initial_settings
                 )
-            elif recentring_mode == "sweep" and  (
+            elif recentring_mode == "sweep" and (
                 rotation_id == gphl_workflow_model.get_current_rotation_id()
                 or (0 <= maxdev < angular_tolerance)
             ):
@@ -1629,7 +1607,7 @@ class GphlWorkflow(HardwareObject, object):
                 # Multitrigger sweep - add in parameters.
                 # NB if we are here ther can be only one scan
                 acq_parameters.num_triggers = scan_count
-                acq_parameters.num_images_per_trigger =  acq_parameters.num_images
+                acq_parameters.num_images_per_trigger = acq_parameters.num_images
                 acq_parameters.num_images *= scan_count
                 # NB this assumes sweepOffset is the offset between starting points
                 acq_parameters.overlap = (
@@ -1713,7 +1691,7 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "resolution",
                 "uiLabel": "Detector resolution (A)",
                 "type": "floatstring",
-                "defaultValue":resolution,
+                "defaultValue": resolution,
                 "lowerBound": reslimits[0],
                 "upperBound": reslimits[1],
                 "decimals": 3,
@@ -1728,7 +1706,7 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "energy",
                 "uiLabel": "Main aquisition energy (keV)",
                 "type": "floatstring",
-                "defaultValue":prev_energy,
+                "defaultValue": prev_energy,
                 "lowerBound": energyLimits[0],
                 "upperBound": energyLimits[1],
                 "decimals": display_energy_decimals,
@@ -1749,16 +1727,14 @@ class GphlWorkflow(HardwareObject, object):
                 "textChoices": choices,
             }
         )
-        if  api.gphl_workflow.getProperty("advanced_mode", False):
-            use_cell_for_processing = self.getProperty(
-                "use_cell_for_processing", False
-            )
+        if api.gphl_workflow.getProperty("advanced_mode", False):
+            use_cell_for_processing = self.getProperty("use_cell_for_processing", False)
             field_list.append(
                 {
                     "variableName": "use_cell_for_processing",
                     "uiLabel": "Use cell and symmetry for processing?",
                     "type": "boolean",
-                    "defaultValue":use_cell_for_processing,
+                    "defaultValue": use_cell_for_processing,
                     "readOnly": False,
                 }
             )
@@ -1869,76 +1845,76 @@ class GphlWorkflow(HardwareObject, object):
         #
         data_model.lattice_selected = True
         return GphlMessages.SelectedLattice(
-            lattice_format=solution_format, solution=ll0,**kwArgs
+            lattice_format=solution_format, solution=ll0, **kwArgs
         )
 
     def parse_indexing_solution(self, solution_format, text):
 
         # Solution table. for format IDXREF will look like
         """
-*********** DETERMINATION OF LATTICE CHARACTER AND BRAVAIS LATTICE ***********
+        *********** DETERMINATION OF LATTICE CHARACTER AND BRAVAIS LATTICE ***********
 
- The CHARACTER OF A LATTICE is defined by the metrical parameters of its
- reduced cell as described in the INTERNATIONAL TABLES FOR CRYSTALLOGRAPHY
- Volume A, p. 746 (KLUWER ACADEMIC PUBLISHERS, DORDRECHT/BOSTON/LONDON, 1989).
- Note that more than one lattice character may have the same BRAVAIS LATTICE.
+         The CHARACTER OF A LATTICE is defined by the metrical parameters of its
+         reduced cell as described in the INTERNATIONAL TABLES FOR CRYSTALLOGRAPHY
+         Volume A, p. 746 (KLUWER ACADEMIC PUBLISHERS, DORDRECHT/BOSTON/LONDON, 1989).
+         Note that more than one lattice character may have the same BRAVAIS LATTICE.
 
- A lattice character is marked "*" to indicate a lattice consistent with the
- observed locations of the diffraction spots. These marked lattices must have
- low values for the QUALITY OF FIT and their implicated UNIT CELL CONSTANTS
- should not violate the ideal values by more than
- MAXIMUM_ALLOWED_CELL_AXIS_RELATIVE_ERROR=  0.03
- MAXIMUM_ALLOWED_CELL_ANGLE_ERROR=           1.5 (Degrees)
+         A lattice character is marked "*" to indicate a lattice consistent with the
+         observed locations of the diffraction spots. These marked lattices must have
+         low values for the QUALITY OF FIT and their implicated UNIT CELL CONSTANTS
+         should not violate the ideal values by more than
+         MAXIMUM_ALLOWED_CELL_AXIS_RELATIVE_ERROR=  0.03
+         MAXIMUM_ALLOWED_CELL_ANGLE_ERROR=           1.5 (Degrees)
 
-  LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
- CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma
+          LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
+         CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma
 
- *  44        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
- *  31        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
- *  33        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
- *  35        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
- *  34        mP          0.0      56.3  102.3   56.3  90.0  90.0  90.0
- *  32        oP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
- *  14        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
- *  10        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
- *  13        oC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
- *  11        tP          0.1      56.3   56.3  102.3  90.0  90.0  90.0
-    37        mC        250.0     212.2   56.3   56.3  90.0  90.0  74.6
-    36        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
-    28        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
-    29        mC        250.0      56.3  125.8  102.3  90.0  90.0  63.4
-    41        mC        250.0     212.3   56.3   56.3  90.0  90.0  74.6
-    40        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
-    39        mC        250.0     125.8   56.3  102.3  90.0  90.0  63.4
-    30        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
-    38        oC        250.0      56.3  125.8  102.3  90.0  90.0 116.6
-    12        hP        250.1      56.3   56.3  102.3  90.0  90.0  90.0
-    27        mC        500.0     125.8   56.3  116.8  90.0 115.5  63.4
-    42        oI        500.0      56.3   56.3  219.6 104.8 104.8  90.0
-    15        tI        500.0      56.3   56.3  219.6  75.2  75.2  90.0
-    26        oF        625.0      56.3  125.8  212.2  83.2 105.4 116.6
-     9        hR        750.0      56.3   79.6  317.1  90.0 100.2 135.0
-     1        cF        999.0     129.6  129.6  129.6 128.6  75.7 128.6
-     2        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
-     3        cP        999.0      56.3   56.3  102.3  90.0  90.0  90.0
-     5        cI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
-     4        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
-     6        tI        999.0     116.8  116.8   79.6  70.1  70.1  39.8
-     7        tI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
-     8        oI        999.0      79.6  116.8  116.8  39.8  70.1  70.1
-    16        oF        999.0      79.6   79.6  219.6  90.0 111.2  90.0
-    17        mC        999.0      79.6   79.6  116.8  70.1 109.9  90.0
-    18        tI        999.0     116.8  129.6   56.3  64.3  90.0 118.9
-    19        oI        999.0      56.3  116.8  129.6  61.1  64.3  90.0
-    20        mC        999.0     116.8  116.8   56.3  90.0  90.0 122.4
-    21        tP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
-    22        hP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
-    23        oC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
-    24        hR        999.0     162.2  116.8   56.3  90.0  69.7  77.4
-    25        mC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
-    43        mI        999.0      79.6  219.6   56.3 104.8 135.0  68.8
+         *  44        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+         *  31        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+         *  33        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+         *  35        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+         *  34        mP          0.0      56.3  102.3   56.3  90.0  90.0  90.0
+         *  32        oP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+         *  14        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+         *  10        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+         *  13        oC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+         *  11        tP          0.1      56.3   56.3  102.3  90.0  90.0  90.0
+            37        mC        250.0     212.2   56.3   56.3  90.0  90.0  74.6
+            36        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
+            28        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
+            29        mC        250.0      56.3  125.8  102.3  90.0  90.0  63.4
+            41        mC        250.0     212.3   56.3   56.3  90.0  90.0  74.6
+            40        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
+            39        mC        250.0     125.8   56.3  102.3  90.0  90.0  63.4
+            30        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
+            38        oC        250.0      56.3  125.8  102.3  90.0  90.0 116.6
+            12        hP        250.1      56.3   56.3  102.3  90.0  90.0  90.0
+            27        mC        500.0     125.8   56.3  116.8  90.0 115.5  63.4
+            42        oI        500.0      56.3   56.3  219.6 104.8 104.8  90.0
+            15        tI        500.0      56.3   56.3  219.6  75.2  75.2  90.0
+            26        oF        625.0      56.3  125.8  212.2  83.2 105.4 116.6
+             9        hR        750.0      56.3   79.6  317.1  90.0 100.2 135.0
+             1        cF        999.0     129.6  129.6  129.6 128.6  75.7 128.6
+             2        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
+             3        cP        999.0      56.3   56.3  102.3  90.0  90.0  90.0
+             5        cI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
+             4        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
+             6        tI        999.0     116.8  116.8   79.6  70.1  70.1  39.8
+             7        tI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
+             8        oI        999.0      79.6  116.8  116.8  39.8  70.1  70.1
+            16        oF        999.0      79.6   79.6  219.6  90.0 111.2  90.0
+            17        mC        999.0      79.6   79.6  116.8  70.1 109.9  90.0
+            18        tI        999.0     116.8  129.6   56.3  64.3  90.0 118.9
+            19        oI        999.0      56.3  116.8  129.6  61.1  64.3  90.0
+            20        mC        999.0     116.8  116.8   56.3  90.0  90.0 122.4
+            21        tP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
+            22        hP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
+            23        oC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
+            24        hR        999.0     162.2  116.8   56.3  90.0  69.7  77.4
+            25        mC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
+            43        mI        999.0      79.6  219.6   56.3 104.8 135.0  68.8
 
- For protein crystals the possible space group numbers corresponding  to"""
+         For protein crystals the possible space group numbers corresponding  to"""
 
         # find headers lines
         solutions = []
@@ -2165,8 +2141,12 @@ class GphlWorkflow(HardwareObject, object):
         cell_params = list(
             getattr(crystalObj, tag)
             for tag in (
-                "cell_a", "cell_b", "cell_c",
-                "cell_alpha", "cell_beta", "cell_gamma",
+                "cell_a",
+                "cell_b",
+                "cell_c",
+                "cell_alpha",
+                "cell_beta",
+                "cell_gamma",
             )
         )
         if all(cell_params):
@@ -2265,7 +2245,7 @@ class GphlWorkflow(HardwareObject, object):
         return min(result, max_budget)
 
     def get_emulation_samples(self):
-        """ Get list of lims_sample information dictionaries for mock/emulation
+        """Get list of lims_sample information dictionaries for mock/emulation
 
         Returns: LIST[DICT]
 

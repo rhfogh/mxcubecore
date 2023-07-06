@@ -31,12 +31,12 @@ __date__ = "12/06/2023"
 
 minikappa_xml_template = """<device class="MiniKappaCorrection">
    <kappa>
-      <direction>%s</direction>
-      <position>%s</position>
+      <direction>%(kappa_axis)s</direction>
+      <position>%(kappa_position)s</position>
    </kappa>
    <phi>
-      <direction>%s</direction>
-      <position>%s</position>
+      <direction>%(phi_axis)s</direction>
+      <position>%(phi_position)s</position>
    </phi>
 </device>"""
 
@@ -44,7 +44,7 @@ def get_recen_data(transcal_file, instrumentation_file, diffractcal_file=None):
     """Read recentring data from GPhL files
 
     Args:
-        transcal_file: tranccal.nml  input file
+        transcal_file: transcal.nml  input file
         instrumentation_file: instrumentation.nml input file
         diffractcal_file: diffrqctcal,.nl ioptional input file
 
@@ -59,7 +59,15 @@ def get_recen_data(transcal_file, instrumentation_file, diffractcal_file=None):
     transcal_data = f90nml.read(transcal_file)["sdcp_instrument_list"]
     home_position = transcal_data["trans_home"]
     cross_sec_of_soc = transcal_data["trans_cross_sec_of_soc"]
+    result["cross_sec_of_soc"] = cross_sec_of_soc
+    result["home"] = home_position
+
     instrumentation_data = f90nml.read(instrumentation_file)["sdcp_instrument_list"]
+    result["gonio_centring_axes"] = instrumentation_data["gonio_centring_axis_dirs"]
+    result["gonio_centring_axis_names"] = instrumentation_data[
+        "gonio_centring_axis_names"
+    ]
+
     try:
         diffractcal_data = f90nml.read(diffractcal_file)["sdcp_instrument_list"]
     except:
@@ -69,57 +77,123 @@ def get_recen_data(transcal_file, instrumentation_file, diffractcal_file=None):
     result["omega_axis"] = ll0[:3]
     result["kappa_axis"] = ll0[3:6]
     result["phi_axis"] = ll0[6:]
-    ll0 = instrumentation_data["gonio_centring_axis_dirs"]
-    result["trans_1_axis"] = ll0[:3]
-    result["trans_2_axis"] = ll0[3:6]
-    result["trans_3_axis"] = ll0[6:]
-    result["gonio_centring_axis_names"] = instrumentation_data[
-        "gonio_centring_axis_names"
-    ]
-    result["cross_sec_of_soc"] = cross_sec_of_soc
-    result["home"] = home_position
     #
     return result
 
 def make_minikappa_data(
-    transcal_file, instrumentation_file, output=None, diffractcal_file=None
+    home,
+    cross_sec_of_soc,
+    gonio_centring_axes,
+    gonio_centring_axis_names,
+    omega_axis,
+    kappa_axis,
+    phi_axis,
 ):
-    if output is None:
-        output = "minikappa-correction.xml"
-    recen_data = get_recen_data(transcal_file, instrumentation_file, diffractcal_file)
-    if not recen_data:
+    """
+
+    Args:
+        home (list):
+        cross_sec_of_soc (list):
+        gonio_centring_axes (list):
+        gonio_centring_axis_names (list):
+        omega_axis (list):
+        kappa_axis (list):
+        phi_axis (list):
+
+    Returns:
+
+    """
+
+    # NB GonioCentringAxes are with motor directions in rows in instrumentation.nml
+    # In recen and transcal files, they are with motor axes in *columns*
+    # The distinction is a transpose, equivalent to changing multiplication order
+    transform = np.matrix(gonio_centring_axes)
+    transform.shape = (3,3)
+    omega = np.array(omega_axis)
+    trans_1 = np.array(gonio_centring_axes[:3])
+    if abs(omega.dot(trans_1)) < 0.99:
         raise ValueError(
-            "Could not get data from files: %s, %s, %s"
-            % (transcal_file, instrumentation_file, diffractcal_file)
+            "First trans axis %s is not parallel to omega axis %s"
+            % (omega_axis, gonio_centring_axes[:3])
         )
 
-    home = np.array(recen_data["home"])
-    cross_sec_of_soc = np.array(recen_data["cross_sec_of_soc"])
-    posk0 = home + cross_sec_of_soc
-    posp0 = home - cross_sec_of_soc
-    tags = ["trans_1_axis","trans_2_axis", "trans_3_axis"]
+    # Transform kappa_axis, phi_axis and cross_sec_of_soc to goniostat
+    # coordinate system
+    # Home is *already* in the goniostat coordinate system
+    cross_sec_of_soc = np.dot(transform, np.array(cross_sec_of_soc)).tolist()[0]
+    kappa_axis = np.dot(transform, np.array(kappa_axis)).tolist()[0]
+    phi_axis = np.dot(transform, np.array(phi_axis)).tolist()[0]
+
+
+    # Shuffle axes to sampx, sampy, phiy order
     indices = list(
-        recen_data["gonio_centring_axis_names"].index(tag)
+        gonio_centring_axis_names.index(tag)
         for tag in ("sampx", "sampy", "phiy")
     )
-    ll0 = []
-    posk = []
-    posp = []
-    for indx in indices:
-        ll0 += recen_data[tags[indx]]
-        posk.append(posk0[indx])
-        posp.append(posp0[indx])
-    transform = np.matrix(ll0)
-    transform.shape = (3,3)
+    kappa_axis = list(kappa_axis[idx] for idx in indices)
+    phi_axis = list(phi_axis[idx] for idx in indices)
+    cross_sec_of_soc = np.array(list(cross_sec_of_soc[idx] for idx in indices))
+    home = np.array(list(home[idx] for idx in indices))
+    # NB the signs of CSOC are set to get consistency with Gleb values
+    kappa_position = (home - cross_sec_of_soc).tolist()
+    phi_position = (home + cross_sec_of_soc).tolist()
+    #
+    return {
+        "kappa_axis": kappa_axis,
+        "phi_axis": phi_axis,
+        "kappa_position": kappa_position,
+        "phi_position": phi_position,
+    }
 
-    text = minikappa_xml_template % (
-        transform.dot( np.array(recen_data["kappa_axis"])).tolist()[0],
-        posk,
-        transform.dot( np.array(recen_data["phi_axis"])).tolist()[0],
-        posp,
+def make_home_data(
+    centring_axes, axis_names, kappadir, kappapos, phidir, phipos
+):
+    """Convert in the oppoosite direction *from* minikappa configuration *to* transcal
+
+    Args:
+        centring_axes list(float): Goniostat centring axis coordinates, concatenated
+        axis_names list(str): centring axis names, in instumentation.nml order
+        kappadir: list(float): kappa axis direction, centring axis system
+        kappapos list(float): kappa axis offset vector, centring axis system
+        phidir list(float):  phi axis direction, centring axis system
+        phipos list(float):  phi axis offset vector, centring axis system
+
+    Returns:
+
+    """
+    # Get home and CSOC in goniostat (centring motor) coordinate system
+    kappadir = np.array(kappadir)
+    kappapos = np.array(kappapos)
+    phidir = np.array(phidir)
+    phipos = np.array(phipos)
+    aval = kappadir.dot(phidir)
+    bvec = kappapos - phipos
+    kappahome = (
+        -kappapos + (aval * bvec.dot(phidir) - bvec.dot(kappadir)) * kappadir
+        / (aval * aval - 1)
     )
-    open(output,"w").write(text)
-    print(text)
+    phihome = (
+        -phipos - (aval * bvec.dot(kappadir) - bvec.dot(phidir)) * phidir
+        / (aval * aval - 1)
+    )
+    home_position = 0.5 * (kappahome + phihome)
+    # For some reason the original formula gave the wrong sign
+    # # (http://confluence.globalphasing.com/display/SDCP/EMBL+MiniKappaCorrection)
+    home_position = - home_position
+    cross_sec_of_soc = 0.5 * (kappahome - phihome)
+
+    # Reshuffle home and cross_sec_of_soc to lab vector order
+    goniostat_order = ("sampx", "sampy", "phiy")
+    indices = list(goniostat_order.index(tag) for tag in axis_names)
+    home_position = list(home_position[ind] for ind in indices)
+    cross_sec_of_soc = list(cross_sec_of_soc[ind] for ind in indices)
+
+    # Transform cross_sec_of_soc to lab coordinate system
+    transform = np.matrix(centring_axes)
+    transform.shape = (3,3)
+    cross_sec_of_soc = np.dot(np.array(cross_sec_of_soc), transform).tolist()[0]
+    return home_position, cross_sec_of_soc
+
 
 if __name__ == "__main__":
 
@@ -130,7 +204,7 @@ if __name__ == "__main__":
         formatter_class=RawTextHelpFormatter,
         prefix_chars="--",
         description="""
-Conversion from GPhL recentring data to MiniKAppaCIOrrection recentring data
+Conversion from GPhL recentring data to MiniKappaCorrection recentring data
 
 Requires an up-to-date transcal.nml file a matching instrumentation.nml file 
 and preferably an up-to-date diffractcal.nml file
@@ -151,14 +225,8 @@ and preferably an up-to-date diffractcal.nml file
         "--diffractcal_file", metavar="diffractcal_file", help="diffractcal.nml file\n"
     )
 
-    parser.add_argument(
-        "--output",
-        metavar="outputfile",
-        help="Name of output xml file. Defaults to minikappa-correction.xml\n",
-    )
-
-
     argsobj = parser.parse_args()
     options_dict = vars(argsobj)
-
-    make_minikappa_data(**options_dict)
+    recen_data = get_recen_data(**options_dict)
+    minikappa_data = make_minikappa_data(**recen_data)
+    print(minikappa_xml_template % minikappa_data)
