@@ -2157,7 +2157,7 @@ class GphlWorkflow(HardwareObject, object):
         obj = queue_model_enumerables.SPACEGROUP_MAP.get(
             workflow_model.get_space_group()
         )
-        space_group = obj.number if obj else None
+        space_group = obj.name if obj else None
 
         crystal_system = workflow_model.get_crystal_system()
         if crystal_system:
@@ -2165,10 +2165,10 @@ class GphlWorkflow(HardwareObject, object):
 
         # NB Expected resolution is deprecated.
         # It is set to the current resolution value, for now
+        # NBNB @~@~ fix crystalClasses
         userProvidedInfo = GphlMessages.UserProvidedInfo(
             scatterers=(),
-            lattice=crystal_system,
-            pointGroup=workflow_model.get_point_group(),
+            crystalClasses=(),
             spaceGroup=space_group,
             cell=unitCell,
             expectedResolution=api.collect.get_resolution(),
@@ -2178,8 +2178,7 @@ class GphlWorkflow(HardwareObject, object):
         for tag in (
             "expectedResolution",
             "isAnisotropic",
-            "lattice",
-            "pointGroup",
+            "crystalClasses",
             "scatterers",
             "spaceGroup",
         ):

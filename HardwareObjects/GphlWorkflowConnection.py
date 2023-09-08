@@ -724,17 +724,23 @@ class GphlWorkflowConnection(HardwareObject, object):
         return GphlMessages.SubprocessStopped()
 
     def _ChooseLattice_to_python(self, py4jChooseLattice):
-        lattice_format = py4jChooseLattice.getFormat().toString()
-        solutions = py4jChooseLattice.getSolutions()
-        lattices = py4jChooseLattice.getLattices()
-        crystalSystem = py4jChooseLattice.getCrystalSystem()
-        if crystalSystem is not None:
-            crystalSystem = crystalSystem.getXdsChar()
+        # NB the functions return different types, so toString is needed in only once
+        indexingFormat = py4jChooseLattice.getIndexingFormat().toString()
+        indexingHeader = py4jChooseLattice.getIndexingHeader()
         return GphlMessages.ChooseLattice(
-            lattice_format=lattice_format,
-            solutions=solutions,
-            lattices=lattices,
-            crystalSystem=crystalSystem,
+            indexingSolutions=tuple(
+                self._IndexingSolution_to_python(sol)
+                for sol in py4jChooseLattice.getIndexingSolutions()
+            ),
+            indexingFormat=indexingFormat,
+            indexingHeader=indexingHeader,
+            priorCrystalClasses=tuple(
+                ccl.toString() for ccl in py4jChooseLattice.getPriorCrystalClasses()
+            ),
+            priorSpaceGroup=py4jChooseLattice.getPriorSpaceGroup(),
+            userProvidedCell=self._UnitCell_to_python(
+                py4jChooseLattice.getUserProvidedCell()
+            ),
         )
 
     def _CollectionProposal_to_python(self, py4jCollectionProposal):
@@ -847,6 +853,21 @@ class GphlWorkflowConnection(HardwareObject, object):
     def _GoniostatSweepSetting_to_python(self, py4jGoniostatSweepSetting):
         return self._GoniostatRotation_to_python(
             py4jGoniostatSweepSetting, isSweepSetting=True
+        )
+
+    def _UnitCell_to_python(self, py4jUnitCell):
+
+        cell_params = tuple(py4jUnitCell.getLengths()) + tuple(py4jUnitCell.getAngles())
+        return GphlMessages.UnitCell(*cell_params)
+
+    def _IndexingSolution_to_python(self, py4jIndexingSolution):
+
+        return GphlMessages.IndexingSolution(
+            bravaisLattice=py4jIndexingSolution.getBravaisLattice(),
+            cell=self._UnitCell_to_python(py4jIndexingSolution.getCell()),
+            isConsistent=py4jIndexingSolution.isConsistent(),
+            latticeCharacter=py4jIndexingSolution.getLatticeCharacter(),
+            qualityOfFit=py4jIndexingSolution.getQualityOfFit(),
         )
 
     def _Sweep_to_python(self, py4jSweep):
@@ -1127,14 +1148,21 @@ class GphlWorkflowConnection(HardwareObject, object):
 
     def _SelectedLattice_to_java(self, selectedLattice):
         jvm = self._gateway.jvm
-        frmt = jvm.co.gphl.beamline.v2_unstable.domain_types.IndexingFormat.valueOf(
-            selectedLattice.lattice_format
-        )
+        crystal_classes = selectedLattice.userCrystalClasses
+        if crystal_classes:
+            userCrystalClasses = set(
+                jvm.co.gphl.beamline.v2_unstable.domain_types.CrystalClass.fromStringList(
+                    self.toJStringArray(crystal_classes)
+                )
+            )
+        else:
+            userCrystalClasses = None
         result = jvm.astra.messagebus.messages.information.SelectedLatticeImpl(
-            frmt,
-            selectedLattice.solution,
+            self._IndexingSolution_to_java(selectedLattice.solution),
             self._BcsDetectorSetting_to_java(selectedLattice.strategyDetectorSetting),
             self._PhasingWavelength_to_java(selectedLattice.strategyWavelength),
+            selectedLattice.userSpaceGroup,
+            userCrystalClasses,
             selectedLattice.strategyControl,
         )
         #
@@ -1157,23 +1185,20 @@ class GphlWorkflowConnection(HardwareObject, object):
 
         for scatterer in userProvidedInfo.scatterers:
             builder = builder.addScatterer(self._AnomalousScatterer_to_java(scatterer))
-        if userProvidedInfo.lattice:
-            builder = builder.lattice(
-                jvm.co.gphl.beamline.v2_unstable.domain_types.CrystalSystem.valueOf(
-                    userProvidedInfo.lattice
+        crystal_classes = userProvidedInfo.crystalClasses
+        if crystal_classes:
+            ccset = set(
+                jvm.co.gphl.beamline.v2_unstable.domain_types.CrystalClass.fromStringList(
+                    self.toJStringArray(crystal_classes)
                 )
             )
-        # NB The Java point groups are an enumeration: 'PG1', 'PG422' etc.
-        xx0 = userProvidedInfo.pointGroup
-        if xx0:
-            builder = builder.pointGroup(
-                jvm.co.gphl.beamline.v2_unstable.domain_types.PointGroup.valueOf(
-                    "PG%s" % xx0
-                )
-            )
+            builder = builder.crystalClasses(ccset)
         xx0 = userProvidedInfo.spaceGroup
         if xx0:
             builder = builder.spaceGroup(xx0)
+        xx0 = userProvidedInfo.spaceGroupString
+        if xx0:
+            builder = builder.spaceGroupString(xx0)
         xx0 = userProvidedInfo.cell
         if xx0 is not None:
             builder = builder.cell(self._UnitCell_to_java(xx0))
