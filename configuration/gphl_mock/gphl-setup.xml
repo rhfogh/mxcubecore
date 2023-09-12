@@ -91,8 +91,8 @@
         <!--        <co.gphl.wf.recen.bin>{GPHL_WRAPPERS}/scripts/recen</co.gphl.wf.recen.bin>-->
         <!--        <co.gphl.wf.recen.bdg_licence_dir>/fill/me/in</co.gphl.wf.recen.bdg_licence_dir>-->
         <!-- OPTIONAL. simcal *binary* and licence dir. For Mock collection emulation only. Not used by ASTRA workflow -->
-        <co.gphl.wf.simcal.bin>/alt/rhfogh/Software/GPhL/nightly_20230704/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
-        <co.gphl.wf.simcal.bdg_licence_dir>/alt/rhfogh/Software/GPhL/nightly_20230704/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
+        <co.gphl.wf.simcal.bin>/alt/rhfogh/Software/GPhL/nightly_20230907/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
+        <co.gphl.wf.simcal.bdg_licence_dir>/alt/rhfogh/Software/GPhL/nightly_20230907/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
     </software_properties>
 
 </object>

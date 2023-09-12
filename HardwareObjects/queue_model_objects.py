@@ -1809,8 +1809,7 @@ class GphlWorkflow(TaskNode):
         self._beam_energy_tags = ("Acquisition",)
         self._detector_resolution = None
         self._space_group = None
-        self._crystal_system = None
-        self._point_group = None
+        self._crystal_classes = ()
         self._cell_parameters = None
         self._use_cell_for_processing = False
         self._snapshot_count = int(
@@ -1907,18 +1906,11 @@ class GphlWorkflow(TaskNode):
         self._characterisation_strategy = value
 
     # Crystal system.
-    def get_crystal_system(self):
-        return self._crystal_system
+    def get_crystal_classes(self):
+        return self._crystal_classes
 
-    def set_crystal_system(self, value):
-        self._crystal_system = value
-
-    # Point Group.
-    def get_point_group(self):
-        return self._point_group
-
-    def set_point_group(self, value):
-        self._point_group = value
+    def set_crystal_classes(self, value):
+        self._crystal_classes = value
 
     # Dose budget (MGy, float).
     def get_dose_budget(self):

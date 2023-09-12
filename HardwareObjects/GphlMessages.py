@@ -351,6 +351,7 @@ class ChooseLattice(Payload):
         indexingHeader=None,
         priorCrystalClasses=(),
         priorSpaceGroup=None,
+        priorSpaceGroupString=None,
         userProvidedCell=None,
     ):
         """
@@ -363,13 +364,14 @@ class ChooseLattice(Payload):
             priorSpaceGroup int:
             userProvidedCell UnitCell:
         """
-        super().__init__()
+        super(ChooseLattice, self).__init__()
 
         self._indexingSolutions = indexingSolutions
         self._indexingFormat = indexingFormat
         self._indexingHeader = indexingHeader
         self._priorCrystalClasses = priorCrystalClasses or ()
         self._priorSpaceGroup = priorSpaceGroup
+        self._priorSpaceGroupString = priorSpaceGroupString
         self._userProvidedCell = userProvidedCell
 
     @property
@@ -381,6 +383,11 @@ class ChooseLattice(Payload):
     def priorSpaceGroup(self):
         """space group number"""
         return self._priorSpaceGroup
+
+    @property
+    def priorSpaceGroupString(self):
+        """space group number"""
+        return self._priorSpaceGroupString
 
     @property
     def indexingSolutions(self):
@@ -411,12 +418,13 @@ class SelectedLattice(MessageData):
     def __init__(
         self,
         solution,
-	crystalClasses=(),
-	spaceGroup=None,
+        crystalClasses=(),
+        spaceGroup=None,
         strategyDetectorSetting=None,
         strategyWavelength=None,
         strategyControl=None):
-        self._solution = tuple(solution)
+
+        self._solution = solution
         self._userCrystalClasses = crystalClasses
         sginfo = crystal_symmetry.SPACEGROUP_MAP.get(spaceGroup)
         self._userSpaceGroup = sginfo.number if sginfo else None

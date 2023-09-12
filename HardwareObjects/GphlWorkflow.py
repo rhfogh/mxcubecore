@@ -54,6 +54,7 @@ from HardwareRepository.HardwareObjects.queue_entry import (
 
 from HardwareRepository.HardwareObjects import GphlMessages
 from HardwareRepository.HardwareObjects.Gphl.Transcal2MiniKappa import make_home_data
+from HardwareRepository.HardwareObjects.Gphl import crystal_symmetry
 
 try:
     from collections import OrderedDict
@@ -80,6 +81,70 @@ RECENTRING_MODES = OrderedDict(
         ("No manual re-centring, rely on calculated values", "none"),
     )
 )
+
+# Lattice to point groups,
+# Used for GPhL UI pulldowns, hence the combined point groups, like '4|422'
+# The list of keys, plus "", defines the GPhL lattices pulldown.
+lattice2point_group_tags = OrderedDict(
+    (
+        ("aP",("1",)),
+        ("Triclinic",("2",)),
+        ("mP",("2",)),
+        ("mC",("2",)),
+        ("mI",("2",)),
+        ("Monoclinic",("2",)),
+        ("oP",("222",)),
+        ("oC",("222",)),
+        ("oF",("222",)),
+        ("oI",("222",)),
+        ("Orthorhombic",("222",)),
+        ("tP",("4", "422", "4|422")),
+        ("tI",("4", "422", "4|422")),
+        ("Tetragonal",("4", "422", "4|422")),
+        ("hP",("3", "312", "321", "3|32", "6", "622", "6|622", "3|32|6|622")),
+        ("hR",("3", "32", "3|32")),
+        ("Hexagonal",
+             (
+                "3",
+                "312",
+                "321",
+                "32",
+                "3|32",
+                "6",
+                "622",
+                "6|622",
+                "3|32|6|622",
+            )
+        ),
+        ("cP",("23", "432", "23|432")),
+        ("cF",("23", "432", "23|432")),
+        ("cI",("23", "432", "23|432")),
+        ("Cubic",("23", "432", "23|432")),
+    )
+)
+all_point_group_tags = []
+for tag in (
+    "Triclinic",
+    "Monoclinic",
+    "Orthorhombic",
+    "Tetragonal",
+    "Hexagonal",
+    "Cubic",
+):
+    all_point_group_tags += lattice2point_group_tags[tag]
+
+# Allowed altervative lattices for a given lattice
+alternative_lattices = {}
+for ll0 in (
+    ["aP", "Triclinic"],
+    ["mP", "mC", "mI", "Monoclinic"],
+    ["oP", "oC", "oF", "oI", "Orthorhombic"],
+    ["tP", "tI", "Tetragonal"],
+    ["hP", "hR", "Hexagonal"],
+    ["cP", "cF", "cI", "Cubic"],
+):
+    for tag in ll0:
+        alternative_lattices[tag] = ll0
 
 
 class GphlWorkflow(HardwareObject, object):
@@ -1661,18 +1726,35 @@ class GphlWorkflow(HardwareObject, object):
         wf_parameters = data_model.get_workflow_parameters()
         variants = wf_parameters["variants"]
 
-        solution_format = choose_lattice.lattice_format
-
-        # Must match bravaisLattices column
-        lattices = choose_lattice.lattices
-
-        # First letter must match first letter of BravaisLattice
-        crystal_system = choose_lattice.crystalSystem
+        crystal_classes = choose_lattice.priorCrystalClasses
+        lattices = set(
+            crystal_symmetry.CRYSTAL_CLASS_MAP[crystal_class].bravais_lattice
+            for crystal_class in crystal_classes
+        )
+        if "mC" in lattices:
+            # NBNB special case. mI non-standard but supported in XDS
+            lattices.add("mI")
+        prior_space_group = choose_lattice.priorSpaceGroupString
 
         # Color green (figuratively) if matches lattices,
         # or otherwise if matches crystalSystem
 
-        dd0 = self.parse_indexing_solution(solution_format, choose_lattice.solutions)
+
+        header, solutions_dict, select_row = self.parse_indexing_solution(choose_lattice)
+        lattice = list(solutions_dict.values())[select_row].bravaisLattice
+        point_groups = lattice2point_group_tags[lattice]
+        point_group = point_groups[-1]
+        if prior_space_group:
+            info = crystal_symmetry.CRYSTAL_CLASS_MAP[
+                crystal_symmetry.SPACEGROUP_MAP[prior_space_group].crystal_class
+            ]
+            if info.bravais_lattice == lattice:
+                point_group = info.point_group
+                if point_group == "32" and info.bravais_lattice == "hP":
+                    point_group = info.crystal_class[:-1]
+                # if point_group not in point_groups:
+                #     point_group = point_groups[-1]
+        solutions = list(solutions_dict)
 
         reslimits = api.resolution.get_limits()
         resolution = api.resolution.get_value()
@@ -1683,9 +1765,9 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "_cplx",
                 "uiLabel": "Select indexing solution:",
                 "type": "selection_table",
-                "header": dd0["header"],
+                "header": header,
                 "colours": None,
-                "defaultValue": (dd0["solutions"],),
+                "defaultValue": (solutions,),
             },
             {
                 "variableName": "resolution",
@@ -1746,39 +1828,38 @@ class GphlWorkflow(HardwareObject, object):
                 "variableName": "space_group",
                 "uiLabel": "Prior space group",
                 "type": "text",
-                "defaultValue": data_model.get_space_group() or "",
+                "defaultValue": prior_space_group or "",
                 "readOnly": True,
             }
         )
         field_list.append(
             {
                 "variableName": "point_group",
-                "uiLabel": "Prior point group",
+                "uiLabel": "Expected point group",
                 "type": "text",
-                "defaultValue": data_model.get_point_group() or "",
+                "defaultValue": point_group or "",
                 "readOnly": True,
             }
         )
         field_list.append(
             {
-                "variableName": "crystal_system",
-                "uiLabel": "Prior crystal system",
+                "variableName": "lattice",
+                "uiLabel": "Expected lattice",
                 "type": "text",
-                "defaultValue": data_model.get_crystal_system() or "",
+                "defaultValue": lattice or "",
                 "readOnly": True,
             }
         )
 
         # colour matching lattices green
-        colour_check = lattices
-        if crystal_system and not colour_check:
-            colour_check = (crystal_system,)
-        if colour_check:
-            colours = [None] * len(dd0["solutions"])
-            for ii, line in enumerate(dd0["solutions"]):
-                if any(x in line for x in colour_check):
+        colours = [None] * len(solutions)
+        if lattices:
+            for ii, soltxt in enumerate(solutions):
+                bravaisLattice = solutions_dict[soltxt].bravaisLattice
+                if any(x == bravaisLattice for x in lattices):
                     colours[ii] = "LIGHT_GREEN"
-            field_list[0]["colours"] = colours
+        field_list[0]["colours"] = colours
+        field_list[0]["selectRow"] = select_row
 
         self._return_parameters = gevent.event.AsyncResult()
         responses = dispatcher.send(
@@ -1822,10 +1903,7 @@ class GphlWorkflow(HardwareObject, object):
             resolution, id_=None, orgxy=orgxy, Distance=distance
         )
         kwArgs["strategyDetectorSetting"] = detectorSetting
-
-        ll0 = ConvertUtils.text_type(params["_cplx"][0]).split()
-        if ll0[0] == "*":
-            del ll0[0]
+        solution = solutions_dict[ConvertUtils.text_type(params["_cplx"][0])]
 
         options = {}
         maximum_chi = self.getProperty("maximum_chi")
@@ -1844,108 +1922,151 @@ class GphlWorkflow(HardwareObject, object):
         kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
         #
         data_model.lattice_selected = True
+        crystal_classes = crystal_symmetry.crystal_classes_from_params((lattice,))
+        if prior_space_group in crystal_symmetry.space_groups_from_params((lattice,)):
+            space_group = prior_space_group
+        else:
+            space_group = ""
         return GphlMessages.SelectedLattice(
-            lattice_format=solution_format, solution=ll0, **kwArgs
+            solution=solution,
+            crystalClasses=crystal_classes,
+            spaceGroup=space_group or None,
+            **kwArgs
         )
 
-    def parse_indexing_solution(self, solution_format, text):
+    def parse_indexing_solution(self, choose_lattice):
+        """
+
+        Args:
+            choose_lattice GphlMessages.ChooseLattice:
+
+        Returns: tuple
+
+        """
 
         # Solution table. for format IDXREF will look like
         """
-        *********** DETERMINATION OF LATTICE CHARACTER AND BRAVAIS LATTICE ***********
+*********** DETERMINATION OF LATTICE CHARACTER AND BRAVAIS LATTICE ***********
 
-         The CHARACTER OF A LATTICE is defined by the metrical parameters of its
-         reduced cell as described in the INTERNATIONAL TABLES FOR CRYSTALLOGRAPHY
-         Volume A, p. 746 (KLUWER ACADEMIC PUBLISHERS, DORDRECHT/BOSTON/LONDON, 1989).
-         Note that more than one lattice character may have the same BRAVAIS LATTICE.
+ The CHARACTER OF A LATTICE is defined by the metrical parameters of its
+ reduced cell as described in the INTERNATIONAL TABLES FOR CRYSTALLOGRAPHY
+ Volume A, p. 746 (KLUWER ACADEMIC PUBLISHERS, DORDRECHT/BOSTON/LONDON, 1989).
+ Note that more than one lattice character may have the same BRAVAIS LATTICE.
 
-         A lattice character is marked "*" to indicate a lattice consistent with the
-         observed locations of the diffraction spots. These marked lattices must have
-         low values for the QUALITY OF FIT and their implicated UNIT CELL CONSTANTS
-         should not violate the ideal values by more than
-         MAXIMUM_ALLOWED_CELL_AXIS_RELATIVE_ERROR=  0.03
-         MAXIMUM_ALLOWED_CELL_ANGLE_ERROR=           1.5 (Degrees)
+ A lattice character is marked "*" to indicate a lattice consistent with the
+ observed locations of the diffraction spots. These marked lattices must have
+ low values for the QUALITY OF FIT and their implicated UNIT CELL CONSTANTS
+ should not violate the ideal values by more than
+ MAXIMUM_ALLOWED_CELL_AXIS_RELATIVE_ERROR=  0.03
+ MAXIMUM_ALLOWED_CELL_ANGLE_ERROR=           1.5 (Degrees)
 
-          LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
-         CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma
+  LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
+ CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma
 
-         *  44        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
-         *  31        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
-         *  33        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
-         *  35        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
-         *  34        mP          0.0      56.3  102.3   56.3  90.0  90.0  90.0
-         *  32        oP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
-         *  14        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
-         *  10        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
-         *  13        oC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
-         *  11        tP          0.1      56.3   56.3  102.3  90.0  90.0  90.0
-            37        mC        250.0     212.2   56.3   56.3  90.0  90.0  74.6
-            36        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
-            28        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
-            29        mC        250.0      56.3  125.8  102.3  90.0  90.0  63.4
-            41        mC        250.0     212.3   56.3   56.3  90.0  90.0  74.6
-            40        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
-            39        mC        250.0     125.8   56.3  102.3  90.0  90.0  63.4
-            30        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
-            38        oC        250.0      56.3  125.8  102.3  90.0  90.0 116.6
-            12        hP        250.1      56.3   56.3  102.3  90.0  90.0  90.0
-            27        mC        500.0     125.8   56.3  116.8  90.0 115.5  63.4
-            42        oI        500.0      56.3   56.3  219.6 104.8 104.8  90.0
-            15        tI        500.0      56.3   56.3  219.6  75.2  75.2  90.0
-            26        oF        625.0      56.3  125.8  212.2  83.2 105.4 116.6
-             9        hR        750.0      56.3   79.6  317.1  90.0 100.2 135.0
-             1        cF        999.0     129.6  129.6  129.6 128.6  75.7 128.6
-             2        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
-             3        cP        999.0      56.3   56.3  102.3  90.0  90.0  90.0
-             5        cI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
-             4        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
-             6        tI        999.0     116.8  116.8   79.6  70.1  70.1  39.8
-             7        tI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
-             8        oI        999.0      79.6  116.8  116.8  39.8  70.1  70.1
-            16        oF        999.0      79.6   79.6  219.6  90.0 111.2  90.0
-            17        mC        999.0      79.6   79.6  116.8  70.1 109.9  90.0
-            18        tI        999.0     116.8  129.6   56.3  64.3  90.0 118.9
-            19        oI        999.0      56.3  116.8  129.6  61.1  64.3  90.0
-            20        mC        999.0     116.8  116.8   56.3  90.0  90.0 122.4
-            21        tP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
-            22        hP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
-            23        oC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
-            24        hR        999.0     162.2  116.8   56.3  90.0  69.7  77.4
-            25        mC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
-            43        mI        999.0      79.6  219.6   56.3 104.8 135.0  68.8
+ *  44        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+ *  31        aP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+ *  33        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+ *  35        mP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+ *  34        mP          0.0      56.3  102.3   56.3  90.0  90.0  90.0
+ *  32        oP          0.0      56.3   56.3  102.3  90.0  90.0  90.0
+ *  14        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+ *  10        mC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+ *  13        oC          0.1      79.6   79.6  102.3  90.0  90.0  90.0
+ *  11        tP          0.1      56.3   56.3  102.3  90.0  90.0  90.0
+    37        mC        250.0     212.2   56.3   56.3  90.0  90.0  74.6
+    36        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
+    28        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
+    29        mC        250.0      56.3  125.8  102.3  90.0  90.0  63.4
+    41        mC        250.0     212.3   56.3   56.3  90.0  90.0  74.6
+    40        oC        250.0      56.3  212.2   56.3  90.0  90.0 105.4
+    39        mC        250.0     125.8   56.3  102.3  90.0  90.0  63.4
+    30        mC        250.0      56.3  212.2   56.3  90.0  90.0  74.6
+    38        oC        250.0      56.3  125.8  102.3  90.0  90.0 116.6
+    12        hP        250.1      56.3   56.3  102.3  90.0  90.0  90.0
+    27        mC        500.0     125.8   56.3  116.8  90.0 115.5  63.4
+    42        oI        500.0      56.3   56.3  219.6 104.8 104.8  90.0
+    15        tI        500.0      56.3   56.3  219.6  75.2  75.2  90.0
+    26        oF        625.0      56.3  125.8  212.2  83.2 105.4 116.6
+     9        hR        750.0      56.3   79.6  317.1  90.0 100.2 135.0
+     1        cF        999.0     129.6  129.6  129.6 128.6  75.7 128.6
+     2        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
+     3        cP        999.0      56.3   56.3  102.3  90.0  90.0  90.0
+     5        cI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
+     4        hR        999.0      79.6  116.8  129.6 118.9  90.0 109.9
+     6        tI        999.0     116.8  116.8   79.6  70.1  70.1  39.8
+     7        tI        999.0     116.8   79.6  116.8  70.1  39.8  70.1
+     8        oI        999.0      79.6  116.8  116.8  39.8  70.1  70.1
+    16        oF        999.0      79.6   79.6  219.6  90.0 111.2  90.0
+    17        mC        999.0      79.6   79.6  116.8  70.1 109.9  90.0
+    18        tI        999.0     116.8  129.6   56.3  64.3  90.0 118.9
+    19        oI        999.0      56.3  116.8  129.6  61.1  64.3  90.0
+    20        mC        999.0     116.8  116.8   56.3  90.0  90.0 122.4
+    21        tP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
+    22        hP        999.0      56.3  102.3   56.3  90.0  90.0  90.0
+    23        oC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
+    24        hR        999.0     162.2  116.8   56.3  90.0  69.7  77.4
+    25        mC        999.0     116.8  116.8   56.3  90.0  90.0  57.6
+    43        mI        999.0      79.6  219.6   56.3 104.8 135.0  68.8
 
-         For protein crystals the possible space group numbers corresponding  to"""
+ For protein crystals the possible space group numbers corresponding  to"""
 
-        # find headers lines
-        solutions = []
-        if solution_format == "IDXREF":
-            lines = text.splitlines()
-            for indx, line in enumerate(lines):
-                if "BRAVAIS-" in line:
-                    # Used as marker for first header line
-                    header = ["%s\n%s" % (line, lines[indx + 1])]
-                    break
-            else:
-                raise ValueError("Substring 'BRAVAIS-' missing in %s indexing solution")
+        solutions = choose_lattice.indexingSolutions
+        indexing_format = choose_lattice.indexingFormat
+        solutions_dict = OrderedDict()
 
-            for line in lines[indx:]:
-                ss0 = line.strip()
-                if ss0:
-                    # we are skipping blank line at the start
-                    if solutions or ss0[0] == "*":
-                        # First real line will start with a '*
-                        # Subsequent non-empty lines will also be used
-                        solutions.append(line)
-                elif solutions:
-                    # we have finished - empty non-initial line
-                    break
+        if indexing_format == "IDXREF":
+            header = ["""  LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)
+ CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma"""]
 
-            #
-            return {"header": header, "solutions": solutions}
-        else:
-            raise ValueError(
-                "GPhL: Indexing format %s is not known" % repr(solution_format)
+            line_format = (
+                " %s  %2i        %s %12.1f    %6.1f %6.1f %6.1f %5.1f %5.1f %5.1f"
             )
+            consistent_solutions = []
+            for solution in solutions:
+                if solution.isConsistent:
+                    char1 = "*"
+                    consistent_solutions.append(solution)
+                else:
+                    char1 = " "
+                tpl = (
+                    char1,
+                    solution.latticeCharacter,
+                    solution.bravaisLattice,
+                    solution.qualityOfFit,
+                )
+                solutions_dict[
+                    line_format % (tpl + solution.cell.lengths + solution.cell.angles)
+                ] = solution
+
+            crystal_classes = (
+                choose_lattice.priorCrystalClasses
+                or self._queue_entry.get_data_model().get_crystal_classes()
+            )
+            # Must match bravaisLattices column
+            lattices = frozenset(
+                crystal_symmetry.CRYSTAL_CLASS_MAP[crystal_class].bravais_lattice
+                for crystal_class in crystal_classes
+            )
+            select_row = None
+            if lattices:
+                # Select best solution matching lattices
+                for idx, solution in enumerate(consistent_solutions):
+                    if solution.bravaisLattice in lattices:
+                        select_row = idx
+                        break
+
+            if select_row is None:
+                # No match found, select on solutions only
+                lattice = consistent_solutions[-1].bravaisLattice
+                for idx, solution in enumerate(consistent_solutions):
+                    if solution.bravaisLattice == lattice:
+                        select_row = idx
+                        break
+
+        else:
+            raise RuntimeError("Indexing format %s not supported" % indexing_format)
+        #
+        return header, solutions_dict, select_row
 
     def process_centring_request(self, payload, correlation_id):
         # Used for transcal only - anything else is data collection related
@@ -2154,22 +2275,12 @@ class GphlWorkflow(HardwareObject, object):
         else:
             unitCell = None
 
-        obj = queue_model_enumerables.SPACEGROUP_MAP.get(
-            workflow_model.get_space_group()
-        )
-        space_group = obj.name if obj else None
-
-        crystal_system = workflow_model.get_crystal_system()
-        if crystal_system:
-            crystal_system = crystal_system.upper()
-
         # NB Expected resolution is deprecated.
         # It is set to the current resolution value, for now
-        # NBNB @~@~ fix crystalClasses
         userProvidedInfo = GphlMessages.UserProvidedInfo(
             scatterers=(),
-            crystalClasses=(),
-            spaceGroup=space_group,
+            crystalClasses=workflow_model.get_crystal_classes(),
+            spaceGroup= workflow_model.get_space_group(),
             cell=unitCell,
             expectedResolution=api.collect.get_resolution(),
             isAnisotropic=None,

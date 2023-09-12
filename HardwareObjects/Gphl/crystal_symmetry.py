@@ -20,6 +20,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
 """
 
+from __future__ import division, absolute_import
+from __future__ import print_function, unicode_literals
+
 __copyright__ = """ Copyright © 2016 -  2023 MXCuBE Collaboration."""
 __license__ = "LGPLv3+"
 __author__ = "rhfogh"
@@ -393,6 +396,7 @@ def space_groups_from_params(lattices=(), point_groups=(), chiral_only=True):
     Args:
         lattices:
         point_groups:
+        chiral_only:
 
     Returns:
 
@@ -444,9 +448,7 @@ def space_groups_from_params(lattices=(), point_groups=(), chiral_only=True):
     return space_groups
 
 
-def crystal_classes_from_params(
-    lattices: tuple = (), point_groups: tuple = (), space_group: str = None
-):
+def crystal_classes_from_params(lattices=(), point_groups=(), space_group=None):
     """
     Get tuple of crystal class names compatible with input parameters,
     in crystal class number order
@@ -485,7 +487,7 @@ def crystal_classes_from_params(
     return result
 
 
-def strategy_laue_group(crystal_classes: tuple, phasing=False):
+def strategy_laue_group(crystal_classes, phasing=False):
     """Get laue group and point-group-like to use for strategy calculation
     for a given set of crystal classes.
 
@@ -538,7 +540,7 @@ def strategy_laue_group(crystal_classes: tuple, phasing=False):
     return result
 
 
-def regularise_space_group(sgname:str):
+def regularise_space_group(sgname):
     """Convert finput (ISPyB) space gorup name to officlalspace group name"""
 
     if sgname in SPACEGROUP_MAP:
