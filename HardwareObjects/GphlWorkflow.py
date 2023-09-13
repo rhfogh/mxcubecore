@@ -588,6 +588,11 @@ class GphlWorkflow(HardwareObject, object):
                 "%s strategy, variant '%s'"
                 % (data_model.get_type(), data_model.get_variant())
             ]
+            if data_model.lattice_selected:
+                dummy, point_group = crystal_symmetry.strategy_laue_group(
+                    data_model.get_crystal_classes()
+                )
+                lines[0] += (", for point group '%s'" % point_group)
             lines.extend(("-" * len(lines[0]), ""))
             # Data collection TODO: Use workflow info to distinguish
             beam_energies = OrderedDict()

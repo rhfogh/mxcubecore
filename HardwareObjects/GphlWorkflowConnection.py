@@ -1099,8 +1099,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         xx0 = priorInformation.rootDirectory
         if xx0:
             buildr = buildr.rootDirectory(xx0)
-        # images not implemented yet - awaiting uses
-        # indexingResults not implemented yet - awaiting uses
         buildr = buildr.userProvidedInfo(
             self._UserProvidedInfo_to_java(priorInformation.userProvidedInfo)
         )

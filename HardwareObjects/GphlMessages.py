@@ -362,6 +362,7 @@ class ChooseLattice(Payload):
             indexingHeader str:
             priorCrystalClasses sequence(str):
             priorSpaceGroup int:
+            priorSpaceGroupString str:
             userProvidedCell UnitCell:
         """
         super(ChooseLattice, self).__init__()
@@ -1199,7 +1200,12 @@ class PriorInformation(Payload):
     INTENT = "DOCUMENT"
 
     def __init__(
-        self, sampleId, sampleName=None, rootDirectory=None, userProvidedInfo=None
+        self,
+        sampleId,
+        sampleName=None,
+        rootDirectory=None,
+        userProvidedInfo=None,
+        # referenceFile=Ńone,
     ):
 
         super(PriorInformation, self).__init__()
