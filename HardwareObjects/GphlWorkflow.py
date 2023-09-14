@@ -1725,26 +1725,72 @@ class GphlWorkflow(HardwareObject, object):
     def select_lattice(self, payload, correlation_id):
         choose_lattice = payload
 
-        display_energy_decimals = int(self.getProperty("display_energy_decimals", 4))
-
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
-        variants = wf_parameters["variants"]
 
-        crystal_classes = choose_lattice.priorCrystalClasses
-        lattices = set(
-            crystal_symmetry.CRYSTAL_CLASS_MAP[crystal_class].bravais_lattice
-            for crystal_class in crystal_classes
-        )
-        if "mC" in lattices:
-            # NBNB special case. mI non-standard but supported in XDS
-            lattices.add("mI")
+        def update_solution(selection_table):
+
+            field_widget = selection_table.parameters_widget
+
+            if not field_widget.block_updates:
+                # NB Needed in this function (only) as SelectionTable is not
+                # a parent l;ike for other fields
+                try:
+                    field_widget.block_updates = True
+
+                    parameters = field_widget.get_parameters_map()
+                    solstr = selection_table.get_value()[0]
+                    pgvar = parameters.get("point_group")
+                    # space_group = parameters.get("space_group")
+                    solution = solutions_dict.get(solstr)
+                    lattice = solution.bravaisLattice
+                    pglist = lattice2point_group_tags[lattice]
+                    pgvalue = pgvar if pgvar and pgvar in pglist else pglist[-1]
+                    sgoptions = [""] + crystal_symmetry.space_groups_from_params((lattice,))
+                    field_widget.reset_pulldown(
+                        "lattice", textChoices=alternative_lattices[lattice]
+                    )
+                    field_widget.reset_pulldown("point_group", textChoices=pglist)
+                    field_widget.reset_pulldown("space_group", textChoices=sgoptions)
+                    values = {
+                        "lattice": lattice,
+                        "point_group": pgvalue,
+                        "space_group": ""
+                    }
+                    field_widget.set_values(**values)
+                finally:
+                    field_widget.block_updates = False
+
+        def update_lattice(field_widget):
+            parameters = field_widget.get_parameters_map()
+            lattice = parameters["lattice"]
+            pgvar = parameters["point_group"]
+            pglist = lattice2point_group_tags[lattice]
+            pgvalue = pgvar if pgvar and pgvar in pglist else pglist[-1]
+            sgoptions = [""] + crystal_symmetry.space_groups_from_params(
+                (lattice,),  point_groups=pgvalue.split("|")
+            )
+            sgvalue = ""
+            field_widget.reset_pulldown(
+                "point_group", textChoices=pglist, defaultValue=pgvalue
+            )
+            field_widget.reset_pulldown(
+                "space_group", textChoices=sgoptions, defaultValue=sgvalue
+            )
+
+        def update_point_group(field_widget):
+            parameters = field_widget.get_parameters_map()
+            lattice = parameters["lattice"]
+            pgvalue = parameters["point_group"]
+            sgoptions = [""] + crystal_symmetry.space_groups_from_params(
+                (lattice,),  point_groups=pgvalue.split("|")
+            )
+            sgvalue = ""
+            field_widget.reset_pulldown(
+                "space_group", textChoices=sgoptions, defaultValue=sgvalue
+            )
+
         prior_space_group = choose_lattice.priorSpaceGroupString
-
-        # Color green (figuratively) if matches lattices,
-        # or otherwise if matches crystalSystem
-
-
         header, solutions_dict, select_row = self.parse_indexing_solution(choose_lattice)
         lattice = list(solutions_dict.values())[select_row].bravaisLattice
         point_groups = lattice2point_group_tags[lattice]
@@ -1761,19 +1807,76 @@ class GphlWorkflow(HardwareObject, object):
                 #     point_group = point_groups[-1]
         solutions = list(solutions_dict)
 
+        field_list = []
+        field_list.append(
+            {
+                "variableName": "lattice",
+                "uiLabel": "Lattice",
+                "type": "combo",
+                "defaultValue": lattice or "",
+                "textChoices":  [""] + list(lattice2point_group_tags),
+                "update_function": update_lattice,
+            }
+        )
+        field_list.append(
+            {
+                "variableName": "point_group",
+                "uiLabel": "Point group",
+                "type": "combo",
+                "defaultValue": point_group or "",
+                "textChoices":  point_groups,
+                "update_function": update_point_group,
+            }
+        )
+        field_list.append(
+            {
+                "variableName": "space_group",
+                "uiLabel": "Space group",
+                "type": "combo",
+                "defaultValue": prior_space_group or "",
+                "textChoices":  [""] + crystal_symmetry.space_groups_from_params(
+                    lattices=(lattice,)
+                ),
+            }
+        )
+        if api.gphl_workflow.getProperty("advanced_mode", False):
+            use_cell_for_processing = self.getProperty("use_cell_for_processing", False)
+            field_list.append(
+                {
+                    "variableName": "use_cell_for_processing",
+                    "uiLabel": "Use cell and Space Group for processing?",
+                    "type": "boolean",
+                    "defaultValue": use_cell_for_processing,
+                    "readOnly": False,
+                }
+            )
+        field_list.append(
+            {
+                "variableName": "input_space_group",
+                "uiLabel": "Predicted space group",
+                "type": "text",
+                "defaultValue": data_model.get_input_space_group() or "",
+                "readOnly": True,
+            }
+        )
+
+        field_list[-1]["NEW_COLUMN"] = "True"
+
         reslimits = api.resolution.get_limits()
         resolution = api.resolution.get_value()
         if None in reslimits:
             reslimits = (0.5, 5.0)
-        field_list = [
-            {
-                "variableName": "_cplx",
-                "uiLabel": "Select indexing solution:",
-                "type": "selection_table",
-                "header": header,
-                "colours": None,
-                "defaultValue": (solutions,),
-            },
+        selection_table = {
+            "variableName": "_cplx",
+            "uiLabel": "Select indexing solution:",
+            "type": "selection_table",
+            "header": header,
+            "colours": None,
+            "defaultValue": (solutions,),
+            "update_function": update_solution,
+        }
+        field_list.append(selection_table)
+        field_list.append(
             {
                 "variableName": "resolution",
                 "uiLabel": "Detector resolution (A)",
@@ -1784,8 +1887,9 @@ class GphlWorkflow(HardwareObject, object):
                 "decimals": 3,
                 "readOnly": False,
             },
-        ]
+        )
         # if not api.energy.read_only:
+        display_energy_decimals = int(self.getProperty("display_energy_decimals", 4))
         prev_energy = round(api.energy.get_value(), display_energy_decimals)
         energyLimits = api.energy.get_limits()
         field_list.append(
@@ -1800,6 +1904,8 @@ class GphlWorkflow(HardwareObject, object):
                 "readOnly": False,
             }
         )
+
+        variants = wf_parameters["variants"]
         if api.gphl_workflow.getProperty("advanced_mode", False):
             choices = variants
         else:
@@ -1814,57 +1920,23 @@ class GphlWorkflow(HardwareObject, object):
                 "textChoices": choices,
             }
         )
-        if api.gphl_workflow.getProperty("advanced_mode", False):
-            use_cell_for_processing = self.getProperty("use_cell_for_processing", False)
-            field_list.append(
-                {
-                    "variableName": "use_cell_for_processing",
-                    "uiLabel": "Use cell and symmetry for processing?",
-                    "type": "boolean",
-                    "defaultValue": use_cell_for_processing,
-                    "readOnly": False,
-                }
-            )
 
-        # Add third column of non-edited values
-        field_list[-1]["NEW_COLUMN"] = "True"
-        field_list.append(
-            {
-                "variableName": "space_group",
-                "uiLabel": "Prior space group",
-                "type": "text",
-                "defaultValue": prior_space_group or "",
-                "readOnly": True,
-            }
+        # Color green (figuratively) if matches lattices,
+        lattices = set(
+            crystal_symmetry.CRYSTAL_CLASS_MAP[crystal_class].bravais_lattice
+            for crystal_class in choose_lattice.priorCrystalClasses
         )
-        field_list.append(
-            {
-                "variableName": "point_group",
-                "uiLabel": "Expected point group",
-                "type": "text",
-                "defaultValue": point_group or "",
-                "readOnly": True,
-            }
-        )
-        field_list.append(
-            {
-                "variableName": "lattice",
-                "uiLabel": "Expected lattice",
-                "type": "text",
-                "defaultValue": lattice or "",
-                "readOnly": True,
-            }
-        )
-
-        # colour matching lattices green
+        if "mC" in lattices:
+            # NBNB special case. mI non-standard but supported in XDS
+            lattices.add("mI")
         colours = [None] * len(solutions)
         if lattices:
             for ii, soltxt in enumerate(solutions):
                 bravaisLattice = solutions_dict[soltxt].bravaisLattice
                 if any(x == bravaisLattice for x in lattices):
                     colours[ii] = "LIGHT_GREEN"
-        field_list[0]["colours"] = colours
-        field_list[0]["selectRow"] = select_row
+        selection_table["colours"] = colours
+        selection_table["selectRow"] = select_row
 
         self._return_parameters = gevent.event.AsyncResult()
         responses = dispatcher.send(
@@ -1918,24 +1990,28 @@ class GphlWorkflow(HardwareObject, object):
         if angular_tolerance:
             options["angular_tolerance"] = angular_tolerance
             options["clip_kappa"] = float(angular_tolerance)
-        data_model.set_use_cell_for_processing(
-            params.pop("use_cell_for_processing", False)
-        )
         options["strategy_type"] = wf_parameters["strategy_type"]
         options["variant"] = variant = params["variant"]
         data_model.set_variant(variant)
         kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
         #
         data_model.lattice_selected = True
-        crystal_classes = crystal_symmetry.crystal_classes_from_params((lattice,))
-        if prior_space_group in crystal_symmetry.space_groups_from_params((lattice,)):
-            space_group = prior_space_group
-        else:
-            space_group = ""
+        lattice = params.get("lattice") or None
+        lattices = (lattice,) if lattice else ()
+        pgvar = params.get("point_group") or None
+        point_groups = pgvar.split("|") if pgvar else None
+        space_group = params.get("space_group") or None
+        crystal_classes = crystal_symmetry.crystal_classes_from_params(
+            lattices=lattices, point_groups=point_groups, space_group=space_group
+        )
+        data_model.set_crystal_classes(crystal_classes)
+        data_model.set_space_group(space_group)
+        use_cell_for_processing = params.pop("use_cell_for_processing", False)
+        data_model.set_use_cell_for_processing(space_group and use_cell_for_processing)
         return GphlMessages.SelectedLattice(
             solution=solution,
             crystalClasses=crystal_classes,
-            spaceGroup=space_group or None,
+            spaceGroup=space_group,
             **kwArgs
         )
 

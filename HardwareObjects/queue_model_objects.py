@@ -1809,6 +1809,7 @@ class GphlWorkflow(TaskNode):
         self._beam_energy_tags = ("Acquisition",)
         self._detector_resolution = None
         self._space_group = None
+        self._input_space_group = None
         self._crystal_classes = ()
         self._cell_parameters = None
         self._use_cell_for_processing = False
@@ -1890,6 +1891,13 @@ class GphlWorkflow(TaskNode):
 
     def set_space_group(self, value):
         self._space_group = value
+
+    # Input Space Group (i.e. coming from ISPyB)
+    def get_input_space_group(self):
+        return self._input_space_group
+
+    def set_input_space_group(self, value):
+        self._input_space_group = value
 
     # Strategy variant
     def get_variant(self):
