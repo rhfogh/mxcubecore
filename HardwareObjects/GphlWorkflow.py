@@ -318,9 +318,9 @@ class GphlWorkflow(HardwareObject, object):
             recen_data["omega_axis"] = ll0[:3]
             recen_data["kappa_axis"] = ll0[3:6]
             recen_data["phi_axis"] = ll0[6:]
-            recen_data["trans_1_axis"] = list(centring_axes[ind] for ind in (0, 3, 6))
-            recen_data["trans_2_axis"] = list(centring_axes[ind] for ind in (1, 4, 7))
-            recen_data["trans_3_axis"] = list(centring_axes[ind] for ind in (2, 5, 8))
+            recen_data["trans_1_axis"] = list(centring_axes[0:3])
+            recen_data["trans_2_axis"] = list(centring_axes[3:6])
+            recen_data["trans_3_axis"] = list(centring_axes[6:9])
             recen_data["cross_sec_of_soc"] = cross_sec_of_soc
             recen_data["home"] = home_position
 

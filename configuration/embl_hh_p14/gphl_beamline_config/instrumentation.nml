@@ -69,7 +69,6 @@ gonio_axis_calibratable= 'False' 'True' 'True'
 
 ! Nominal centring axis directions
 ! NB These are the correct axis directions as rows.
-! For input into transcal etc. the matrix has to be transposed
 gonio_centring_axis_dirs=  0.0,  1.0,  0.0,
                            -0.9999505209310272,  0, -0.00994764744888108,
                             -0.00994764744888108, 0, 0.9999505209310272
