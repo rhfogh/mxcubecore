@@ -36,6 +36,7 @@ det_org_y= 2184.12
 det_org_dist= 240.581970
 ! Sensor thickness
 d_sensor= 0.75
+sensor_material= CdTe
 
 ! Detector file name. E.g. '.cbf' also covers compressed fies with suffix '.cbf.gz'
 det_filename_suffix= '.cbf.gz'
