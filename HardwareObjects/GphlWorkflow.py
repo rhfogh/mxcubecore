@@ -188,10 +188,7 @@ class GphlWorkflow(HardwareObject, object):
         # Configurable file paths
         self.file_paths = {}
 
-        # Options "GPHL", "MINIKAPPA", None
-        self.recentring = None
-        # Configuration data for GPhL recentring calculations
-        self._recentring_data = OrderedDict()
+        self.recentring_file = None
 
         # HACK
         self.strategyWavelength = None
@@ -246,83 +243,12 @@ class GphlWorkflow(HardwareObject, object):
             detector._set_beam_centre(
                 (instrument_data["det_org_x"], instrument_data["det_org_y"])
             )
-        recentring_calc_preference = self.getProperty(
-            "recentring_calc_preference", "GPHL"
+
+        recentring_file = os.path.join(
+            api.session.get_base_process_directory(), "recen.nml"
         )
-        self.setup_recentring(preferred_mode=recentring_calc_preference)
-
-    def setup_recentring(self, preferred_mode=None):
-        """
-
-        Args:
-            preferred_mode: (str)  "GPHL"; anything else defaults to "MINIKAPPA"
-
-        Returns:
-
-        """
-        preferred_mode = preferred_mode or "GPHL"
-
-        recen_data = self._recentring_data
-
-        transcal_data = None
-        fp0 = self.file_paths.get("transcal_file")
-        if os.path.isfile(fp0):
-            try:
-                transcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
-            except:
-                logging.getLogger("HWR").warning(
-                    "reading transcal.nml file failed: %s. Continuing", fp0
-                )
-            else:
-                home_position = transcal_data.get("trans_home")
-                cross_sec_of_soc = transcal_data.get("trans_cross_sec_of_soc")
-                if home_position is None or cross_sec_of_soc is None:
-                    logging.getLogger("HWR").warning("load_transcal_parameters failed")
-                    transcal_data = None
-
-        minikappa_correction = api.diffractometer.getObjectByRole(
-            "minikappa_correction"
-        )
-
-        fp0 = self.file_paths.get("instrumentation_file")
-        instrumentation_data = f90nml.read(fp0)["sdcp_instrument_list"]
-        centring_axes = instrumentation_data["gonio_centring_axis_dirs"]
-
-        if transcal_data and (preferred_mode == "GPHL" or not minikappa_correction):
-            self.recentring = "GPHL"
-
-        elif minikappa_correction:
-            self.recentring = "MINIKAPPA"
-            home_position, cross_sec_of_soc = make_home_data(
-                centring_axes=centring_axes,
-                axis_names=instrumentation_data["gonio_centring_axis_names"],
-                kappadir=minikappa_correction.kappa["direction"],
-                kappapos=minikappa_correction.kappa["position"],
-                phidir=minikappa_correction.phi["direction"],
-                phipos=minikappa_correction.phi["position"],
-            )
-
-        else:
-            self.recentring = None
-
-        if self.recentring:
-            diffractcal_data = instrumentation_data
-            fp0 = self.file_paths.get("diffractcal_file")
-            try:
-                diffractcal_data = f90nml.read(fp0)["sdcp_instrument_list"]
-            except:
-                logging.getLogger("HWR").debug(
-                    "diffractcal file not present - using instrumentation.nml %s", fp0
-                )
-            ll0 = diffractcal_data["gonio_axis_dirs"]
-            recen_data["omega_axis"] = ll0[:3]
-            recen_data["kappa_axis"] = ll0[3:6]
-            recen_data["phi_axis"] = ll0[6:]
-            recen_data["trans_1_axis"] = list(centring_axes[0:3])
-            recen_data["trans_2_axis"] = list(centring_axes[3:6])
-            recen_data["trans_3_axis"] = list(centring_axes[6:9])
-            recen_data["cross_sec_of_soc"] = cross_sec_of_soc
-            recen_data["home"] = home_position
+        if os.path.isfile(recentring_file):
+            self.recentring_file = recentring_file
 
     def shutdown(self):
         """Shut down workflow and connection. Triggered on program quit."""
@@ -445,6 +371,12 @@ class GphlWorkflow(HardwareObject, object):
     def pre_execute(self, queue_entry):
 
         self._queue_entry = queue_entry
+
+        default_exposure_time = self.getProperty("default_exposure_time", 0)
+        default_exposure_time = max(
+            default_exposure_time,  api.detector.get_exposure_time_limits()[0]
+        )
+        queue_entry.get_data_model().set_default_exposure_time(default_exposure_time)
 
         if self.get_state() == self.STATES.OFF:
             api.gphl_connection.open_connection()
@@ -668,25 +600,6 @@ class GphlWorkflow(HardwareObject, object):
 
         resolution = api.resolution.get_value()
 
-        dose_budget = self.resolution2dose_budget(
-            resolution,
-            decay_limit=data_model.get_decay_limit(),
-        )
-        default_image_width = float(allowed_widths[default_width_index])
-        default_exposure = acq_parameters.exp_time
-        exposure_limits = api.detector.get_exposure_time_limits()
-        total_strategy_length = strategy_length * len(beam_energies)
-        if (
-            data_model.lattice_selected
-            or wf_parameters.get("strategy_type") == "diffractcal"
-        ):
-            proposed_dose = dose_budget - data_model.get_characterisation_dose()
-        else:
-            proposed_dose = (
-                dose_budget * data_model.get_characterisation_budget_fraction()
-            )
-        proposed_dose = round(max(proposed_dose, 0), use_dose_decimals)
-
         # For calculating dose-budget transmission
         flux_density = api.flux.get_average_flux_density(transmission=100.0)
         if flux_density:
@@ -698,7 +611,37 @@ class GphlWorkflow(HardwareObject, object):
             )
         else:
             std_dose_rate = 0
-        transmission = acq_parameters.transmission
+
+        dose_budget = self.resolution2dose_budget(
+            resolution,
+            decay_limit=data_model.get_decay_limit(),
+        )
+        default_image_width = float(allowed_widths[default_width_index])
+        default_exposure = data_model.get_default_exposure_time()
+        exposure_limits = api.detector.get_exposure_time_limits()
+        total_strategy_length = strategy_length * len(beam_energies)
+        transmission = 100.0
+        if (
+            data_model.lattice_selected
+            or wf_parameters.get("strategy_type") == "diffractcal"
+        ):
+            proposed_dose = dose_budget - data_model.get_characterisation_dose()
+        else:
+            proposed_dose = (
+                dose_budget * data_model.get_characterisation_budget_fraction()
+            )
+            if std_dose_rate:
+                # Use current settings if characterisation dose works out as less
+                # than proposed 5% of dose budget
+                currdose = (
+                    total_strategy_length
+                    * default_exposure
+                    * std_dose_rate
+                    * transmission
+                    / (100 * default_image_width)
+                )
+                proposed_dose = min(currdose, proposed_dose)
+        proposed_dose = round(max(proposed_dose, 0), use_dose_decimals)
 
         # define update functions
 
@@ -737,7 +680,7 @@ class GphlWorkflow(HardwareObject, object):
                 # NB dose is calculated for *one* repetition
                 experiment_time = exposure_time * total_strategy_length / image_width
                 use_dose = std_dose_rate * experiment_time * transmission / 100
-                field_widget.set_values(use_dose=use_dose, exposure=exposure_time)
+                field_widget.set_values(use_dose=use_dose)
 
         def update_resolution(field_widget):
 
@@ -763,38 +706,52 @@ class GphlWorkflow(HardwareObject, object):
             image_width = float(parameters.get("imageWidth") or 0.0)
             exposure_time = float(parameters.get("exposure") or 0.0)
             use_dose = float(parameters.get("use_dose") or 0.0)
+            transmission = float(parameters.get("transmission") or 0.0)
+            min_exposure, max_exposure = exposure_limits
 
             # NB total_strategy_length use_dose aned experiment_time
             # all relate to a single repetition
 
             if image_width and exposure_time and std_dose_rate and use_dose:
                 experiment_time = exposure_time * total_strategy_length / image_width
-                transmission = 100 * use_dose / (std_dose_rate * experiment_time)
+                if transmission:
+                    prev_dose = (
+                        std_dose_rate * experiment_time * transmission / 100
+                    )
+                    factor = use_dose / prev_dose
+                    if factor >= 1:
+                        # Increase dose by increasing transmission
+                        transmission *= factor
+                    else:
+                        exposure_time *= factor
+                        experiment_time *= factor
+
+                else:
+                    transmission = 100 * use_dose / (std_dose_rate * experiment_time)
 
                 if transmission > 100.0:
                     # Transmission too high. Try max transmission and longer exposure
+                    factor = transmission / 100.
                     transmission = 100.0
-                    experiment_time = use_dose / std_dose_rate
-                    exposure_time = (
-                        experiment_time * image_width / total_strategy_length
-                    )
-                max_exposure = exposure_limits[1]
-                if max_exposure and exposure_time > max_exposure:
-                    # exposure_time over max; set dose to highest achievable dose
-                    experiment_time = max_exposure * total_strategy_length / image_width
-                    use_dose = std_dose_rate * experiment_time
-                    field_widget.set_values(
-                        exposure=max_exposure,
-                        transmission=100,
-                        use_dose=use_dose,
-                        experiment_time=experiment_time,
-                    )
-                else:
-                    field_widget.set_values(
-                        exposure=exposure_time,
-                        transmission=transmission,
-                        experiment_time=experiment_time,
-                    )
+                    exposure_time *= factor
+                    experiment_time *= factor
+                    if max_exposure and exposure_time > max_exposure:
+                        factor = max_exposure / exposure_time
+                        use_dose *= factor
+                        experiment_time *= factor
+
+                if exposure_time < min_exposure:
+                    factor = min_exposure / exposure_time
+                    transmission /= factor
+                    exposure_time = min_exposure
+                    experiment_time *= factor
+
+                field_widget.set_values(
+                    exposure=exposure_time,
+                    transmission=transmission,
+                    use_dose=use_dose,
+                    experiment_time=experiment_time,
+                )
 
         reslimits = api.resolution.get_limits()
         if None in reslimits:
@@ -983,7 +940,7 @@ class GphlWorkflow(HardwareObject, object):
             use_modes.append("start")
         if data_model.get_interleave_order():
             use_modes.append("scan")
-        if self.recentring and (
+        if self.recentring_file and (
             data_model.lattice_selected
             or wf_parameters.get("strategy_type") == "diffractcal"
         ):
@@ -1161,7 +1118,6 @@ class GphlWorkflow(HardwareObject, object):
 
         # Set beam_energies to match parameters
         # get wavelengths
-        h_over_e = ConvertUtils.H_OVER_E
         beam_energies = parameters.pop("beam_energies")
         wavelengths = list(
             GphlMessages.PhasingWavelength(
@@ -1211,10 +1167,16 @@ class GphlWorkflow(HardwareObject, object):
         # For recentring mode start do settings in reverse order
         if recentring_mode == "start":
             sweepSettings.reverse()
-
-        pos_dict = api.diffractometer.get_motor_positions()
         sweepSetting = sweepSettings[0]
 
+        # Get current position values
+        current_pos_dict = api.diffractometer.get_motor_positions()
+        current_okp = tuple(current_pos_dict[role] for role in self.rotation_axis_roles)
+        current_xyz = tuple(
+            current_pos_dict[role] for role in self.translation_axis_roles
+        )
+
+        # Check if sample is currently centred, and centre first sweep if not
         if (
             self.getProperty("recentre_before_start")
             and not gphl_workflow_model.lattice_selected
@@ -1226,29 +1188,22 @@ class GphlWorkflow(HardwareObject, object):
             translation, current_pos_dict = self.execute_sample_centring(
                 qe, sweepSetting
             )
+            current_okp = tuple(
+                current_pos_dict[role] for role in self.rotation_axis_roles
+            )
+            current_xyz = tuple(
+                current_pos_dict[role] for role in self.translation_axis_roles
+            )
             goniostatTranslations.append(translation)
             gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
-        else:
-            # Sample was centred already, possibly during earlier characterisation
-            # - use current position for recentring
-            current_pos_dict = api.diffractometer.get_motor_positions()
-        current_okp = tuple(current_pos_dict[role] for role in self.rotation_axis_roles)
-        current_xyz = tuple(
-            current_pos_dict[role] for role in self.translation_axis_roles
-        )
-
-        if goniostatTranslations:
-            # We had recentre_before_start and already have the goniosatTranslation
-            # matching the sweepSetting
-            pass
 
         elif gphl_workflow_model.lattice_selected or strategy_type == "diffractcal":
-            # Acquisition or diffractcal; crystal is already centred
+            # Acquisition or diffractcal; crystal was already centred
             settings = dict(sweepSetting.axisSettings)
             okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
             maxdev = max(abs(okp[1] - current_okp[1]), abs(okp[2] - current_okp[2]))
 
-            if self.recentring:
+            if self.recentring_file:
                 # calculate recentre first sweep recentring from okp
                 translation_settings = self.calculate_recentring(
                     okp, ref_xyz=current_xyz, ref_okp=current_okp
@@ -1264,7 +1219,7 @@ class GphlWorkflow(HardwareObject, object):
                     for role in self.translation_axis_roles
                 )
 
-            tol = angular_tolerance if self.recentring else 1.0
+            tol = angular_tolerance if self.recentring_file else 1.0
             if maxdev <= tol:
                 # first orientation matches current, set to current centring
                 # Use sweepSetting as is, recentred or very close
@@ -1277,7 +1232,7 @@ class GphlWorkflow(HardwareObject, object):
             else:
 
                 if recentring_mode == "none":
-                    if self.recentring:
+                    if self.recentring_file:
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
@@ -1287,7 +1242,7 @@ class GphlWorkflow(HardwareObject, object):
                             "Coding error, mode 'none' requires recentring parameters"
                         )
                 else:
-                    if self.recentring == "GPHL":
+                    if self.recentring_file:
                         settings.update(translation_settings)
                     qe = self.enqueue_sample_centring(motor_settings=settings)
                     translation, dummy = self.execute_sample_centring(qe, sweepSetting)
@@ -1301,8 +1256,8 @@ class GphlWorkflow(HardwareObject, object):
                         )
                         self.collect_centring_snapshots("%s_%s_%s" % okp)
 
-        elif not self.getProperty("recentre_before_start"):
-            # Characterisation, and current position was pre-centred
+        else:
+            # Characterisation, and sample was centred before we got here
             # Do characterisation at current position, not the hardcoded one
             rotation_settings = dict(
                 (role, current_pos_dict[role]) for role in sweepSetting.axisSettings
@@ -1327,47 +1282,39 @@ class GphlWorkflow(HardwareObject, object):
             )
         for sweepSetting in sweepSettings[1:]:
             settings = dict(sweepSetting.axisSettings)
-            if self.recentring:
+            if self.recentring_file:
                 # Update settings
                 okp = tuple(settings.get(x, 0) for x in self.rotation_axis_roles)
-                centring_settings = self.calculate_recentring(
-                    okp, ref_xyz=current_xyz, ref_okp=current_okp
+                settings.update(
+                    self.calculate_recentring(
+                        okp, ref_xyz=current_xyz, ref_okp=current_okp
+                    )
                 )
                 logging.getLogger("HWR").debug(
-                    "GPHL Recentring. okp, motors, %s, %s"
-                    % (okp, sorted(centring_settings.items()))
+                    "GPHL Recentring: " +
+                    ", ".join("%s:%s" % item for item in sorted(settings.items()))
                 )
 
             if recentring_mode == "start":
-                # Recentre now, using updated values if available
-                if self.recentring == "GPHL":
-                    settings.update(centring_settings)
                 qe = self.enqueue_sample_centring(motor_settings=settings)
+                logging.getLogger("HWR").debug(
+                    "GPHL recenter at : " +
+                    ", ".join("%s:%s" % item for item in sorted(settings.items()))
+                )
                 translation, dummy = self.execute_sample_centring(qe, sweepSetting)
                 goniostatTranslations.append(translation)
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
                 okp = tuple(int(settings.get(x, 0)) for x in self.rotation_axis_roles)
                 self.collect_centring_snapshots("%s_%s_%s" % okp)
-            elif self.recentring:
-                # put recalculated translations back to workflow
+            elif self.recentring_file and not gphl_workflow_model.lattice_selected :
+                # Not the first sweep and not gone through stratcal
+                # Calculate recentred positions and pass back
                 translation = GphlMessages.GoniostatTranslation(
-                    rotation=sweepSetting, **centring_settings
+                    rotation=sweepSetting, **settings
                 )
-                goniostatTranslations.append(translation)
-            else:
-                # Not supposed to centre, no recentring parameters
-                # NB PK says 'just provide the centrings you actually have'
-                # raise NotImplementedError(
-                #     "For now must have recentring or mode 'start' or single sweep"
-                # )
-                # We do NOT have any sensible translation settings
-                # Take the current settings because we need something.
-                # Better to have a calibration, actually
-                translation_settings = dict(
-                    (role, pos_dict[role]) for role in self.translation_axis_roles
-                )
-                translation = GphlMessages.GoniostatTranslation(
-                    rotation=sweepSetting, **translation_settings
+                logging.getLogger("HWR").debug(
+                    "GPHL calculate recentring: " +
+                    ", ".join("%s:%s" % item for item in sorted(settings.items()))
                 )
                 goniostatTranslations.append(translation)
 
@@ -1400,19 +1347,7 @@ class GphlWorkflow(HardwareObject, object):
         okp is the omega,gamma,phi tuple of the target position,
         ref_okp and ref_xyz are the reference omega,gamma,phi and the
         corresponding x,y,z translation position
-
-        NB for recentring mode MINIKAPPA the values are taken from MiniKappaCorrection
-        In this case recentring is done automatically, but the values calculated here
-        are still used to pass to the ASTRA workflow.
-
         """
-
-        # Make input file
-        infile = os.path.join(
-            api.gphl_connection.software_paths["GPHL_WDIR"], "temp_recen.in"
-        )
-        indata = {"recen_list": self._recentring_data}
-        f90nml.write(indata, infile, force=True)
 
         # Get program locations
         recen_executable = api.gphl_connection.get_executable("recen")
@@ -1430,7 +1365,7 @@ class GphlWorkflow(HardwareObject, object):
         command_list = [
             recen_executable,
             "--input",
-            infile,
+            self.recentring_file,
             "--init-xyz",
             "%s,%s,%s" % ref_xyz,
             "--init-okp",
@@ -1537,7 +1472,7 @@ class GphlWorkflow(HardwareObject, object):
             # For now this is required
             if repeat_count != scan_count:
                 raise ValueError(
-                    " scan count %s does not match repreat count %s"
+                    " scan count %s does not match repeat count %s"
                     % (scan_count, repeat_count)
                 )
             # treat only the first scan
@@ -1549,12 +1484,6 @@ class GphlWorkflow(HardwareObject, object):
         snapshotted_rotation_ids = set()
         for scan in scans:
             sweep = scan.sweep
-            goniostatRotation = sweep.goniostatSweepSetting
-            rotation_id = goniostatRotation.id_
-            initial_settings = sweep.get_initial_settings()
-            orientation = tuple(
-                initial_settings.get(tag) for tag in ("kappa", "kappa_phi")
-            )
             acq = queue_model_objects.Acquisition()
 
             # Get defaults, even though we override most of them
@@ -1621,23 +1550,27 @@ class GphlWorkflow(HardwareObject, object):
             path_template.start_num = acq_parameters.first_image
             path_template.num_files = acq_parameters.num_images
 
+            # Handle orientations and (re) centring
+
+            # NB this gets rotation axes always, and translation axes if present
+            motor_settings = sweep.get_motor_settings()
+
+            orientation = (
+                motor_settings.get("kappa"), motor_settings.get( "kappa_phi")
+            )
             if last_orientation:
                 maxdev = max(
                     abs(orientation[ind] - last_orientation[ind]) for ind in range(2)
                 )
+            last_orientation = orientation
 
-            if recentring_mode == "start" or self.recentring != "MINIKAPPA":
-                # We want to use the preset translation positions
-                # For MINIKAPPA we rely on built-in recentring
-                goniostatTranslation = goniostatRotation.translation
-                if goniostatTranslation:
-                    initial_settings.update(goniostatTranslation.axisSettings)
-
+            goniostatRotation = sweep.goniostatSweepSetting
+            rotation_id = goniostatRotation.id_
             if not sweeps or recentring_mode in ("start", "none"):
                 # First sweep (previously centred), or necessary centrings already done
                 # Collect using precalculated or stored centring position
                 acq_parameters.centred_position = queue_model_objects.CentredPosition(
-                    initial_settings
+                    motor_settings
                 )
             elif recentring_mode == "sweep" and (
                 rotation_id == gphl_workflow_model.get_current_rotation_id()
@@ -1648,12 +1581,13 @@ class GphlWorkflow(HardwareObject, object):
                     {goniostatRotation.scanAxis: scan.start}
                 )
             else:
-                # We need to recentre
+                # New sweep, or recentriong_mode == scan
+                # # We need to recentre
                 # Put centring on queue and collect using the resulting position
                 # NB this means that the actual translational axis positions
                 # will NOT be known to the workflow
                 self.enqueue_sample_centring(
-                    motor_settings=initial_settings, in_queue=True
+                    motor_settings=motor_settings, in_queue=True
                 )
 
             if (
@@ -1667,11 +1601,9 @@ class GphlWorkflow(HardwareObject, object):
                 # as it controls centring
                 snapshotted_rotation_ids.add(rotation_id)
                 acq_parameters.take_snapshots = snapshot_count
+
             gphl_workflow_model.set_current_rotation_id(rotation_id)
-
             sweeps.add(sweep)
-
-            last_orientation = orientation
 
             if repeat_count and sweep_offset and self.getProperty("use_multitrigger"):
                 # Multitrigger sweep - add in parameters.

@@ -1828,6 +1828,7 @@ class GphlWorkflow(TaskNode):
         self._exposure_time = 0.0
         self._image_width = 0.0
         self._repetition_count = 1
+        self._default_exposure_time = None
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1933,6 +1934,12 @@ class GphlWorkflow(TaskNode):
 
     def set_decay_limit(self, value):
         self._decay_limit = value
+
+    def get_default_exposure_time(self):
+        return self._default_exposure_time
+
+    def set_default_exposure_time(self, value):
+        self._default_exposure_time = value
 
     def get_characterisation_dose(self):
         return self._characterisation_dose

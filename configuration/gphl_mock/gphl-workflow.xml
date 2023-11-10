@@ -35,6 +35,9 @@
           2 * resolution**2 * log(100. / decay_limit) -->
     <default_decay_limit>25</default_decay_limit>
 
+    <!-- Optional. If not set, or too short, set to lower time limit -->
+    <default_exposure_time>0.01</default_exposure_time>
+
     <!-- Default force use input unit cell and space group for processing -->
     <use_cell_for_processing>True</use_cell_for_processing>
 
@@ -86,10 +89,6 @@
         )
      mode "none" is not allowed as default -->
     <default_recentring_mode>sweep</default_recentring_mode>
-
-    <!-- GPHL or MINIKAPPA. Preference for GPHL transcal or MiniKappaCorrection
-     recentring where both are available Default is GPHL-->
-    <recentring_calc_preference>GPHL</recentring_calc_preference>
 
     <!-- If set (to *any* non-empty value) will disable precalculation of centrings-->
 <!--    <disable_recen>True</disable_recen>-->
