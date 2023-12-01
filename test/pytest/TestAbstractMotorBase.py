@@ -15,23 +15,16 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
-"""
+"""Test suite for AbstractMotor class.
 """
 
-from __future__ import division, absolute_import
-from __future__ import print_function, unicode_literals
-
-__copyright__ = """ Copyright © 2016 - 2020 by MXCuBE Collaboration """
+__copyright__ = """ Copyright © 2016 - 2022 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
-__date__ = "09/04/2020"
 
 import abc
 import gevent
 import pytest
-from test.pytest import (
-    TestHardwareObjectBase,
-    TestAbstractActuatorBase,
-)
+from test.pytest import TestHardwareObjectBase, TestAbstractActuatorBase
 
 test_object = TestAbstractActuatorBase.test_object
 
@@ -74,7 +67,7 @@ class TestAbstractMotorBase(TestAbstractActuatorBase.TestAbstractActuatorBase):
         that values set are within tolerance for both set_value, set_value_relative
         and update_value, and that out-ot-range values are invalid"""
 
-        super(TestAbstractMotorBase, self).test_validate_value(test_object)
+        super().test_validate_value(test_object)
 
         if test_object.read_only:
             return
@@ -100,18 +93,22 @@ class TestAbstractMotorBase(TestAbstractActuatorBase.TestAbstractActuatorBase):
                 mid,
                 val,
             )
-            assert abs(test_object._nominal_value - mid) < tol, (
-                "update_value nominal result %s differs from target %s"
-                % (test_object._nominal_value, mid)
+            assert (
+                abs(test_object._nominal_value - mid) < tol
+            ), "update_value nominal result %s differs from target %s" % (
+                test_object._nominal_value,
+                mid,
             )
         else:
             assert val == mid, "update_value result %s differs from target %s" % (
                 val,
                 mid,
             )
-            assert test_object._nominal_value == mid, (
-                "update_value nominal result %s differs from target %s"
-                % (test_object._nominal_value, mid)
+            assert (
+                test_object._nominal_value == mid
+            ), "update_value nominal result %s differs from target %s" % (
+                test_object._nominal_value,
+                mid,
             )
 
         toobig = high + 0.1 * (high - low)
@@ -127,9 +124,12 @@ class TestAbstractMotorBase(TestAbstractActuatorBase.TestAbstractActuatorBase):
         test_object.set_value_relative(0.5 * (high - low), timeout=None)
         val = test_object.get_value()
         if tol:
-            assert abs(val - mid) < tol, (
-                "set_value_relative result %s more than %s from target %s"
-                % (val, tol, mid)
+            assert (
+                abs(val - mid) < tol
+            ), "set_value_relative result %s more than %s from target %s" % (
+                val,
+                tol,
+                mid,
             )
 
             test_object.update_value(low)

@@ -33,7 +33,6 @@ EL6": 6}</values>
 """
 
 from enum import Enum
-from mxcubecore.HardwareObjects.abstract.AbstractNState import BaseValueEnum
 from mxcubecore.HardwareObjects.ExporterNState import ExporterNState
 
 __copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
@@ -47,7 +46,6 @@ class MicrodiffZoom(ExporterNState):
         """Initialize the zoom"""
         super().init()
 
-        self.initialise_values()
         # check if we have values other that UNKNOWN
         _len = len(self.VALUES) - 1
         if _len > 0:
@@ -66,6 +64,16 @@ class MicrodiffZoom(ExporterNState):
         """
         self._nominal_limits = limits
 
+    def update_value(self, value=None):
+        """Check if the value has changed. Emits signal valueChanged.
+        Args:
+            value: value
+        """
+        # Make sure that update value of super class always is passed value=None
+        # so that _get_value is called to get the Enum value and not the numeric
+        # value passed by underlaying event data.
+        super().update_value()
+
     def update_limits(self, limits=None):
         """Check if the limits have changed. Emits signal limitsChanged.
         Args:
@@ -82,10 +90,10 @@ class MicrodiffZoom(ExporterNState):
         """Initialise the ValueEnum from the limits"""
         low, high = self.get_limits()
 
-        values = {"LEVEL%s" % str(v): v for v in range(low, high + 1)}
+        values = {f"LEVEL{v}": v for v in range(low, high + 1)}
         self.VALUES = Enum(
             "ValueEnum",
-            dict(values, **{item.name: item.value for item in BaseValueEnum}),
+            dict(values, **{item.name: item.value for item in self.VALUES}),
         )
 
     def _get_range(self):

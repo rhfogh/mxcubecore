@@ -38,6 +38,7 @@ import ast
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.mockup.ActuatorMockup import ActuatorMockup
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import MotorStates
 
 __copyright__ = """ Copyright © 2010-2020 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
@@ -51,14 +52,16 @@ DEFAULT_WRAP_RANGE = None
 class MotorMockup(ActuatorMockup, AbstractMotor):
     """Mock Motor implementation"""
 
+    SPECIFIC_STATES = MotorStates
+
     def __init__(self, name):
         AbstractMotor.__init__(self, name)
         self._wrap_range = None
 
     def init(self):
-        """ Initialisation method """
+        """Initialisation method"""
         # get username, actuator_name and tolerance
-        super(MotorMockup, self).init()
+        super().init()
 
         # local properties
         if not self.get_velocity():
@@ -66,19 +69,22 @@ class MotorMockup(ActuatorMockup, AbstractMotor):
         if None in self.get_limits():
             self.update_limits(DEFAULT_LIMITS)
         try:
-            wr = self.get_property("wrap_range")
-            self._wrap_range = DEFAULT_WRAP_RANGE if not wr else ast.literal_eval(wr)
+            _wr = self.get_property("wrap_range")
+            self._wrap_range = DEFAULT_WRAP_RANGE if not _wr else ast.literal_eval(_wr)
         except (ValueError, SyntaxError):
             self._wrap_range = DEFAULT_WRAP_RANGE
         if self.default_value is None:
             self.default_value = DEFAULT_VALUE
-            self.update_value(DEFAULT_VALUE)
+            self.update_value(self.default_value)
+
         self.update_state(self.STATES.READY)
 
     def _move(self, value):
-        """ Simulated motor movement
+        """Simulated motor movement.
         Args:
             value (float): target position
+        Returns:
+            (float): The reached position.
         """
 
         self.update_specific_state(self.SPECIFIC_STATES.MOVING)
@@ -113,3 +119,7 @@ class MotorMockup(ActuatorMockup, AbstractMotor):
             self.update_specific_state(None)
 
         return value
+    
+    def is_moving(self):
+        return ( (self.get_state() == self.STATES.BUSY ) or (self.get_state() == self.SPECIFIC_STATES.MOVING))
+

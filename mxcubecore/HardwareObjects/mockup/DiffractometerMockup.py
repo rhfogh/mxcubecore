@@ -22,10 +22,14 @@ import logging
 import random
 import warnings
 
+from pydantic import ValidationError
+
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
+    PhaseEnum,
 )
-from mxcubecore import HardwareRepository as HWR
+
+from mxcubecore import HardwareObjects, HardwareRepository as HWR
 from gevent.event import AsyncResult
 
 
@@ -40,7 +44,7 @@ class DiffractometerMockup(GenericDiffractometer):
         """
         GenericDiffractometer.__init__(self, *args)
 
-    def init(self):
+    def init(self) -> bool:
         """
         Descript. :
         """
@@ -170,7 +174,7 @@ class DiffractometerMockup(GenericDiffractometer):
         #
         return result
 
-    def is_ready(self):
+    def is_ready(self) -> bool:
         """
         Descript. :
         """
@@ -335,8 +339,8 @@ class DiffractometerMockup(GenericDiffractometer):
             "endTime": curr_time,
         }
         motors = self.get_positions()
-        #motors["beam_x"] = 0.1
-        #motors["beam_y"] = 0.1
+        # motors["beam_x"] = 0.1
+        # motors["beam_y"] = 0.1
         self.last_centred_position[0] = coord_x
         self.last_centred_position[1] = coord_y
         self.centring_status["motors"] = motors
@@ -386,3 +390,24 @@ class DiffractometerMockup(GenericDiffractometer):
 
     def get_point_from_line(self, point_one, point_two, index, images_num):
         return point_one.as_dict()
+
+    def abort(self) -> None:
+        return None
+
+    def status(self) -> str:
+        return "READY"
+
+    def my_fancy_function(
+        self, speed: float, num_images: int, exp_time: float, phase: PhaseEnum
+    ) -> bool:
+        return True
+
+    def my_other_funny_function(self) -> None:
+        pass
+
+    def ssx_chip_scan(self, parameters):
+        return
+
+    def move_chip_to(self, x: int, y: int) -> None:
+        print("moving chip to")
+        return

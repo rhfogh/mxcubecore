@@ -1,8 +1,41 @@
+# encoding: utf-8
+#
+#  Project: MXCuBE
+#  https://github.com/mxcube.
+#
+#  This file is part of MXCuBE software.
+#
+#  MXCuBE is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  MXCuBE is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Lesser General Public License for more details.
+#
+#  You should have received a copy of the GNU General Lesser Public License
+#  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
+
+"""FlexHCD Linux Java implementation of sample changer.
+Example xml file:
+<object class = "EMBLFlexHCD">
+  <username>Sample Changer</username>
+  <exporter_address>lid231flex1:9001</exporter_address>
+  <object role="controller" href="/bliss"/>
+  <puck_configuration>["SC3", "UNI", "SC3", "UNI", "UNI", "UNI", "UNI", "UNI"]<
+/puck_configuration>
+</object>
+"""
+import time
+import ast
 import base64
 import pickle
-import gevent
 import logging
-import ast
+import gevent
+
+from mxcubecore import HardwareRepository as HWR
 
 from mxcubecore.TaskUtils import task
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
@@ -82,16 +115,12 @@ class Cell(Container):
         )
         self.present = True
 
-        if puck_type=="SC3":
+        if puck_type == "SC3":
             for i in range(3):
-                self._add_component(
-                    Basket(self, number, i + 1, unipuck=False)
-                )
+                self._add_component(Basket(self, number, i + 1, unipuck=False))
         else:
             for i in range(3):
-                self._add_component(
-                    Basket(self, number, i + 1, unipuck=True)
-                )
+                self._add_component(Basket(self, number, i + 1, unipuck=True))
 
     @staticmethod
     def get_cell_address(cell_number):
@@ -109,7 +138,7 @@ class Cell(Container):
 
 
 class EMBLFlexHCD(SampleChanger):
-    __TYPE__ = "HCD"
+    __TYPE__ = "Flex Sample Changer"
 
     def __init__(self, *args, **kwargs):
         super(EMBLFlexHCD, self).__init__(self.__TYPE__, True, *args, **kwargs)
@@ -157,11 +186,13 @@ class EMBLFlexHCD(SampleChanger):
     def get_sample_list(self):
         sample_list = super().get_sample_list()
 
-        sc_present_sample_list = self._execute_cmd_exporter("getPresentSamples", attribute=True)
+        sc_present_sample_list = self._execute_cmd_exporter(
+            "getPresentSamples", attribute=True
+        )
 
         if sc_present_sample_list:
             sc_present_sample_list = sc_present_sample_list.split(":")
-        else :
+        else:
             sc_present_sample_list = []
 
         present_sample_list = []
@@ -169,9 +200,13 @@ class EMBLFlexHCD(SampleChanger):
         for sample in sample_list:
             for present_sample_str in sc_present_sample_list:
                 present_sample = present_sample_str.split(",")
-                if sample.get_address() == (str(present_sample[0]) + ":"
-                                            + str(present_sample[1]) + ":"
-                                            + "%02d" % int(present_sample[4])):
+                if sample.get_address() == (
+                    str(present_sample[0])
+                    + ":"
+                    + str(present_sample[1])
+                    + ":"
+                    + "%02d" % int(present_sample[4])
+                ):
                     present_sample_list.append(sample)
 
         return present_sample_list
@@ -179,14 +214,13 @@ class EMBLFlexHCD(SampleChanger):
     @task
     def prepare_load(self):
         if self.controller:
-            self.controller.hutch_actions(enter=True)
+            self.controller.hutch_actions(enter=True, hutch_trigger=True)
         else:
             self.prepareLoad()
 
     @task
     def _prepare_centring_task(self):
         if self.controller:
-            #gevent.sleep(2)
             self.controller.hutch_actions(enter=False, sc_loading=True)
         else:
             gevent.sleep(2)
@@ -242,8 +276,7 @@ class EMBLFlexHCD(SampleChanger):
             res = pickle.loads(base64.b64decode(res))
             if isinstance(res, Exception):
                 raise res
-            else:
-                return res
+            return res
 
     def _execute_cmd_exporter(self, cmd, *args, **kwargs):
         ret = None
@@ -315,7 +348,7 @@ class EMBLFlexHCD(SampleChanger):
     def _do_select(self, component):
         if isinstance(component, Cell):
             cell_pos = component.get_index() + 1
-        elif isinstance(component, Basket) or isinstance(component, Pin):
+        elif isinstance(component, (Basket, Pin)):
             cell_pos = component.get_cell_no()
 
         self._execute_cmd_exporter("moveDewar", cell_pos, command=True)
@@ -352,7 +385,7 @@ class EMBLFlexHCD(SampleChanger):
 
         return res
 
-    def _hw_get_mounted_sample(self):        
+    def _hw_get_mounted_sample(self):
         loaded_sample = tuple(
             self._execute_cmd_exporter("getMountedSamplePosition", attribute=True)
         )
@@ -391,22 +424,24 @@ class EMBLFlexHCD(SampleChanger):
         self._reset_loaded_sample()
 
     def get_robot_exceptions(self):
-        return [self._execute_cmd_exporter('getLastTaskException', attribute=True)] or [""]
-
+        return [self._execute_cmd_exporter("getLastTaskException", attribute=True)] or [
+            ""
+        ]
 
     @task
     def load(self, sample):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self.enable_power()
 
         try:
             res = SampleChanger.load(self, sample)
         finally:
             for msg in self.get_robot_exceptions():
-                logging.getLogger("HWR").error(msg)
+                if msg is not None:
+                    logging.getLogger("HWR").error(msg)
 
-        if res:
-            self.prepare_centring()
+        # if res:
+        #    self.prepare_centring()
 
         return res
 
@@ -428,7 +463,7 @@ class EMBLFlexHCD(SampleChanger):
 
     @task
     def unload(self, sample):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self.enable_power()
 
         if not sample:
@@ -438,7 +473,8 @@ class EMBLFlexHCD(SampleChanger):
             SampleChanger.unload(self, sample)
         finally:
             for msg in self.get_robot_exceptions():
-                logging.getLogger("HWR").error(msg)
+                if msg is not None:
+                    logging.getLogger("HWR").error(msg)
 
     def get_gripper(self):
         gripper_type = self._execute_cmd_exporter("get_gripper_type", attribute=True)
@@ -460,7 +496,7 @@ class EMBLFlexHCD(SampleChanger):
 
     @task
     def change_gripper(self, gripper=None):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self.enable_power()
 
         if gripper:
@@ -470,7 +506,7 @@ class EMBLFlexHCD(SampleChanger):
 
     @task
     def home(self):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self.enable_power()
         self._execute_cmd_exporter("homeClear", command=True)
 
@@ -481,16 +517,14 @@ class EMBLFlexHCD(SampleChanger):
 
     @task
     def defreeze(self):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self.enable_power()
         self._execute_cmd_exporter("defreezeGripper", command=True)
 
     def _do_load(self, sample=None):
         self._update_state()
         previous_sample = tuple(
-            self._execute_cmd_exporter(
-                "getMountedSamplePosition", attribute=True
-            )
+            self._execute_cmd_exporter("getMountedSamplePosition", attribute=True)
         )
 
         # We wait for the sample changer if its already doing something, like defreezing
@@ -508,7 +542,14 @@ class EMBLFlexHCD(SampleChanger):
         )
 
         # Wait for sample changer to start activity
-        self._wait_busy(30)
+        try:
+            _tt = time.time()
+            self._wait_busy(300)
+            logging.getLogger("HWR").info(f"Waited SC activity {time.time() - _tt}")
+        except:
+            for msg in self.get_robot_exceptions():
+                logging.getLogger("user_level_log").error(msg)
+            raise
 
         # Wait for the sample to be loaded, (put on the goniometer)
         err_msg = "Timeout while waiting to sample to be loaded"
@@ -531,9 +572,7 @@ class EMBLFlexHCD(SampleChanger):
 
         with gevent.Timeout(600, RuntimeError(err_msg)):
             while True:
-                is_safe = self._execute_cmd_exporter(
-                        "getRobotIsSafe", attribute=True
-                )
+                is_safe = self._execute_cmd_exporter("getRobotIsSafe", attribute=True)
 
                 if is_safe:
                     break
@@ -541,11 +580,15 @@ class EMBLFlexHCD(SampleChanger):
                 gevent.sleep(2)
 
         for msg in self.get_robot_exceptions():
-            logging.getLogger("HWR").error(msg)
+            if msg is not None:
+                logging.getLogger("HWR").error(msg)
+                logging.getLogger("user_level_log").error(msg)
 
         return self._set_loaded_sample_and_prepare(loaded_sample, previous_sample)
 
     def _do_unload(self, sample=None):
+        HWR.beamline.diffractometer.set_phase("Transfer")
+
         self._execute_cmd_exporter(
             "unloadSample",
             sample.get_cell_no(),
@@ -559,7 +602,9 @@ class EMBLFlexHCD(SampleChanger):
         )
 
         for msg in self.get_robot_exceptions():
-            logging.getLogger("HWR").error(msg)
+            if msg is not None:
+                logging.getLogger("HWR").error(msg)
+                logging.getLogger("user_level_log").error(msg)
 
         if loaded_sample == (-1, -1, -1):
             self._reset_loaded_sample()
@@ -575,7 +620,7 @@ class EMBLFlexHCD(SampleChanger):
         self._execute_cmd_exporter("abort", command=True)
 
     def _do_trash(self):
-        self.prepare_load(wait=True)
+        self.prepare_load()
         self._execute_cmd_exporter("trashMountedSample", command=True)
         self._reset_loaded_sample()
 
@@ -652,21 +697,20 @@ class EMBLFlexHCD(SampleChanger):
         )
 
         cell = sample_cell
-        # puck = sample_puck
 
-        for c in self.get_components():
-            i = c.get_index()
-            if cell == i + 1:
-                self._set_selected_component(c)
+        for cmp in self.get_components():
+            idx = cmp.get_index()
+            if cell == idx + 1:
+                self._set_selected_component(cmp)
                 break
 
         # find sample
-        for s in self.get_sample_list():
-            if s.get_coords() == (sample_cell, sample_puck, sample):
-                self._set_loaded_sample(s)
-                self._set_selected_sample(s)
+        for samp in self.get_sample_list():
+            if samp.get_coords() == (sample_cell, sample_puck, sample):
+                self._set_loaded_sample(samp)
+                self._set_selected_sample(samp)
             else:
-                s._set_loaded(False)
+                samp._set_loaded(False)
 
         self._set_selected_sample(None)
 

@@ -38,18 +38,22 @@ class BeamMockup(AbstractBeam):
 
         self._beam_size_dict["slits"] = [9999, 9999]
         self._beam_size_dict["aperture"] = [9999, 9999]
-        self._beam_position_on_screen = [318, 238]
+        self._beam_position_on_screen = [680, 512]
         self._beam_divergence = (0, 0)
 
     def init(self):
         AbstractBeam.init(self)
-        
-        self._beam_position_on_screen = eval(self.get_property('beam_position', "[318, 238]"))
+
+        self._beam_position_on_screen = eval(
+            self.get_property("beam_position", "[318, 238]")
+        )
 
         self._aperture = self.get_object_by_role("aperture")
         if self._aperture is not None:
             self.connect(
-                self._aperture, "diameterIndexChanged", self.aperture_diameter_changed,
+                self._aperture,
+                "diameterIndexChanged",
+                self.aperture_diameter_changed,
             )
 
             ad = self._aperture.get_diameter_size() / 1000.0

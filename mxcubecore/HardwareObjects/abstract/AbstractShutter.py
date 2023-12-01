@@ -18,14 +18,15 @@
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
 """ AbstractShutter class - interface for shutter type devices.
-Defines BaseValueEnum and ShutterStates Enums.
+Define open/close methods and is_open property.
+Overload BaseValueEnum
 """
 
 import abc
 from enum import Enum, unique
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
-__copyright__ = """ Copyright 2020 by the MXCuBE collaboration """
+__copyright__ = """ Copyright 2016-2023 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
 
 
@@ -39,24 +40,33 @@ class BaseValueEnum(Enum):
 
 
 class AbstractShutter(AbstractNState):
-    """Abstract base class for N state objects."""
+    """Abstract base class for shutter type objects."""
 
     __metaclass__ = abc.ABCMeta
     VALUES = BaseValueEnum
 
-    def __init__(self, name):
-        AbstractNState.__init__(self, name)
-
-    def init(self):
-        """Initilise the predefined values"""
-        AbstractNState.init(self)
-
     @property
     def is_open(self):
+        """Check if the shutter is open.
+        Returns:
+            (bool): True if open, False otherwise.
+        """
         return self.get_value() == self.VALUES.OPEN
- 
-    def open(self):
-        self.set_value(self.VALUES.OPEN)
 
-    def close(self):
-        self.set_value(self.VALUES.CLOSED)
+    def open(self, timeout=None):
+        """Open the shutter.
+        Args:
+            timeout(float): optional - timeout [s],
+                            If timeout == 0: return at once and do not wait
+                            if timeout is None: wait forever.
+        """
+        self.set_value(self.VALUES.OPEN, timeout=timeout)
+
+    def close(self, timeout=None):
+        """Close the shutter.
+        Args:
+            timeout(float): optional - timeout [s],
+                            If timeout == 0: return at once and do not wait
+                            if timeout is None: wait forever.
+        """
+        self.set_value(self.VALUES.CLOSED, timeout=timeout)

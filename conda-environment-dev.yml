@@ -1,0 +1,19 @@
+name: mxcubecore
+channels:
+  - conda-forge
+dependencies:
+  - python >=3.8,<3.11
+  # Run-time
+  - openldap
+  - python-ldap=3.4.0
+  # Dev
+  - pip
+  - poetry
+  # Format, lint
+  - black
+  - flake8
+  # Test
+  - coverage
+  - pytest
+  - pytest-cov
+  - pytest-mock

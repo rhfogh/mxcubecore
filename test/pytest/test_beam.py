@@ -18,30 +18,54 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
-"""
+
+"""Test suite for Beam hardware object.
 """
 
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
-import pytest
 from test.pytest import TestHardwareObjectBase
-from mxcubecore.HardwareObjects.abstract.AbstractBeam import BeamShape
+from mxcubecore.HardwareObjects.abstract.AbstractBeam import BeamShape, AbstractBeam
 
-__copyright__ = """ Copyright © 2016 - 2020 by MXCuBE Collaboration """
+
+import pytest
+
+__copyright__ = """ Copyright © 2016 - 2022 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
 
 
 @pytest.fixture
 def test_object(beamline):
+    """Use the beam object from beamline"""
     result = beamline.beam
     yield result
     # Cleanup code here - restores starting state for next call:
     # NBNB TODO
 
 
+@pytest.fixture
+def beam():
+    """ """
+
+    beam = AbstractBeam(name="abstract_beam")
+    yield beam
+
+
+class TestAbstractBeam:
+    """ """
+
+    def test_beam_setup(self, beam: AbstractBeam):
+        """ """
+
+        assert beam is not None
+
+
 class TestBeam(TestHardwareObjectBase.TestHardwareObjectBase):
+    """TestBeam class"""
+
     def test_beam_atributes(self, test_object):
+        """Test if object exists."""
         assert test_object is not None, "Beam hardware object is None (not initialized)"
 
     def test_get(self, test_object):
@@ -98,8 +122,8 @@ class TestBeam(TestHardwareObjectBase.TestHardwareObjectBase):
         for aperture_diameter in test_object.aperture.get_diameter_size_list():
             test_object.aperture.set_diameter_size(aperture_diameter)
             beam_width, beam_height = test_object.get_beam_size()
-            # TODO get_beam_size returns size in mm, but aperture diameters are in microns
-            # Use microns in all beam related hwobj
+            # TODO get_beam_size returns size in mm, but aperture diameters
+            # are in microns. Use microns in all beam related hwobj
             assert beam_width == beam_height == aperture_diameter / 1000.0
 
             beam_shape = test_object.get_beam_shape()

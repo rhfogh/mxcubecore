@@ -1,0 +1,338 @@
+{
+    "schema": {
+        "definitions": {
+            "strategy": [
+                {
+                    "enum": [
+                        "full"
+                    ],
+                    "title": "full",
+                    "type": "string"
+                },
+                {
+                    "enum": [
+                        "minimal"
+                    ],
+                    "title": "minimal",
+                    "type": "string"
+                },
+                {
+                    "enum": [
+                        "quick"
+                    ],
+                    "title": "quick",
+                    "type": "string"
+                },
+                {
+                    "enum": [
+                        "ultralong"
+                    ],
+                    "title": "ultralong",
+                    "type": "string"
+                }
+            ]
+        },
+        "properties": {
+            "cell_a": {
+                "default": 133.8562,
+                "minimum": 0,
+                "readonly": true,
+                "title": "a",
+                "type": "number"
+            },
+            "cell_alpha": {
+                "default": 90.0,
+                "maximum": 180,
+                "minimum": 0,
+                "readonly": true,
+                "title": "\u03b1",
+                "type": "number"
+            },
+            "cell_b": {
+                "default": 133.8562,
+                "minimum": 0,
+                "readonly": true,
+                "title": "b",
+                "type": "number"
+            },
+            "cell_beta": {
+                "default": 90.0,
+                "maximum": 180,
+                "minimum": 0,
+                "readonly": true,
+                "title": "\u03b2",
+                "type": "number"
+            },
+            "cell_c": {
+                "default": 127.4557,
+                "minimum": 0,
+                "readonly": true,
+                "title": "c",
+                "type": "number"
+            },
+            "cell_gamma": {
+                "default": 120.0,
+                "maximum": 180,
+                "minimum": 0,
+                "readonly": true,
+                "title": "\u03b3",
+                "type": "number"
+            },
+            "energy": {
+                "default": 12.4,
+                "maximum": 20,
+                "minimum": 4,
+                "title": "Main energy (keV)",
+                "type": "number"
+            },
+            "indexing_solution": {
+                "title": "--- Select indexing solution : ---",
+                "type": "string"
+            },
+            "input_space_group": {
+                "default": "R32",
+                "readonly": true,
+                "title": "Space Group",
+                "type": "string"
+            },
+            "lattice": {
+                "default": "hR",
+                "title": "Crystal lattice",
+                "value_dict": {
+                    "Hexagonal": "Hexagonal",
+                    "hP": "hP",
+                    "hR": "hR"
+                }
+            },
+            "point_groups": {
+                "default": "32",
+                "hidden": false,
+                "title": "Point Groups",
+                "value_dict": {
+                    "3": "3",
+                    "32": "32",
+                    "3|32": "3|32"
+                }
+            },
+            "relative_rad_sensitivity": {
+                "default": 1.0,
+                "minimum": 0,
+                "readonly": true,
+                "title": "Radiation sensitivity",
+                "type": "number"
+            },
+            "resolution": {
+                "default": 2.1,
+                "maximum": 2.942352157399316,
+                "minimum": 0.9035138162988328,
+                "title": "Resolution",
+                "type": "number"
+            },
+            "space_group": {
+                "default": "R32",
+                "title": "Space Group",
+                "value_dict": {
+                    "": "",
+                    "P3": "P3",
+                    "P31": "P31",
+                    "P3112": "P3112",
+                    "P312": "P312",
+                    "P3121": "P3121",
+                    "P32": "P32",
+                    "P321": "P321",
+                    "P3212": "P3212",
+                    "P3221": "P3221",
+                    "R3": "R3",
+                    "R32": "R32"
+                }
+            },
+            "strategy": {
+                "$ref": "#/definitions/strategy",
+                "default": "full",
+                "title": "Acquisition strategy"
+            },
+            "use_cell_for_processing": {
+                "default": true,
+                "title": "Use for indexing",
+                "type": "boolean"
+            }
+        },
+        "title": "G\u03a6L Pre-strategy parameters",
+        "type": "object"
+    },
+    "ui_schema": {
+        "crystal_data": {
+            "cella": {
+                "ui:order": [
+                    "cell_a",
+                    "cell_alpha"
+                ]
+            },
+            "cellb": {
+                "ui:order": [
+                    "cell_b",
+                    "cell_beta"
+                ]
+            },
+            "cellc": {
+                "ui:order": [
+                    "cell_c",
+                    "cell_gamma"
+                ]
+            },
+            "sgroup": {
+                "relative_rad_sensitivity": {
+                    "ui:options": {
+                        "decimals": 2
+                    }
+                },
+                "ui:order": [
+                    "input_space_group",
+                    "relative_rad_sensitivity"
+                ]
+            },
+            "ui:order": [
+                "sgroup",
+                "cella",
+                "cellb",
+                "cellc"
+            ],
+            "ui:title": "Input Unit Cell",
+            "ui:widget": "column_grid"
+        },
+        "indexing_solution": {
+            "ui:options": {
+                "content": [
+                    [
+                        " *  44        aP          0.0      88.2   88.2   88.2  98.7  98.7  98.7",
+                        " *  14        mC          0.1     114.9  133.9   88.2  90.0 103.5  90.0",
+                        " *  25        mC          0.1     114.9  133.9   88.2  90.0 103.5  90.0",
+                        " *   4        hR          0.2     133.9  133.9  127.5  90.0  90.0 120.0",
+                        " *  31        aP         75.9      88.2   88.2   88.2  98.7  81.3  81.3",
+                        " *  20        mC         76.0     114.9  133.9   88.2  90.0 103.5  90.0",
+                        " *  10        mC         76.1     114.9  133.9   88.2  90.0 103.5  90.0",
+                        "     3        cP         76.1      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "     5        cI         90.9     114.9  114.9  114.9  71.3  71.3  71.3",
+                        "    34        mP        151.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    33        mP        151.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    13        oC        151.9     114.9  133.9   88.2  90.0 103.5  90.0",
+                        "    35        mP        151.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    23        oC        151.9     114.9  133.9   88.2  90.0 103.5  90.0",
+                        "    32        oP        227.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    21        tP        227.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    11        tP        227.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "     2        hR        227.9     114.9  114.9  160.4  82.6  97.4 108.7",
+                        "    39        mC        249.9     184.9   88.2   88.2  98.7 102.6  70.6",
+                        "    37        mC        250.0     184.9   88.2   88.2  98.7 102.6  70.6",
+                        "    41        mC        250.0     184.9   88.2   88.2  98.7 102.6  70.6",
+                        "    38        oC        325.8      88.2  184.9   88.2  77.4  98.7 109.4",
+                        "    36        oC        325.9      88.2  184.9   88.2  77.4  98.7 109.4",
+                        "    12        hP        325.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    40        oC        325.9      88.2  184.9   88.2  77.4  98.7 109.4",
+                        "    22        hP        325.9      88.2   88.2   88.2  98.7  98.7  98.7",
+                        "    29        mC        363.8      88.2  184.9   88.2 102.6  98.7  70.6",
+                        "    28        mC        363.8      88.2  184.9   88.2 102.6  98.7  70.6",
+                        "    30        mC        363.9      88.2  184.9   88.2 102.6  98.7  70.6",
+                        "     1        cF        402.0     160.4  127.5  160.4 105.4 113.2 105.4",
+                        "    42        oI        424.1      88.2  186.8   88.2 104.9 104.9  98.7",
+                        "    15        tI        424.1      88.2   88.2  186.8  75.1  75.1  98.7",
+                        "    27        mC        575.9     184.9   88.2  114.9  76.5 120.7  70.6",
+                        "    19        oI        575.9     114.9  160.4   88.2  82.6  56.6  76.5",
+                        "    26        oF        624.9     184.9  208.9   88.2  71.1 123.4 109.4",
+                        "    18        tI        625.0     114.9  160.4   88.2  56.6 103.5  97.4",
+                        "    24        hR        635.1     186.8  133.9   88.2  90.0  75.1 111.0",
+                        "     9        hR        750.0      88.2  114.9  296.6  78.0 118.6 130.6",
+                        "    17        mC        816.4     133.9  114.9  114.9  71.3 125.6  90.0",
+                        "    16        oF        816.4     133.9  186.8  114.9  90.0 113.3  90.0",
+                        "     8        oI        816.4     114.9  114.9  114.9  71.3  71.3  71.3",
+                        "     6        tI        816.5     114.9  114.9  114.9  71.3  71.3  71.3",
+                        "     7        tI        816.5     114.9  114.9  114.9  71.3  71.3  71.3",
+                        "    43        mI        999.0     114.9  186.8   88.2 104.9 130.6  66.7"
+                    ]
+                ],
+                "header": [
+                    "  LATTICE-  BRAVAIS-   QUALITY  UNIT CELL CONSTANTS (ANGSTROEM & DEGREES)\n CHARACTER  LATTICE     OF FIT      a      b      c   alpha  beta gamma"
+                ],
+                "highlights": {
+                    "3": {
+                        "0": "HIGHLIGHT"
+                    },
+                    "17": {
+                        "0": "HIGHLIGHT"
+                    },
+                    "36": {
+                        "0": "HIGHLIGHT"
+                    },
+                    "37": {
+                        "0": "HIGHLIGHT"
+                    }
+                },
+                "select_cell": [
+                    3,
+                    0
+                ],
+                "update_on_change": true
+            },
+            "ui:widget": "selection_table"
+        },
+        "parameters": {
+            "column1": {
+                "lattice": {
+                    "ui:options": {
+                        "update_on_change": true
+                    }
+                },
+                "point_groups": {
+                    "ui:options": {
+                        "update_on_change": true
+                    }
+                },
+                "space_group": {
+                    "ui:options": {
+                        "update_on_change": true
+                    }
+                },
+                "ui:order": [
+                    "lattice",
+                    "point_groups",
+                    "space_group",
+                    "use_cell_for_processing"
+                ]
+            },
+            "column2": {
+                "energy": {
+                    "ui:options": {
+                        "decimals": 4
+                    }
+                },
+                "resolution": {
+                    "ui:options": {
+                        "decimals": 3
+                    }
+                },
+                "ui:order": [
+                    "strategy",
+                    "resolution",
+                    "energy"
+                ]
+            },
+            "ui:order": [
+                "column1",
+                "column2"
+            ],
+            "ui:title": "Parameters",
+            "ui:widget": "column_grid"
+        },
+        "ui:options": {
+            "return_signal": "GphlParameterReturn",
+            "update_on_change": "selected",
+            "update_signal": "GphlUpdateUiParameters"
+        },
+        "ui:order": [
+            "indexing_solution",
+            "crystal_data",
+            "parameters"
+        ],
+        "ui:widget": "vertical_box"
+    }
+}

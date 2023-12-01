@@ -22,20 +22,20 @@ from __future__ import absolute_import
 
 import logging
 import os
+
 # import time
 # import types
 from mxcubecore.dispatcher import saferef
 
 import gevent
 from gevent.event import Event
-from gevent import monkey
 
 try:
     import Queue as queue
 except ImportError:
     import queue
 
-gevent_version = list(map(int, gevent.__version__.split('.')))
+gevent_version = list(map(int, gevent.__version__.split(".")))
 
 
 from mxcubecore.CommandContainer import (
@@ -56,8 +56,6 @@ try:
     from taurus.core.tango.tangoattribute import TangoAttrValue
 except Exception:
     logging.getLogger("HWR").warning("Sardana is not available in this computer.")
-
-monkey.patch_all(thread=False, subprocess=False)
 
 
 __copyright__ = """ Copyright © 2010 - 2020 by MXCuBE Collaboration """
@@ -123,7 +121,7 @@ class SardanaObject(object):
         SardanaObject._eventsProcessingTimer.send()
 
 
-class SardanaMacro(CommandObject, SardanaObject):
+class SardanaMacro(CommandObject, SardanaObject, ChannelObject):
 
     macroStatusAttr = None
     INIT, STARTED, RUNNING, DONE = range(4)
@@ -135,14 +133,16 @@ class SardanaMacro(CommandObject, SardanaObject):
         self.macro_format = macro
         self.doorname = doorname
         self.door = None
-        self.init_device()
+        self.id_result = -1
         self.macrostate = SardanaMacro.INIT
         self.doorstate = None
         self.t0 = 0
+        self.init_device()
 
     def init_device(self):
         self.door = Device(self.doorname)
         self.door.set_timeout_millis(10000)
+        self.doorstate = self.door.state.name.upper()
 
         #
         # DIRTY FIX to make compatible taurus listeners and existence of Tango channels/commands
@@ -158,6 +158,11 @@ class SardanaMacro(CommandObject, SardanaObject):
         if self.macroStatusAttr is None:
             self.macroStatusAttr = self.door.getAttribute("State")
             self.macroStatusAttr.addListener(self.object_listener)
+
+    def result_callback(self, received_event):
+        val = received_event.attr_value.value
+        if val is not None:
+            self.emit("macroResultUpdated", received_event.attr_value.value)
 
     def __call__(self, *args, **kwargs):
 
@@ -455,7 +460,7 @@ class SardanaChannel(ChannelObject, SardanaObject):
         self.attribute.write(new_value)
 
     #TODO improve this: the magnitude is probably only available for certain channels, and the rvalue for others
-    #   Instead of an exception, an if statement should decide which read method is to be applied, 
+    #   Instead of an exception, an if statement should decide which read method is to be applied,
     #   and a proper exception should be issued when necessary
     def _read_value(self):
         value = None
@@ -478,7 +483,7 @@ class SardanaChannel(ChannelObject, SardanaObject):
                 value = getattr(self.attribute.read(cache=False).rvalue, 'magnitude')
             except Exception:
                 value = self.attribute.rvalue
-            
+
         return value
 
     def get_info(self):

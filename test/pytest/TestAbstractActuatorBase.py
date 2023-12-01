@@ -15,21 +15,18 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
-"""
-"""
 
-from __future__ import division, absolute_import
-from __future__ import print_function, unicode_literals
+"""Test suite for AbstractActuator class"""
 
-__copyright__ = """ Copyright © 2016 - 2020 by MXCuBE Collaboration """
+__copyright__ = """ Copyright © 2016 - 2022 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
-__date__ = "09/04/2020"
+
+from test.pytest import TestHardwareObjectBase
 
 import abc
 import gevent
 import pytest
 
-from test.pytest import TestHardwareObjectBase
 
 test_object = TestHardwareObjectBase.test_object
 
@@ -44,40 +41,52 @@ class TestAbstractActuatorBase(TestHardwareObjectBase.TestHardwareObjectBase):
         startval = test_object.get_value()
         assert startval is not None, "initial value may not be None"
 
-        assert test_object._nominal_value == startval, (
-            "get_value() %s differs from _nominal_value %s"
-            % (startval, test_object._nominal_value)
+        assert (
+            test_object._nominal_value == startval
+        ), "get_value() %s differs from _nominal_value %s" % (
+            startval,
+            test_object._nominal_value,
         )
 
         if test_object.default_value is not None:
-            assert startval == test_object.default_value, (
-                "Initial value %s different from default value %s"
-                % (startval, test_object.default_value)
+            assert (
+                startval == test_object.default_value
+            ), "Initial value %s different from default value %s" % (
+                startval,
+                test_object.default_value,
             )
 
     def test_value_setting(self, test_object):
-        """Test effect of update_value and (if not read_only) set_value"""
-        startval = test_object.get_value()
+        """Test effect of update_value and set_value"""
 
-        test_object.update_value()
+        startval = test_object.get_value()
+        test_object.update_value(startval)
         assert (
             test_object._nominal_value == startval
-        ), "Updating value to None does not set to get_value()"
+        ), f"Updating value to {startval} does not set _nominal_value"
 
         # Must be set to None so the next command causes a change
         test_object._nominal_value = None
         test_object.update_value(startval)
-        assert test_object._nominal_value == startval, (
-            "update_value(%s) leaves _nominal_value as %s"
-            % (startval, test_object._nominal_value)
+        assert (
+            test_object._nominal_value == startval
+        ), "update_value(%s) leaves _nominal_value as %s" % (
+            startval,
+            test_object._nominal_value,
         )
 
-        if not test_object.read_only:
-            # Test set_value with and without a timeout (different code branches)
+        if test_object.read_only:
+            # test that there is an exception as read only
+            with pytest.raises(ValueError):
+                test_object.set_value(test_object.default_value)
+        else:
+            # Test set_value with and without a timeout (different code branch)
             # Must be set to None so the next command causes a change
             test_object._nominal_value = None
             test_object._set_value(startval)
             test_object.wait_ready()
+            # _nominal_value is only updated by update_value or get_value
+            test_object.get_value()
             assert test_object._nominal_value == startval, (
                 "_set_value(%s) leaves _nominal_value as %s"
                 % (startval, test_object._nominal_value),
@@ -92,50 +101,49 @@ class TestAbstractActuatorBase(TestHardwareObjectBase.TestHardwareObjectBase):
             )
 
     def test_limits_type(self, test_object):
+        """Test the limits"""
         limits = test_object.get_limits()
-        assert isinstance(limits, tuple), (
-            "AbstractActuator limits must be a tuple, are %s" % limits
-        )
-        assert len(limits) == 2, (
-            "AbstractActuator limits must be length 2, are %s" % limits
-        )
+        assert isinstance(
+            limits, tuple
+        ), f"AbstractActuator limits must be a tuple, not {limits}"
+        assert (
+            len(limits) == 2
+        ), f"AbstractActuator limits must have length 2, not {len(limits)}"
 
     def test_limits_setting(self, test_object):
         """Test update_limits and (if not read_oinly) set_limits"""
         limits = test_object.get_limits()
         if limits != (None, None):
             test_object.update_limits((None, None))
-            assert test_object._nominal_limits == (None, None), (
-                "Update limits to (None, None) but _nominal_limits value is %s"
-                % (test_object._nominal_limits,)
+            assert test_object._nominal_limits == (
+                None,
+                None,
+            ), "Update limits to (None, None) but _nominal_limits value is %s" % (
+                test_object._nominal_limits,
             )
 
             test_object.update_limits(limits)
-            assert test_object._nominal_limits == limits, (
-                "Updated limits to %s but _nominal_limits is %s"
-                % (limits, test_object._nominal_limits)
+            assert (
+                test_object._nominal_limits == limits
+            ), "Updated limits to %s but _nominal_limits is %s" % (
+                limits,
+                test_object._nominal_limits,
             )
             if not test_object.read_only:
                 # Must be set to (None, None) so the next command causes a change
                 test_object._nominal_limits = (None, None)
                 test_object.set_limits(limits)
-                assert test_object._nominal_limits == limits, (
-                    "Set limits to %s but _nominal_limits is %s"
-                    % (limits, test_object._nominal_limits)
+                assert (
+                    test_object._nominal_limits == limits
+                ), "Set limits to %s but _nominal_limits is %s" % (
+                    limits,
+                    test_object._nominal_limits,
                 )
 
-    def test_setting_readonly(self, test_object):
-        """Test that setting is disabled for read_only"""
-        if test_object.read_only:
-            with pytest.raises(ValueError):
-                test_object.set_value(test_object.default_value)
-
     def test_validate_value(self, test_object):
-        """Ensure that initial value tests valid, """
-        start_val = test_object.get_value()
-        assert test_object.validate_value(start_val), (
-            "Staring valuee %s evaluates invalid" % start_val
-        )
+        """Ensure that initial value tests valid,"""
+        value = test_object.get_value()
+        assert test_object.validate_value(value), f"Value {value} evaluates invalid"
 
     def test_setting_timeouts_1(self, test_object):
         """Test that setting is not istantaneuos,
@@ -165,6 +173,7 @@ class TestAbstractActuatorBase(TestHardwareObjectBase.TestHardwareObjectBase):
             test_object.wait_ready(timeout=1.0e-6)
 
     def test_signal_value_changed(self, test_object):
+        """Test for valueChanged signal"""
         catcher = TestHardwareObjectBase.SignalCatcher()
         val = test_object.get_value()
         # Must be set to None so the next command causes a change

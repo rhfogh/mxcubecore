@@ -27,13 +27,15 @@ All HardwareObjects
 from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
+from typing import Union
+
 __copyright__ = """ Copyright © 2019 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
 
 import logging
 
-from mxcubecore.BaseHardwareObjects import ConfiguredObject
+from mxcubecore.BaseHardwareObjects import ConfiguredObject, HardwareObject
 
 # NBNB The acq parameter names match the attributes of AcquisitionParameters
 # Whereas the limit parmeter values use more udnerstandable names
@@ -102,10 +104,10 @@ class Beamline(ConfiguredObject):
 
         # bool By default run processing of (certain?)data collections?
         self.run_offline_processing = False
-        
+
         # bool By default run online processing (characterization/mesh?)
         self.run_online_processing = False
-        
+
         self.offline_processing_methods = []
 
         self.online_processing_methods = []
@@ -122,9 +124,23 @@ class Beamline(ConfiguredObject):
         # List of undulators
         self.undulators = []
 
+        # Format of mesh result for display
+        self.mesh_result_format = "PNG"
+
+        # bool Use the native mesh feature available, true by default
+        self.use_native_mesh = True
+
+        # bool Enable features to work with points in the plane, called
+        # 2D-points, (none centred positions)
+        self.enable_2d_points = True
+
+        # Dictionary with the python id of hardwareobject as key
+        # and the "dotted/attribute path" to hardwareobject from the
+        # Beamline object
+        self._hardware_object_id_dict = {}
+
     def init(self):
         """Object initialisation - executed *after* loading contents"""
-
         # Validate acquisition parameters
         for acquisition_type, params in self.default_acquisition_parameters.items():
             unrecognised = [x for x in params if x not in self.SUPPORTED_ACQ_PARAMETERS]
@@ -143,6 +159,85 @@ class Beamline(ConfiguredObject):
             logging.getLogger("HWR").warning(
                 "Unrecognised parameter limits for: %s" % unrecognised
             )
+
+    def _hwr_init_done(self):
+        """
+        Method called after the initialization of HardwareRepository is done
+        (when all HardwareObjects have been created and initialized)
+        """
+        self._hardware_object_id_dict = self._get_id_dict()
+
+    def get_id(self, ho: HardwareObject) -> str:
+        """
+        Returns "dotted path/attribute" which is unique within the context of
+        HardwareRepository
+
+        Args:
+            ho: The hardware object for which to get the id
+
+        Returns:
+            "dotted path/attribute"
+        """
+        return self._hardware_object_id_dict.get(ho)
+
+    def get_hardware_object(self, _id: str) -> Union[HardwareObject, None]:
+        """
+        Returns the HardwareObject with the given id
+
+        Args:
+            _id: "attribute path" / id of HardwareObject
+        Returns:
+            HardwareObject with the given id
+        """
+        found_ho = None
+
+        for current_ho, current_id in self._hardware_object_id_dict.items():
+            if current_id == _id:
+                found_ho = current_ho
+
+        return found_ho
+
+    def _get_id_dict(self) -> dict:
+        """
+        Wrapper function used to call the recursive method used to find all
+        HardwareObjects accessible from the Beamline object.
+        """
+        result = {}
+
+        for ho_name in self.all_roles:
+            ho = self._objects.get(ho_name)
+
+            if ho:
+                result[ho] = ho_name
+                self._get_id_dict_rec(ho, ho_name, result)
+
+        return result
+
+    def _get_id_dict_rec(
+        self, ho: HardwareObject, _path: str = "", result: dict = {}
+    ) -> str:
+        """
+        Recurses through all the roles of ho and constructs its corresponding
+        "dotted path/attribute"
+
+        Args:
+            ho (HardwareObject): The HardwareObject to get the id for
+            _path (str): Current path (used in recursion)
+            result: A dictionary where the key is the id of the HardwareObject
+                    and the value its dotted path.
+
+        Returns:
+            (str): Dotted path for the given HardwareObject
+        """
+        if hasattr(ho, "get_roles"):
+            for role in ho.get_roles():
+                child_ho = ho.get_object_by_role(role)
+                if child_ho not in result:
+                    result[child_ho] = self._get_id_dict_rec(
+                        child_ho, f"{_path}.{role}", result
+                    )
+
+        return _path
 
     # NB this function must be re-implemented in nested subclasses
     @property
@@ -175,6 +270,17 @@ class Beamline(ConfiguredObject):
         return self._objects.get("transmission")
 
     __content_roles.append("transmission")
+
+    @property
+    def cryo(self):
+        """Cryo Hardware object
+
+        Returns:
+            Optional[AbstractActuator]:
+        """
+        return self._objects.get("cryo")
+
+    __content_roles.append("cryo")
 
     @property
     def energy(self):
@@ -434,6 +540,17 @@ class Beamline(ConfiguredObject):
     __content_roles.append("imaging")
 
     @property
+    def beamline_actions(self):
+        """Beamline Actions
+
+        Returns:
+            Optional[beamline_actions]:
+        """
+        return self._objects.get("beamline_actions")
+
+    __content_roles.append("beamline_actions")
+
+    @property
     def xml_rpc_server(self):
         """XMLRPCServer for RPC
 
@@ -456,11 +573,22 @@ class Beamline(ConfiguredObject):
     __content_roles.append("workflow")
 
     @property
+    def control(self):
+        """Beamline control system
+
+        Returns:
+            Optional[Control]:
+        """
+        return self._objects.get("control")
+
+    __content_roles.append("control")
+
+    @property
     def gphl_workflow(self):
         """Global phasing data collection workflow procedure.
 
         Returns:
-            Optional[GpglWorkflow]:
+            Optional[GphlWorkflow]:
         """
         return self._objects.get("gphl_workflow")
 
@@ -492,6 +620,17 @@ class Beamline(ConfiguredObject):
         return self._objects.get("centring")
 
     __content_roles.append("centring")
+
+    @property
+    def xray_centring(self):
+        """Xray Ccntring hardware object.
+
+        Returns:
+            Optional[XrayCentring2]:
+        """
+        return self._objects.get("xray_centring")
+
+    __content_roles.append("xray_centring")
 
     # Analysis (combines processing and data analysis)
 
@@ -581,16 +720,14 @@ class Beamline(ConfiguredObject):
 
     @property
     def mock_procedure(self):
-        """
-        """
+        """ """
         return self._objects.get("mock_procedure")
 
     __content_roles.append("mock_procedure")
 
     @property
     def data_publisher(self):
-        """
-        """
+        """ """
         return self._objects.get("data_publisher")
 
     __content_roles.append("data_publisher")
@@ -598,7 +735,7 @@ class Beamline(ConfiguredObject):
     # NB this is just an example of a globally shared procedure description
     @property
     def manual_centring(self):
-        """ Manual centring Procedure
+        """Manual centring Procedure
 
         NB AbstractManualCentring serves to define the parameters for manual centring
         The actual implementation is set by configuration,
@@ -624,9 +761,13 @@ class Beamline(ConfiguredObject):
                   specified acquisition type. "default" is a standard acqquisition
         """
         # Imported here to avoid circular imports
-        from mxcubecore.HardwareObjects import queue_model_objects
+        from mxcubecore.model import queue_model_objects
 
         acq_parameters = queue_model_objects.AcquisitionParameters()
+
+        #logging.getLogger("HWR").debug(f"""
+            #Beamline object. Getting acquisition parameters for acquisition type {acquisition_type}
+        #""")
 
         params = self.default_acquisition_parameters["default"].copy()
         if acquisition_type != "default":
@@ -640,19 +781,25 @@ class Beamline(ConfiguredObject):
 
                 params.update(dd0)
 
+        #logging.getLogger("HWR").debug(f"""
+              #params are {params}
+        #""")
+
         for tag, val in params.items():
             setattr(acq_parameters, tag, val)
 
         motor_positions = self.diffractometer.get_positions()
-        osc_start = motor_positions.get("phi", params["osc_start"])
-        acq_parameters.osc_start = round(float(osc_start), 2)
-        kappa = motor_positions.get("kappa", 0.0)
-        kappa = kappa if kappa else 0.0
-        acq_parameters.kappa = round(float(kappa), 2)
-        kappa_phi = motor_positions.get("kappa_phi", 0.0)
-        kappa_phi = kappa_phi if kappa_phi else 0.0
-        acq_parameters.kappa_phi = round(float(kappa_phi), 2)
-
+        osc_start = (
+            None
+            if not params["osc_start"]
+            else motor_positions.get("phi", params["osc_start"])
+        )
+        acq_parameters.osc_start = osc_start
+        kappa = motor_positions.get("kappa", False)
+        kappa = kappa if kappa else None
+        acq_parameters.kappa = round(float(kappa), 2) if kappa else None
+        kappa_phi = motor_positions.get("kappa_phi", False)
+        acq_parameters.kappa_phi = round(float(kappa_phi), 2) if kappa_phi else None
         try:
             acq_parameters.resolution = self.resolution.get_value()
         except Exception:
@@ -680,14 +827,7 @@ class Beamline(ConfiguredObject):
             )
             acq_parameters.transmission = 0.0
 
-        try:
-            acq_parameters.shutterless = self.detector.has_shutterless()
-        except Exception:
-            logging.getLogger("HWR").warning(
-                "get_default_acquisition_parameters: "
-                "Could not get has_shutterless, setting to False"
-            )
-            acq_parameters.shutterless = False
+        acq_parameters.shutterless = params.get("shutterless", True)
 
         try:
             acq_parameters.detector_binning_mode = self.detector.get_binning_mode()
@@ -714,31 +854,15 @@ class Beamline(ConfiguredObject):
         :returns: A PathTemplate object with default parameters.
         """
         # Imported here to avoid circular imports
-        from mxcubecore.HardwareObjects import queue_model_objects
+        from mxcubecore.model import queue_model_objects
 
         path_template = queue_model_objects.PathTemplate()
-
-        path_template.directory = str()
-        path_template.process_directory = str()
-        path_template.base_prefix = str()
-        path_template.mad_prefix = ""
-        path_template.reference_image_prefix = ""
-        path_template.wedge_prefix = ""
 
         acq_params = self.get_default_acquisition_parameters()
         path_template.start_num = acq_params.first_image
         path_template.num_files = acq_params.num_images
 
         path_template.run_number = self.run_number
-
-        file_info = self.session["file_info"]
-        path_template.suffix = file_info.get_property("file_suffix")
-        path_template.precision = "04"
-        try:
-            if file_info.get_property("precision"):
-                path_template.precision = eval(file_info.get_property("precision"))
-        except Exception:
-            pass
 
         return path_template
 
@@ -747,14 +871,16 @@ class Beamline(ConfiguredObject):
 
     def force_emit_signals(self):
         for role in self.all_roles:
-            hwobj =  getattr(self, role)
+            hwobj = getattr(self, role)
             if hwobj is not None:
                 try:
                     hwobj.force_emit_signals()
                     for attr in dir(hwobj):
                         if not attr.startswith("_"):
-                            if hasattr(getattr(hwobj, attr), 'force_emit_signals'):
+                            if hasattr(getattr(hwobj, attr), "force_emit_signals"):
                                 child_hwobj = getattr(hwobj, attr)
                                 child_hwobj.force_emit_signals()
                 except BaseException as ex:
-                    logging.getLogger("HWR").error("Unable to call force_emit_signals (%s)" % str(ex))
+                    logging.getLogger("HWR").error(
+                        "Unable to call force_emit_signals (%s)" % str(ex)
+                    )

@@ -1,7 +1,12 @@
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore import HardwareRepository as HWR
 import gevent
 import sys
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore import HardwareRepository as HWR
+
+from mxcubecore.HardwareObjects.abstract.AbstractActuator import (
+    AbstractActuator,
+)
 
 CRYO_STATUS = ["OFF", "SATURATED", "READY", "WARNING", "FROZEN", "UNKNOWN"]
 PHASE_ACTION = {
@@ -14,9 +19,9 @@ PHASE_ACTION = {
 }
 
 
-class Oxford700(HardwareObject):
+class Oxford700(AbstractActuator):
     def __init__(self, name):
-        HardwareObject.__init__(self, name)
+        super().__init__(name)
 
         self.temp = None
         self.temp_error = None
@@ -30,24 +35,28 @@ class Oxford700(HardwareObject):
             gevent.sleep(self.interval)
 
     def init(self):
-        controller = HWR.get_hardware_repository().get_hardware_object(
-            self.get_property("controller")
-        )
+        controller = self.get_object_by_role("controller")
         cryostat = self.get_property("cryostat")
         self.interval = self.get_property("interval") or 10
         self.ctrl = getattr(controller, cryostat)
-        if self.ctrl is not None:
-            # self.get_params()
+        if self.ctrl:
             gevent.spawn(self._do_polling)
             self._hw_ctrl = self.ctrl.controller._hw_controller
 
     def value_changed(self):
-        self.emit("temperatureChanged", (self.get_temperature(),))
-        self.emit("valueChanged", (self.get_temperature(),))
+        self.emit("temperatureChanged", (self.get_value(),))
+        self.emit("valueChanged", (self.get_value(),))
         self.emit("stateChanged", (self.get_state(),))
 
     def get_temperature(self):
-        return self.ctrl.input.read()
+        try:
+            return self.ctrl.input.read()
+        except:
+            # try to read again
+            temp = self.ctrl.input.read()
+            if temp is None:
+                return 9999.
+        return temp
 
     def get_value(self):
         return self.get_temperature()
@@ -75,7 +84,7 @@ class Oxford700(HardwareObject):
         else:
             self._hw_ctrl.resume()
 
-    def get_state(self):
+    def get_specific_state(self):
         try:
             return self._hw_ctrl.read_run_mode().upper()
         except (AttributeError, TypeError):

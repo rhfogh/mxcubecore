@@ -35,8 +35,9 @@ from mxcubecore.CommandContainer import (
 )
 from mxcubecore import Poller
 from mxcubecore.dispatcher import saferef
+import numpy
 
-gevent_version = list(map(int, gevent.__version__.split('.')))
+gevent_version = list(map(int, gevent.__version__.split(".")))
 
 try:
     import PyTango
@@ -170,13 +171,13 @@ class TangoChannel(ChannelObject):
         self.timeout = int(timeout)
         self.read_as_str = kwargs.get("read_as_str", False)
         self._device_initialized = gevent.event.Event()
-        logging.getLogger("HWR").debug(
-            "creating Tango attribute %s/%s, polling=%s, timeout=%d",
-            self.device_name,
-            self.attribute_name,
-            polling,
-            self.timeout,
-        )
+        #logging.getLogger("HWR").debug(
+        #    "creating Tango attribute %s/%s, polling=%s, timeout=%d",
+        #    self.device_name,
+        #    self.attribute_name,
+        #    polling,
+        #    self.timeout,
+        #)
         self.init_device()
         self.continue_init(None)
         """
@@ -281,7 +282,6 @@ class TangoChannel(ChannelObject):
             value = self.raw_device.read_attribute(
                 self.attribute_name, PyTango.DeviceAttribute.ExtractAs.String
             ).value
-            # value = self.device.read_attribute_as_str(self.attribute_name).value
         else:
             value = self.raw_device.read_attribute(self.attribute_name).value
 
@@ -321,9 +321,13 @@ class TangoChannel(ChannelObject):
 
     def update(self, value=Poller.NotInitializedValue):
 
-        if value == Poller.NotInitializedValue:
+        # start with checking if we have a numpy array, as comparing
+        # numpy.ndarray to Poller.NotInitializedValue raises a ValueError exception
+        if isinstance(value, numpy.ndarray):
+            value = value.tolist()
+        elif value == Poller.NotInitializedValue:
             value = self.get_value()
-        if isinstance(value, tuple):
+        elif isinstance(value, tuple):
             value = list(value)
 
         self.value = value
@@ -337,17 +341,16 @@ class TangoChannel(ChannelObject):
         else:
             value = self.device.read_attribute(self.attribute_name).value
 
-        if value != self.value:
+        if isinstance(value, numpy.ndarray):
+            if not numpy.array_equal(value, self.value):
+                self.update(value)
+        elif value != self.value:
             self.update(value)
 
         return value
 
     def set_value(self, new_value):
         self.device.write_attribute(self.attribute_name, new_value)
-        # attr = PyTango.AttributeProxy(self.device_name + "/" + self.attribute_name)
-        # a = attr.read()
-        # a.value = newValue
-        # attr.write(a)
 
     def is_connected(self):
         return self.device is not None

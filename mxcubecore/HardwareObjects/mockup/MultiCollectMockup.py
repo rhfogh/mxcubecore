@@ -2,6 +2,9 @@ from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.abstract.AbstractMultiCollect import (
     AbstractMultiCollect,
 )
+
+from mxcubecore import HardwareRepository as HWR
+
 from mxcubecore.TaskUtils import task
 import logging
 import time
@@ -22,20 +25,20 @@ class MultiCollectMockup(AbstractMultiCollect, HardwareObject):
 
     def init(self):
         self.setControlObjects(
-            diffractometer=self.get_object_by_role("diffractometer"),
-            sample_changer=self.get_object_by_role("sample_changer"),
-            lims=self.get_object_by_role("dbserver"),
-            safety_shutter=self.get_object_by_role("safety_shutter"),
-            machine_current=self.get_object_by_role("machine_current"),
-            cryo_stream=self.get_object_by_role("cryo_stream"),
-            energy=self.get_object_by_role("energy"),
-            resolution=self.get_object_by_role("resolution"),
-            detector_distance=self.get_object_by_role("detector_distance"),
-            transmission=self.get_object_by_role("transmission"),
-            undulators=self.get_object_by_role("undulators"),
-            flux=self.get_object_by_role("flux"),
-            detector=self.get_object_by_role("detector"),
-            beam_info=self.get_object_by_role("beam_info"),
+            diffractometer=HWR.beamline.diffractometer,
+            sample_changer=HWR.beamline.sample_changer,
+            lims=HWR.beamline.lims,
+            safety_shutter=HWR.beamline.safety_shutter,
+            machine_current=HWR.beamline.machine_info,
+            cryo_stream=HWR.beamline.cryo,
+            energy=HWR.beamline.energy,
+            resolution=HWR.beamline.resolution,
+            detector_distance=HWR.beamline.detector.distance,
+            transmission=HWR.beamline.transmission,
+            undulators=HWR.beamline.undulators,
+            flux=HWR.beamline.flux,
+            detector=HWR.beamline.detector,
+            beam_info=HWR.beamline.beam,
         )
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True,))
@@ -160,7 +163,7 @@ class MultiCollectMockup(AbstractMultiCollect, HardwareObject):
     def prepare_oscillation(self, start, osc_range, exptime, npass):
         return (start, start + osc_range)
 
-    def do_oscillation(self, start, end, exptime, npass):
+    def do_oscillation(self, start, end, exptime, shutterless, npass, first_frame):
         gevent.sleep(exptime)
 
     def start_acquisition(self, exptime, npass, first_frame):
@@ -233,21 +236,21 @@ class MultiCollectMockup(AbstractMultiCollect, HardwareObject):
 
     def get_machine_current(self):
         if self.bl_control.machine_current is not None:
-            return self.bl_control.machine_current.getCurrent()
+            return self.bl_control.machine_current.get_current()
         else:
             return 0
 
     def get_machine_message(self):
         if self.bl_control.machine_current is not None:
-            return self.bl_control.machine_current.getMessage()
+            return self.bl_control.machine_current.get_message()
         else:
             return ""
 
     def get_machine_fill_mode(self):
         if self.bl_control.machine_current is not None:
-            return self.bl_control.machine_current.getFillMode()
+            return self.bl_control.machine_current.get_fill_mode()
         else:
-            ""
+            """"""
 
     def get_cryo_temperature(self):
         if self.bl_control.cryo_stream is not None:

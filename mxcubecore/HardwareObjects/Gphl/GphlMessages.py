@@ -27,9 +27,7 @@ import json
 from collections import OrderedDict
 from collections import namedtuple
 
-from mxcubecore.utils.conversion import string_types
-
-from mxcubecore.HardwareObjects import queue_model_enumerables
+from mxcubecore.model import crystal_symmetry
 
 __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
@@ -165,21 +163,6 @@ CHEMICAL_ELEMENTS = OrderedDict(
     )
 )
 
-CRYSTAL_SYSTEMS = (
-    "TRICLINIC",
-    "MONOCLINIC",
-    "ORTHORHOMBIC",
-    "TETRAGONAL",
-    "TRIGONAL",
-    "HEXAGONAL",
-    "CUBIC",
-)
-# Map from single letter code tro Crystal system name
-# # NB trigonal and hexagonal DO both have code 'h'
-CRYSTAL_SYSTEM_MAP = dict(zip("amothhc", CRYSTAL_SYSTEMS))
-
-POINT_GROUPS = ("1", "2", "222", "4", "422", "6", "622", "32", "23", "432")
-
 ParsedMessage = namedtuple(
     "ParsedMessage", ("message_type", "payload", "enactment_id", "correlation_id")
 )
@@ -206,12 +189,11 @@ class Payload(MessageData):
         if intent not in MESSAGE_INTENTS:
             if intent is None:
                 raise RuntimeError("Attempt to instantiate abstract class Payload")
-            else:
-                raise RuntimeError(
-                    "Programming error - "
-                    "Payload subclass %s intent %s must be one of: %s"
-                    % (self.__class__.__name__, intent, sorted(MESSAGE_INTENTS))
-                )
+            raise RuntimeError(
+                "Programming error - "
+                "Payload subclass %s intent %s must be one of: %s"
+                % (self.__class__.__name__, intent, sorted(MESSAGE_INTENTS))
+            )
 
     @property
     def intent(self):
@@ -302,7 +284,7 @@ class ConfigurationData(Payload):
     # (but raises MalformedUrlException) in Java.
 
     def __init__(self, location):
-        super(ConfigurationData, self).__init__()
+        super().__init__()
         self._location = location
 
     @property
@@ -318,7 +300,7 @@ class SubprocessStarted(Payload):
     INTENT = "EVENT"
 
     def __init__(self, name):
-        super(SubprocessStarted, self).__init__()
+        super().__init__()
         self._name = name
 
     @property
@@ -332,44 +314,71 @@ class ChooseLattice(Payload):
 
     INTENT = "COMMAND"
 
-    def __init__(self, lattice_format, solutions, crystalSystem=None, lattices=None):
-        super(ChooseLattice, self).__init__()
-        if lattice_format in INDEXING_FORMATS:
-            self._lattice_format = lattice_format
-        else:
-            raise ValueError(
-                "Indexing format %s not in supported formats: %s"
-                % (lattice_format, INDEXING_FORMATS)
-            )
-        if not lattices:
-            self._lattices = ()
-        elif isinstance(lattices, string_types):
-            # Allows you to pass in lattices as a string without silly errors
-            self._lattices = frozenset((lattices,))
-        else:
-            self._lattices = frozenset(lattices)
-        self._solutions = solutions
-        self._crystalSystem = crystalSystem
+    def __init__(
+        self,
+        indexingSolutions,
+        indexingFormat="IDXREF",
+        indexingHeader=None,
+        priorCrystalClasses=(),
+        priorSpaceGroup=None,
+        priorSpaceGroupString=None,
+        userProvidedCell=None,
+    ):
+        """
+
+        Args:
+            indexingSolutions (list(IndexingSolution):
+            indexingFormat (str):
+            indexingHeader str:
+            priorCrystalClasses sequence(str):
+            priorSpaceGroup int:
+            priorSpaceGroupString str:
+            userProvidedCell UnitCell:
+        """
+        super().__init__()
+
+        self._indexingSolutions = indexingSolutions
+        self._indexingFormat = indexingFormat
+        self._indexingHeader = indexingHeader
+        self._priorCrystalClasses = priorCrystalClasses or ()
+        self._priorSpaceGroup = priorSpaceGroup
+        self._priorSpaceGroupString= priorSpaceGroupString
+        self._userProvidedCell = userProvidedCell
 
     @property
-    def lattice_format(self):
-        """format of solutions string"""
-        return self._lattice_format
+    def priorCrystalClasses(self):
+        """tuple of crystal class names"""
+        return self._priorCrystalClasses
 
     @property
-    def crystalSystem(self):
-        """One-letter code for crystal system (one of 'amothhc')"""
-        return self._crystalSystem
+    def priorSpaceGroup(self):
+        """space group number"""
+        return self._priorSpaceGroup
 
     @property
-    def lattices(self):
-        """Expected lattices for solution"""
-        return self._lattices
+    def priorSpaceGroupString(self):
+        """space group name"""
+        return self._priorSpaceGroupString
 
     @property
-    def solutions(self):
-        """String containing proposed solutions"""
-        return self._solutions
+    def indexingSolutions(self):
+        """List of IndexingSolution"""
+        return self._indexingSolutions
+
+    @property
+    def indexingFormat(self):
+        """Indexing format"""
+        return self._indexingFormat
+
+    @property
+    def indexingHeader(self):
+        """Indexing header"""
+        return self._indexingHeader
+
+    @property
+    def userProvidedCell(self):
+        """User provided unit cell"""
+        return self._userProvidedCell
 
 
 class SelectedLattice(MessageData):
@@ -377,34 +386,27 @@ class SelectedLattice(MessageData):
 
     INTENT = "DOCUMENT"
 
-    def __init__(self, data_model, lattice_format, solution):
-        if lattice_format in INDEXING_FORMATS:
-            self._lattice_format = lattice_format
-        else:
-            raise ValueError(
-                "Indexing format %s not in supported formats: %s"
-                % (lattice_format, INDEXING_FORMATS)
-            )
-        self._solution = tuple(solution)
+    def __init__(
+        self,
+        data_model,
+        solution,
+    ):
+        self._solution = solution
         self._strategyDetectorSetting = data_model.detector_setting
         self._strategyWavelength = data_model.wavelengths[0]
-        self._strategyControl = json.dumps(
-            data_model.strategy_options, sort_keys=True
-        )
-
-    @property
-    def lattice_format(self):
-        """format of solutions string"""
-        return self._lattice_format
+        self._strategyControl = json.dumps(data_model.strategy_options, sort_keys=True)
+        self._userCrystalClasses = data_model.crystal_classes
+        sginfo = crystal_symmetry.SPACEGROUP_MAP.get(data_model.space_group)
+        self._userSpaceGroup = sginfo.number if sginfo else None
 
     @property
     def solution(self):
-        """Tuple of strings containing proposed solution"""
+        """Proposed solution"""
         return self._solution
 
     @property
     def strategyDetectorSetting(self):
-        """Resolution to use for strategy calculation and acquisition"""
+        """Detector setting to use for strategy calculation and acquisition"""
         return self._strategyDetectorSetting
 
     @property
@@ -415,8 +417,70 @@ class SelectedLattice(MessageData):
     @property
     def strategyControl(self):
         """JSON string of command line options (*without* prefix)
-        to use for startcal wrapper call"""
+        to use for stratcal wrapper call"""
         return self._strategyControl
+
+    @property
+    def userCrystalClasses(self):
+        """Crystal classes given by user"""
+        return self._userCrystalClasses
+
+    @property
+    def userSpaceGroup(self):
+        """Space group (int) given by user"""
+        return self._userSpaceGroup
+
+
+class IndexingSolution(MessageData):
+    """Indexing solution data"""
+
+    def __init__(
+        self,
+        bravaisLattice,
+        cell,
+        isConsistent=None,
+        latticeCharacter=None,
+        qualityOfFit=None,
+    ):
+        """
+
+        Args:
+            bravaisLattice (string): One of the 14 Bravais lattices ('aP' etc.)
+            cell (UnitCell):
+            isConsistent (bool): Is solution consistent with know symmetry?
+            latticeCharacter (int):  Integer 1-44
+            qualityOfFit (float):
+        """
+        self._bravaisLattice = bravaisLattice
+        self._cell = cell
+        self._isConsistent = isConsistent
+        self._latticeCharacter = latticeCharacter
+        self._qualityOfFit = qualityOfFit
+
+    @property
+    def bravaisLattice(self):
+        """One of the 14 Bravais lattices ('aP' etc.)"""
+        return self._bravaisLattice
+
+    @property
+    def cell(self):
+        """Unit ce;;"""
+        return self._cell
+
+    @property
+    def isConsistent(self):
+        """Is solution consistent with know symmetry?"""
+        return self._isConsistent
+
+    @property
+    def latticeCharacter(self):
+        """Integer 1-44"""
+        return self._latticeCharacter
+
+    @property
+    def qualityOfFit(self):
+        """"""
+        return self._qualityOfFit
 
 
 class CollectionDone(MessageData):
@@ -424,10 +488,11 @@ class CollectionDone(MessageData):
 
     INTENT = "EVENT"
 
-    def __init__(self, proposalId, status, imageRoot=None):
+    def __init__(self, proposalId, status, procWithLatticeParams=False, imageRoot=None):
         self._proposalId = proposalId
         self._imageRoot = imageRoot
         self._status = status
+        self._procWithLatticeParams = procWithLatticeParams
 
     @property
     def proposalId(self):
@@ -445,6 +510,11 @@ class CollectionDone(MessageData):
         """Integer status code for collection result"""
         return self._status
 
+    @property
+    def procWithLatticeParams(self):
+        """Boolean, whether lattice parameters should be used for processing"""
+        return self._procWithLatticeParams
+
 
 # Complex payloads
 
@@ -456,7 +526,7 @@ class WorkflowDone(Payload):
 
     def __init__(self, issues=None):
 
-        super(WorkflowDone, self).__init__()
+        super().__init__()
 
         if self.__class__.__name__ == "WorkflowDone":
             raise RuntimeError("Attempt to instantiate abstract class WorkflowDone")
@@ -668,7 +738,7 @@ class PositionerSetting(IdentifiedElement):
 
     def __init__(self, id_=None, **axisSettings):
 
-        super(PositionerSetting, self).__init__(id_=id_)
+        super().__init__(id_=id_)
 
         if self.__class__.__name__ == "PositionerSetting":
             # This class is abstract
@@ -708,7 +778,7 @@ class BcsDetectorSetting(DetectorSetting):
 
     @property
     def orgxy(self):
-        """Tuple, empty or of two floats; beam centre on detector """
+        """Tuple, empty or of two floats; beam centre on detector"""
         return self._orgxy
 
 
@@ -806,17 +876,26 @@ class UserProvidedInfo(MessageData):
     def __init__(self, data_model):
 
         self._scatterers = ()
-        lattice = data_model.crystal_system
-        self._lattice = lattice.upper() if lattice else None
-        self._pointGroup = data_model.point_group
-        space_group = queue_model_enumerables.SPACEGROUP_MAP.get(data_model.space_group)
-        self._spaceGroup = space_group.number if space_group else None
+        crystal_classes = data_model.crystal_classes
+        if crystal_classes:
+            self._crystalClasses = tuple(crystal_classes)
+        else:
+            self._crystalClasses = ()
+
+        space_group = data_model.space_group
+        sginfo = crystal_symmetry.SPACEGROUP_MAP.get(data_model.space_group)
+        self._spaceGroup = sginfo.number if sginfo else None
+        self._spaceGroupString = space_group or None
         cell_parameters = data_model.cell_parameters
         if cell_parameters:
             self._cell = UnitCell(*cell_parameters)
         else:
             self._cell = None
-        self._expectedResolution = data_model.aimed_resolution
+        detector_setting = data_model.detector_setting
+        if detector_setting:
+            self._expectedResolution = detector_setting.resolution
+        else:
+            self._expectedResolution = data_model.aimed_resolution
         self._isAnisotropic = None
 
     @property
@@ -824,16 +903,16 @@ class UserProvidedInfo(MessageData):
         return self._scatterers
 
     @property
-    def lattice(self):
-        return self._lattice
-
-    @property
-    def pointGroup(self):
-        return self._pointGroup
+    def crystalClasses(self):
+        return self._crystalClasses
 
     @property
     def spaceGroup(self):
         return self._spaceGroup
+
+    @property
+    def spaceGroupString(self):
+        return self._spaceGroupString
 
     @property
     def cell(self):
@@ -917,7 +996,7 @@ class Sweep(IdentifiedElement):
 
     def get_initial_settings(self):
         """Get dictionary of rotation and translation motor settings for start of sweep"""
-        result = self.goniostatSweepSetting.get_motor_settings()
+        result = dict(self.goniostatSweepSetting.axisSettings)
         result[self.goniostatSweepSetting.scanAxis] = self.start
         #
         return result
@@ -930,7 +1009,7 @@ class Scan(IdentifiedElement):
         self, width, exposure, imageStartNum, start, sweep, filenameParams, id_=None
     ):
 
-        super(Scan, self).__init__(id_=id_)
+        super().__init__(id_=id_)
 
         self._filenameParams = dict(filenameParams)
 
@@ -968,7 +1047,7 @@ class Scan(IdentifiedElement):
 
 
 class GeometricStrategy(IdentifiedElement, Payload):
-    """Geometric strategy """
+    """Geometric strategy"""
 
     INTENT = "COMMAND"
 
@@ -986,7 +1065,7 @@ class GeometricStrategy(IdentifiedElement, Payload):
         id_=None,
     ):
 
-        super(GeometricStrategy, self).__init__(id_=id_)
+        super().__init__(id_=id_)
 
         self._isInterleaved = isInterleaved
         self._isUserModifiable = isUserModifiable
@@ -1059,13 +1138,13 @@ class GeometricStrategy(IdentifiedElement, Payload):
 
 
 class CollectionProposal(IdentifiedElement, Payload):
-    """Collection proposal """
+    """Collection proposal"""
 
     INTENT = "COMMAND"
 
     def __init__(self, relativeImageDir, strategy, scans, id_=None):
 
-        super(CollectionProposal, self).__init__(id_=id_)
+        super().__init__(id_=id_)
 
         self._relativeImageDir = relativeImageDir
         self._strategy = strategy
@@ -1091,7 +1170,7 @@ class PriorInformation(Payload):
 
     def __init__(self, data_model, image_root):
 
-        super(PriorInformation, self).__init__()
+        super().__init__()
 
         # Look for existing uuid
         sample_model = data_model.get_sample_node()
@@ -1099,7 +1178,7 @@ class PriorInformation(Payload):
             if text:
                 try:
                     sampleId = uuid.UUID(text)
-                except Exception:
+                except:
                     # The error expected if this goes wrong is ValueError.
                     # But whatever the error we want to continue
                     pass
@@ -1170,7 +1249,7 @@ class CentringDone(Payload):
     INTENT = "DOCUMENT"
 
     def __init__(self, status, timestamp, goniostatTranslation):
-        super(CentringDone, self).__init__()
+        super().__init__()
         self._status = status
         self._timestamp = timestamp
         self._goniostatTranslation = goniostatTranslation
@@ -1195,25 +1274,27 @@ class SampleCentred(Payload):
 
     def __init__(self, data_model):
 
-        super(SampleCentred, self).__init__()
+        super().__init__()
         self._imageWidth = data_model.image_width
         self._transmission = 0.01 * data_model.transmission
         self._exposure = data_model.exposure_time
-        self._wedgeWidth = data_model.wedge_width
+        self._wedgeWidth = round(data_model.wedge_width / data_model.image_width)
         self._interleaveOrder = data_model.interleave_order
         self._beamstopSetting = data_model.beamstop_setting
         self._goniostatTranslations = frozenset(data_model.goniostat_translations)
+        self._repetition_count = data_model.repetition_count
 
+        self._detectorSetting = None
         if data_model.characterisation_done:
             self._wavelengths = tuple(data_model.wavelengths)
-            self._detectorSetting = None
         else:
             # Ths trick assumes that characterisation and diffractcal
-            # use one, the first, wavelength and default inbterleave order
-            # Which is true. Not the ideal place to put this code
+            # use one, the first, wavelength and default interleave order
+            # Which is true. Not the ideal place to put this code,
             # but it works.
             self._wavelengths = tuple((data_model.wavelengths[0],))
-            self._detectorSetting = data_model.detector_setting
+            if data_model.wftype != "diffractcal":
+                self._detectorSetting = data_model.detector_setting
 
     @property
     def imageWidth(self):
@@ -1233,6 +1314,7 @@ class SampleCentred(Payload):
 
     @property
     def wedgeWidth(self):
+        # Wedge width NB in *number of images*
         return self._wedgeWidth
 
     @property
@@ -1250,3 +1332,7 @@ class SampleCentred(Payload):
     @property
     def wavelengths(self):
         return self._wavelengths
+
+    @property
+    def repetition_count(self):
+        return self._repetition_count

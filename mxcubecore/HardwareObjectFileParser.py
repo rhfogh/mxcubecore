@@ -350,6 +350,9 @@ class HardwareObjectHandler(ContentHandler):
 
         if self.element_is_a_reference:
             if len(self.objects) > 0:
+                self.objects[-1].add_reference(
+                    name, self.reference, role=self.element_role
+                )
                 self.objects[0].add_reference(
                     name, self.reference, role=self.element_role
                 )

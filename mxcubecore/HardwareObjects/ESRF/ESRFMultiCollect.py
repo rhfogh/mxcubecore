@@ -4,13 +4,13 @@ import logging
 import time
 import os
 import math
-from mxcubecore.HardwareObjects.queue_model_objects import PathTemplate
+from mxcubecore.model.queue_model_objects import PathTemplate
 from mxcubecore.utils.conversion import string_types
 from mxcubecore import HardwareRepository as HWR
 
-from mxcubecore.HardwareObjects.ESRF.ESRFMetadataManagerClient import MXCuBEMetadataClient
-# NBNB nicoproc is not found
-from mxcubecore.utils import nicoproc
+from mxcubecore.HardwareObjects.ESRF.ESRFMetadataManagerClient import (
+    MXCuBEMetadataClient,
+)
 
 try:
     from httplib import HTTPConnection
@@ -23,6 +23,7 @@ try:
 except Exception:
     # Python3
     from urllib.parse import urlencode
+
 
 class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
     def __init__(self, name):
@@ -106,24 +107,12 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
         self.emit("collectConnected", (True,))
         self.emit("collectReady", (True,))
 
-    # Moved to AbstractMultiCollect, as it was called there
-    # @task
-    # def take_crystal_snapshots(self, number_of_snapshots):
-    #     HWR.beamline.diffractometer.take_snapshots(number_of_snapshots, wait=True)
-
-    @task
-    def data_collection_hook(self, data_collect_parameters):
-        if self._metadataClient is None:
-            self._metadataClient = MXCuBEMetadataClient(self)
-        self._metadataClient.start(data_collect_parameters)
-
     @task
     def data_collection_end_hook(self, data_collect_parameters):
-        if nicoproc.USE_NICOPROC:
-             nicoproc.stop()
-
         self._detector._emit_status()
-        self._metadataClient.end(data_collect_parameters)
+        HWR.beamline.lims.icat_client.create_mx_collection(data_collect_parameters)
+
+    #     self._metadataClient.end(data_collect_parameters)
 
     def prepare_oscillation(
         self,
@@ -158,15 +147,11 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
         self.close_fast_shutter()
 
     @task
-    def do_oscillation(
-        self, start, end, exptime, number_of_images, shutterless, npass, first_frame
-    ):
+    def do_oscillation(self, start, end, exptime, shutterless, npass, first_frame):
         if shutterless:
             if first_frame:
                 exptime = (exptime + self._detector.get_deadtime()) * number_of_images
-                self.oscillation_task = self.oscil(
-                    start, end, exptime, 1, wait=False
-                )
+                self.oscillation_task = self.oscil(start, end, exptime, npass wait=False)
 
             if self.oscillation_task.ready():
                 self.oscillation_task.get()
@@ -181,7 +166,6 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             self.close_fast_shutter()
         else:
             return self.execute_command("do_oscillation", start, end, exptime, npass)
-
 
     def set_wavelength(self, wavelength):
         if HWR.beamline.tunable_wavelength:
@@ -200,8 +184,6 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             self.close_fast_shutter()
             self.stop_oscillation()
             HWR.beamline.detector.stop_acquisition()
-            if nicoproc.USE_NICOPROC:
-                nicoproc.stop()
         except Exception:
             logging.getLogger("HWR").exception("")
 
@@ -297,10 +279,12 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             number_of_images,
             comment,
             self.mesh,
-            self.mesh_num_lines
+            self.mesh_num_lines,
         )
 
-    def set_detector_filenames(self, is_first_frame, frame_number, start, filename, shutterless):
+    def set_detector_filenames(
+        self, is_first_frame, frame_number, start, filename, shutterless
+    ):
         if is_first_frame or not shutterless:
             return self._detector.set_detector_filenames(frame_number, start, filename)
 
@@ -318,8 +302,12 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             self._detector._emit_status()
             return res
 
-    def last_image_saved(self):
-        return self._detector.last_image_saved()
+    def last_image_saved(self, total_time, exptime, num_images):
+        # check here if fast shutter is open ?
+        if HWR.beamline.detector.status["acq_satus"] == "RUNNING":
+            return int(total_time / exptime)
+        else:
+            return HWR.beamline.detector.last_image_saved()
 
     def stop_acquisition(self):
         return self._detector.stop_acquisition()
@@ -366,7 +354,7 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             self.raw_hkl2000_dir,
             autoprocessing_directory,
         ):
-            self.create_directories(dir)
+            self.create_directories(dir0)
             logging.info("Creating processing input file directory: %s", dir0)
             os.chmod(dir0, 0o777)
 
@@ -517,15 +505,15 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
 
     def get_machine_message(self):
         if HWR.beamline.machine_info:
-            return HWR.beamline.machine_info.getMessage()
+            return HWR.beamline.machine_info.get_message()
         else:
             return ""
 
     def get_machine_fill_mode(self):
         if HWR.beamline.machine_info:
-            return HWR.beamline.machine_info.getFillMode()
+            return HWR.beamline.machine_info.get_fill_mode()
         else:
-            ""
+            """"""
 
     def get_cryo_temperature(self):
         while True:

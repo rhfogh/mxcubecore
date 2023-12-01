@@ -37,6 +37,7 @@ class ISPyBRestClientMockup(HardwareObject):
         self.__rest_token = None
         self.__rest_token_timestamp = None
         self.base_result_url = None
+        self.login_ok = True
 
         self.__test_proposal = {
             "status": {"code": "ok"},
@@ -104,12 +105,14 @@ class ISPyBRestClientMockup(HardwareObject):
         :returns: None
 
         """
+        if password == "wrong":
+            raise Exception("Wrong credentials")
         self.__rest_token = "#MOCKTOKEN123"
         self.__rest_token_timestamp = datetime.now()
         self.__rest_username = user
         self.__rest_password = password
         msg = "Authenticated to LIMS token is: %s" % self.__rest_root
-        logging.getLogger("ispyb_client").exception(msg)
+        logging.getLogger("ispyb_client").debug(msg)
 
     def sample_link(self):
         """
@@ -255,7 +258,6 @@ class ISPyBRestClientMockup(HardwareObject):
         :returns: None
         """
         print("update_data_collection... ", mx_collection)
-        pass
 
     def store_image(self, image_dict):
         """
@@ -329,3 +331,6 @@ class ISPyBRestClientMockup(HardwareObject):
         :rtype: int
         """
         pass
+
+    def is_connected(self):
+        return self.login_ok
