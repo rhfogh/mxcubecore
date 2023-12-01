@@ -26,6 +26,7 @@ the QueueModel.
 import copy
 import os
 import logging
+import math
 import ruamel.yaml as yaml
 
 from mxcubecore.model import queue_model_enumerables

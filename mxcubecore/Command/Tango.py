@@ -144,7 +144,7 @@ class TangoChannel(ChannelObject):
     _tangoEventsQueue = queue.Queue()
     _eventReceivers = {}
 
-    _tangoEventsProcessingTimer = gevent.get_hub().loop.async()
+    _tangoEventsProcessingTimer = gevent.get_hub().loop.async_()
 
     # start Tango events processing timer
     _tangoEventsProcessingTimer.start(process_tango_events)

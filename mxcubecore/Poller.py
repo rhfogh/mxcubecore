@@ -94,7 +94,7 @@ class _Poller:
         self.delay = 0
         self.stop_event = Event()
 
-        self.async_watcher = gevent.get_hub().loop.async()
+        self.async_watcher = gevent.get_hub().loop.async_()
 
     def start_delayed(self, delay):
         self.delay = delay

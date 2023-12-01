@@ -23,16 +23,13 @@ from __future__ import print_function
 import time
 import PyTango
 import logging
+import gevent
 
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import Container
+from mxcubecore.HardwareObjects.abstract.sample_changer.Sample import Sample
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
-    Container,
-    Sample,
     SampleChanger,
     SampleChangerState,
-    argin,
-    gevent,
-    has_been_loaded,
-    new_loaded,
 )
 
 __author__ = "Michael Hellmig, Jie Nan, Bixente Rey"
@@ -197,8 +194,8 @@ class Cats90(SampleChanger):
             cats_name = self.get_property("tangoname")
         except AttributeError as e:
             logging.getLogger("HWR").debug(
-                "cats device not under tangoname, trying taurusname" 
-            )  
+                "cats device not under tangoname, trying taurusname"
+            )
             cats_name = self.get_property("taurusname")
         self.cats_device = PyTango.DeviceProxy( self.get_property("taurusname") )
 
@@ -436,7 +433,7 @@ class Cats90(SampleChanger):
         except PyTango.DevFailed as e:
             logging.getLogger("HWR").warning(
                 "Device failed with error %s" % (e)
-            )  
+            )
             #pass
 
         # find number of baskets and number of samples per basket
@@ -915,8 +912,7 @@ class Cats90(SampleChanger):
 
         if not self.has_loaded_sample() or not self._chnSampleIsDetected.get_value():
             logging.getLogger("HWR").warning(
-                "  Trying do unload sample, but it does not seem to be any on diffr:  %s"
-                % argin
+                "  Trying do unload sample, but it does not seem to be any on diffr"
             )
 
         if sample_slot is not None:
@@ -1396,11 +1392,11 @@ class Cats90(SampleChanger):
         old_sample = self.get_loaded_sample()
 
         old_address = None
-        if old_sample != None: 
-            old_address = old_sample.get_address() 
+        if old_sample != None:
+            old_address = old_sample.get_address()
         new_address = None
         if new_sample != None:
-            new_address = new_sample.get_address() 
+            new_address = new_sample.get_address()
         logging.getLogger("HWR").debug(
             "----- Cats90 -----.  Sample has changed. Dealing with it - new_sample = %s / old_sample = %s"
             % ( old_address, new_address )

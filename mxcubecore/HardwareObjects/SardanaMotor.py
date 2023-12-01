@@ -70,7 +70,7 @@ class SardanaMotor(AbstractMotor, HardwareObject):
         self.limit_lower = None
         self.static_limits = (-1e4, 1e4)
         self.limits = (None, None)
-        self.motor_state = MotorStates.INITIALIZING
+        self.motor_state = SardanaMotorState.NOTINITIALIZED
 
     def init(self):
         super().init()
@@ -189,7 +189,7 @@ class SardanaMotor(AbstractMotor, HardwareObject):
             elif self.motor_position <= self.limit_lower:
                 motor_state = SardanaMotorState.LOWLIMIT.value
 
-        self.set_ready(motor_state > MotorStates.DISABLED)
+        self.set_ready(motor_state > SardanaMotorState.DISABLED)
 
         if motor_state != self.motor_state:
             self.motor_state = motor_state
