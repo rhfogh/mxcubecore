@@ -78,7 +78,7 @@ RECENTRING_MODES = OrderedDict(
         ("Re-centre when orientation changes", "sweep"),
         ("Re-centre at the start of each wedge", "scan"),
         ("Re-centre all before acquisition start", "start"),
-        ("No manual re-centring, rely on calculated values", "none"),
+        ("No manual re-centring, rely on automatic recentring", "none"),
     )
 )
 
@@ -496,6 +496,7 @@ class GphlWorkflow(HardwareObject, object):
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
 
+        sweep_group_counts = {}
         orientations = OrderedDict()
         strategy_length = 0
         axis_setting_dicts = OrderedDict()
@@ -509,7 +510,13 @@ class GphlWorkflow(HardwareObject, object):
                 axis_settings = sweep.goniostatSweepSetting.axisSettings.copy()
                 axis_settings.pop(sweep.goniostatSweepSetting.scanAxis, None)
                 axis_setting_dicts[rotation_id] = axis_settings
+            count = sweep_group_counts.get(sweep.sweepGroup, 0) + 1
+            sweep_group_counts[sweep.sweepGroup] = count
 
+        is_interleaved = data_model.lattice_selected and (
+            len(data_model.get_beam_energy_tags()) > 1
+            or max(sweep_group_counts.values()) > 1
+        )
         # Make info_text and do some setting up
         axis_names = self.rotation_axis_roles
         if (
@@ -884,7 +891,7 @@ class GphlWorkflow(HardwareObject, object):
             ]
         )
 
-        if data_model.lattice_selected and data_model.get_interleave_order():
+        if is_interleaved:
             # NB We do not want the wedgeWdth widget for Diffractcal
             field_list.append(
                 {
@@ -940,14 +947,9 @@ class GphlWorkflow(HardwareObject, object):
         use_modes = ["sweep"]
         if len(orientations) > 1:
             use_modes.append("start")
-        if data_model.get_interleave_order():
-            use_modes.append("scan")
-        if self.recentring_file and (
-            data_model.lattice_selected
-            or wf_parameters.get("strategy_type") == "diffractcal"
-        ):
-            # Not Characteisation
             use_modes.append("none")
+        if is_interleaved:
+            use_modes.append("scan")
         for indx in range(len(modes) - 1, -1, -1):
             if modes[indx] not in use_modes:
                 del modes[indx]
@@ -1027,9 +1029,6 @@ class GphlWorkflow(HardwareObject, object):
             value = params.get(tag)
             if value:
                 result[tag] = int(value)
-
-            if geometric_strategy.isInterleaved:
-                result["interleaveOrder"] = data_model.get_interleave_order()
 
             for tag in beam_energies:
                 beam_energies[tag] = float(params.get(tag, 0))

@@ -705,7 +705,6 @@ class GphlWorkflowConnection(HardwareObject, object):
         else:
             detectorSetting = None
         return GphlMessages.GeometricStrategy(
-            isInterleaved=py4jGeometricStrategy.isInterleaved(),
             isUserModifiable=py4jGeometricStrategy.isUserModifiable(),
             allowedWidths=py4jGeometricStrategy.getAllowedWidths(),
             sweepOffset=py4jGeometricStrategy.getSweepOffset(),
