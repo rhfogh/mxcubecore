@@ -61,7 +61,8 @@
 <!--                <GPHL_MINICONDA_PATH >/alt/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_BETA_beta-academic/.mc38/</GPHL_MINICONDA_PATH>-->
 
         <!-- OPTIONAL for java binary =>defaults to just 'java' -->
-        <java_binary >/alt/rhfogh/Software/GPhL/mxcube_setup/jre1.8.0_144/bin/java</java_binary>
+<!--        <java_binary >/alt/rhfogh/Software/GPhL/mxcube_setup/jre1.8.0_144/bin/java</java_binary>-->
+        <java_binary >/opt/jdk11/bin/java</java_binary>
 
         <!-- Used ONLY for mock mode spectrum diffraction simulation -->
         <gphl_test_samples>test_samples</gphl_test_samples>
