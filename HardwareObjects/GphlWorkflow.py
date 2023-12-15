@@ -1537,7 +1537,7 @@ class GphlWorkflow(HardwareObject, object):
             # Handle orientations and (re) centring
 
             # NB this gets rotation axes always, and translation axes if present
-            motor_settings = sweep.get_motor_settings()
+            motor_settings = sweep.get_initial_settings()
 
             orientation = (
                 motor_settings.get("kappa"), motor_settings.get( "kappa_phi")

@@ -1027,7 +1027,7 @@ class Sweep(IdentifiedElement):
 
     def get_initial_settings(self):
         """Get dictionary of rotation and translation motor settings for start of sweep"""
-        result = dict(self.goniostatSweepSetting.axisSettings)
+        result = dict(self.goniostatSweepSetting.get_motor_settings())
         result[self.goniostatSweepSetting.scanAxis] = self.start
         #
         return result
