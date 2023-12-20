@@ -29,7 +29,7 @@ class DetectorMockup(AbstractDetector, HardwareObject):
         self.actual_frame_rate = 50
         self.roi_modes_list = ("0", "C2", "C16")
         self.roi_mode = 0
-        self.exposure_time_limits = [0.01, 60000]
+        self.exposure_time_limits = [0.0075, 60000]
         self.status = "ready"
         self.distance_motor_hwobj = self.getObjectByRole("distance_motor")
 

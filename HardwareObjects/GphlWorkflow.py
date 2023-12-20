@@ -372,7 +372,7 @@ class GphlWorkflow(HardwareObject, object):
 
         self._queue_entry = queue_entry
 
-        default_exposure_time = self.getProperty("default_exposure_time", 0)
+        default_exposure_time = float(self.getProperty("default_exposure_time", 0))
         default_exposure_time = max(
             default_exposure_time,  api.detector.get_exposure_time_limits()[0]
         )
@@ -718,14 +718,15 @@ class GphlWorkflow(HardwareObject, object):
             transmission = float(parameters.get("transmission") or 0.0)
             min_exposure, max_exposure = exposure_limits
 
-            # NB total_strategy_length use_dose aned experiment_time
+            # NB total_strategy_length use_dose and experiment_time
             # all relate to a single repetition
 
             if image_width and exposure_time and std_dose_rate and use_dose:
                 experiment_time = exposure_time * total_strategy_length / image_width
                 if transmission:
-                    prev_dose = (
-                        std_dose_rate * experiment_time * transmission / 100
+                    prev_dose = round(
+                        std_dose_rate * experiment_time * transmission / 100,
+                        use_dose_decimals
                     )
                     factor = use_dose / prev_dose
                     if factor >= 1:
