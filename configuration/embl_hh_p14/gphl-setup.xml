@@ -60,8 +60,6 @@
         <!-- OPTIONAL for miniconda Pythyon installation => $GPHL_MINICONDA_PATH/bin/activate -->
         <!--        <GPHL_MINICONDA_PATH >/write/me/here</GPHL_MINICONDA_PATH>-->
 
-        <!-- OPTIONAL for java binary =>defaults to just 'java' -->
-<!--        <java_binary >/usr/bin/java</java_binary>-->
 
         <!-- Used ONLY for mock mode spectrum diffraction simulation -->
         <gphl_test_samples>/data/users/p3l-gleb1/gphl/test_samples</gphl_test_samples>

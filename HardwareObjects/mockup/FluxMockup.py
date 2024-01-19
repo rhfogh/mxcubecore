@@ -19,6 +19,7 @@
 
 from random import random
 from HardwareRepository.HardwareObjects.abstract.AbstractFlux import AbstractFlux
+import api
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -36,5 +37,6 @@ class FluxMockup(AbstractFlux):
 
     def measure_flux(self):
         """Measures intesity"""
-        self._value = 0.5 * (1 + random()) * self._default_flux
+        transmission = api.transmission.get_value()
+        self._value = self._default_flux * (1 + 0.001 * random()) * transmission / 100.0
         self.emit("fluxValueChanged", self._value)

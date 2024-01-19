@@ -137,12 +137,7 @@ class GphlWorkflowConnection(HardwareObject, object):
                     raise ValueError("File path %s not recognised" % val)
             paths[tag] = val2
         paths["GPHL_INSTALLATION"] = installdir
-        if "java_binary" not in paths:
-            paths["java_binary"] = "java"
-        paths["gphl_java_classpath"] = (
-            "%s/ASTRAWorkflows/config:%s/ASTRAWorkflows/lib/*"
-            % (installdir, installdir)
-        )
+        paths["runworkflow"] = "%s/ASTRAWorkflows/bin/runworkflow" % installdir
 
         try:
             dd0 = next(self.getObjects("software_properties")).getProperties()
@@ -271,7 +266,8 @@ class GphlWorkflowConnection(HardwareObject, object):
             command_list.append(host)
         else:
             command_list = []
-        command_list.append(self.software_paths["java_binary"])
+        runworkflow_opts = []
+        command_list.append(self.software_paths["runworkflow"])
 
         # # HACK - debug options REMOVE!
         # import socket
@@ -281,7 +277,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         # command_list.append(ss0 % sock.getsockname()[0])
 
         for tag, val in sorted(params.get("invocation_properties", {}).items()):
-            command_list.extend(
+            runworkflow_opts.extend(
                 ConvertUtils.java_property(tag, val, quote_value=in_shell)
             )
 
@@ -315,18 +311,13 @@ class GphlWorkflowConnection(HardwareObject, object):
                 workflow_options["rootsubdir"] = rootsubdir
 
         # Hardcoded - location for log output
-        command_list.extend(
+        runworkflow_opts.extend(
             ConvertUtils.java_property(
                 "co.gphl.wf.wdir", workflow_options["wdir"], quote_value=in_shell
             )
         )
 
-        ll0 = ConvertUtils.command_option(
-            "cp", self.software_paths["gphl_java_classpath"], quote_value=in_shell
-        )
-        command_list.extend(ll0)
-
-        command_list.append(params["application"])
+        command_list.append(params["wf_selection"])
 
         for keyword, value in params.get("properties", {}).items():
             command_list.extend(
@@ -381,6 +372,11 @@ class GphlWorkflowConnection(HardwareObject, object):
         GPHL_MINICONDA_PATH = self.software_paths.get("GPHL_MINICONDA_PATH")
         if GPHL_MINICONDA_PATH:
             envs["GPHL_MINICONDA_PATH"] = GPHL_MINICONDA_PATH
+        if runworkflow_opts:
+            envs["RUNWORKFLOW_OPTS"] = " ".join(runworkflow_opts)
+        java_home = self.software_paths.get("java_home")
+        if java_home:
+            envs["JAVA_HOME"] = java_home
 
         logging.getLogger("HWR").info(
             "Executing GPhL workflow, in environment %s", envs

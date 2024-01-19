@@ -203,7 +203,6 @@
 
     <!-- Java invocation properties - syntax is e.g. '-Dfile.encoding=UTF-8' -->
     <invocation_properties>
-        <file.encoding>UTF-8</file.encoding>
         <!-- Logging properties. -->
 
         <!-- File name prefix for workflow log files -->
@@ -249,7 +248,7 @@
     <workflows>
 
         <Native>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <wf_selection>mxexpt</wf_selection>
             <strategy_type>native</strategy_type>
             <variants>full quick minimal long ultralong</variants>
             <documentation>
@@ -267,7 +266,7 @@
         </Native>
 
         <SingleAnomalousDispersion>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
             <variants>full quick ultralong detector_moved</variants>
             <documentation>
@@ -285,7 +284,7 @@
         </SingleAnomalousDispersion>
 
         <TwoWavelengthMAD>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_2wvl</variant>-->
             <variants>quick full ultralong detector_moved</variants>
@@ -305,7 +304,7 @@
         </TwoWavelengthMAD>
 
         <ThreeWavelengthMAD>
-            <application>co.gphl.wf.workflows.WFSimpleCharToProcessing</application>
+            <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_3wvl</variant>-->
             <variants>quick full ultralong detector_moved</variants>
@@ -325,7 +324,7 @@
         </ThreeWavelengthMAD>
 
         <TranslationalCalibration>
-            <application>co.gphl.wf.workflows.WFTransCal</application>
+            <wf_selection>transcal</wf_selection>
             <strategy_type>transcal</strategy_type>
             <variants>full</variants>
             <documentation>Translational calibration.
@@ -350,7 +349,7 @@
         </TranslationalCalibration>
 
         <DiffractometerCalibration>
-            <application>co.gphl.wf.workflows.WFDiffractCal</application>
+            <wf_selection>diffractcal</wf_selection>
             <strategy_type>diffractcal</strategy_type>
             <variants>full</variants>
             <documentation>Diffractometer calibration, full-length
@@ -376,7 +375,7 @@
         </DiffractometerCalibration>
 
         <DiffractometerCalibration-short>
-            <application>co.gphl.wf.workflows.WFDiffractCal</application>
+            <wf_selection>diffractcal</wf_selection>
             <strategy_type>diffractcal</strategy_type>
             <variants>minimal</variants>
             <documentation>Diffractometer calibration, short.

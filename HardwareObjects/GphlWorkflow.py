@@ -290,12 +290,13 @@ class GphlWorkflow(HardwareObject, object):
         for wf_node in self["workflows"]:
             name = wf_node.name()
             strategy_type = wf_node.getProperty("strategy_type")
+            wf_selection = wf_node.getProperty("wf_selection")
             variants = wf_node.getProperty("variants").strip().split()
             wf_dict = {
                 "name": name,
                 "strategy_type": strategy_type,
                 "variants": variants,
-                "application": wf_node.getProperty("application"),
+                "wf_selection": wf_selection,
                 "documentation": wf_node.getProperty("documentation", default_value=""),
                 "interleaveOrder": wf_node.getProperty(
                     "interleave_order", default_value=""
