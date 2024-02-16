@@ -199,8 +199,14 @@ class GphlWorkflow(HardwareObjectYaml):
         # Subprocess names to track which subprocess is getting info
         self._server_subprocess_names = {}
 
-        # Dictionary holding (directory, prefix, run_number, first_image) : motors_dict
-        self._scan_to_motors = OrderedDict()
+        # Dictionary holding (prefix, run_number, first_image) : scan_id
+        self._key_to_scan = OrderedDict()
+        # Dictionary of scan_id to id of actual translation used
+        self._scan_id_to_translation_id = {}
+        # Translation ID matching current centring
+        self._latest_translation_id = None
+        # GoniostatTranslations generated in recentring
+        self._recentrings = []
 
         # Rotation axis role names, ordered from holder towards sample
         self.rotation_axis_roles = []
@@ -803,6 +809,11 @@ class GphlWorkflow(HardwareObjectYaml):
             "collectOscillationStarted",
             HWR.beamline.collect,
         )
+        dispatcher.connect(
+            self.handle_collection_end,
+            "collectOscillationFinished",
+            HWR.beamline.collect,
+        )
         try:
             while True:
                 if self._workflow_queue is None:
@@ -833,6 +844,11 @@ class GphlWorkflow(HardwareObjectYaml):
             dispatcher.disconnect(
                 self.handle_collection_start,
                 "collectOscillationStarted",
+                HWR.beamline.collect,
+            )
+            dispatcher.disconnect(
+                self.handle_collection_end,
+                "collectOscillationFinished",
                 HWR.beamline.collect,
             )
 
@@ -1365,6 +1381,10 @@ class GphlWorkflow(HardwareObjectYaml):
         """
         geometric_strategy = payload
 
+        self._key_to_scan.clear()
+        self._scan_id_to_translation_id.clear()
+        self._recentrings = []
+
         # Set up
         gphl_workflow_model = self._queue_entry.get_data_model()
         wftype = gphl_workflow_model.wftype
@@ -1572,6 +1592,7 @@ class GphlWorkflow(HardwareObjectYaml):
             translation, current_pos_dict = self.execute_sample_centring(
                 q_e, sweepSetting
             )
+            self._latest_translation_id = translation.id_
             # Update current position
             current_okp = tuple(
                 current_pos_dict[role] for role in self.rotation_axis_roles
@@ -1579,7 +1600,6 @@ class GphlWorkflow(HardwareObjectYaml):
             current_xyz = tuple(
                 current_pos_dict[role] for role in self.translation_axis_roles
             )
-            goniostatTranslations.append(translation)
             gphl_workflow_model.current_rotation_id = sweepSetting.id_
 
         elif gphl_workflow_model.characterisation_done or wftype == "diffractcal":
@@ -1613,7 +1633,7 @@ class GphlWorkflow(HardwareObjectYaml):
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **translation_settings
                 )
-                goniostatTranslations.append(translation)
+                self._latest_translation_id = translation.id_
                 gphl_workflow_model.current_rotation_id = sweepSetting.id_
 
             else:
@@ -1624,13 +1644,13 @@ class GphlWorkflow(HardwareObjectYaml):
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
-                        goniostatTranslations.append(translation)
+                        self._latest_translation_id = None
                 else:
                     if has_recentring_file:
                         settings.update(translation_settings)
                     q_e = self.enqueue_sample_centring(motor_settings=settings)
                     translation, dummy = self.execute_sample_centring(q_e, sweepSetting)
-                    goniostatTranslations.append(translation)
+                    self._latest_translation_id = translation.id_
                     gphl_workflow_model.current_rotation_id = sweepSetting.id_
                     if recentring_mode == "start":
                         # We want snapshots in this mode,
@@ -1656,8 +1676,9 @@ class GphlWorkflow(HardwareObjectYaml):
                 requestedRotationId=sweepSetting.id_,
                 **translation_settings
             )
-            goniostatTranslations.append(translation)
+            self._latest_translation_id = translation.id_
             gphl_workflow_model.current_rotation_id = newRotation.id_
+        goniostatTranslations.append(translation)
 
         # calculate or determine centring for remaining sweeps
         for sweepSetting in sweepSettings[1:]:
@@ -1913,6 +1934,13 @@ class GphlWorkflow(HardwareObjectYaml):
             path_template.start_num = acq_parameters.first_image
             path_template.num_files = acq_parameters.num_images
 
+            key = (
+                path_template.base_prefix,
+                path_template.run_number,
+                path_template.start_num
+            )
+            self._key_to_scan[key] = scan
+
             # Handle orientations and (re) centring
             goniostatRotation = sweep.goniostatSweepSetting
             rotation_id = goniostatRotation.id_
@@ -2010,10 +2038,14 @@ class GphlWorkflow(HardwareObjectYaml):
         else:
             status = 0
 
+        failedScanIds = set(scan.id_ for scan in self._key_to_scan.values())
+
         return GphlMessages.CollectionDone(
             status=status,
             proposalId=collection_proposal.id_,
             procWithLatticeParams=gphl_workflow_model.use_cell_for_processing,
+            scanIdMap=self._scan_id_to_translation_id,
+            centrings=set(self._recentrings),
         )
 
     def select_lattice(self, payload, correlation_id):
@@ -2455,6 +2487,52 @@ class GphlWorkflow(HardwareObjectYaml):
         priorInformation = GphlMessages.PriorInformation(workflow_model, image_root)
         #
         return priorInformation
+
+
+    def handle_collection_end(
+        self, dummy1, dummy2, dummy3, dummy4, dummy5, collect_dict
+    ):
+        """ Read and process collectOscillationFinished signal
+        which means scan finished successfully"""
+        key = (
+            collect_dict["fileinfo"].get("prefix"),
+            collect_dict["fileinfo"].get("run_number"),
+            collect_dict["oscillation_sequence"][0].get("start_image_number")
+        )
+        scan = self._key_to_scan.pop(key, None)
+        if scan is None:
+            raise RuntimeError(
+                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at end"
+                % key
+            )
+
+        translation_settings = dict(
+            (role, collect_dict["motors"].get(role))
+            for role in self.translation_axis_roles
+        )
+        if None in translation_settings.values():
+            # No new centring done
+            print ('@~@~ IDs', key, self._latest_translation_id, scan.id_,
+                   type(self._latest_translation_id), type(scan.id_))
+            if self._latest_translation_id:
+                self._scan_id_to_translation_id[scan.id_] = self._latest_translation_id
+            else:
+                # NBNB RECHECK!!!
+                # We must be in centring mode None: No real centring known, use calculated
+                self._scan_id_to_translation[scan.id_] = None
+        else:
+            # We have recentred. Make new translation object
+            translation_settings = dict(
+                (role, HWR.beamline.diffractometer.get_motor_positions().get(role))
+                for role in self.translation_axis_roles
+            )
+            translation = GphlMessages.GoniostatTranslation(
+                requestedRotationId=scan.sweep.goniostatSweepSetting.id_,
+                **translation_settings
+            )
+            self._latest_translation_id = translation.id_
+            self._scan_id_to_translation_id[scan.id_] = translation.id_
+            print ('@~@~ NEW transl', key, translation.id_)
 
 
     def handle_collection_start(

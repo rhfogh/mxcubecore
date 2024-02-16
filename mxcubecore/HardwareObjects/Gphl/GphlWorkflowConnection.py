@@ -1030,8 +1030,25 @@ class GphlWorkflowConnection(HardwareObjectYaml):
         proposalId = jvm.java.util.UUID.fromString(
             conversion.text_type(collectionDone.proposalId)
         )
+        centrings = set(
+            self._GoniostatTranslation_to_java(translation)
+            for translation in collectionDone.centrings
+        )
+        scanIdMap = {}
+        for item in collectionDone.scanIdMap.items():
+            scanIdMap[
+                jvm.java.util.UUID.fromString(
+                    conversion.text_type(item[0])
+                )
+            ] = jvm.java.util.UUID.fromString(
+                conversion.text_type(item[1])
+            )
         return jvm.astra.messagebus.messages.information.CollectionDoneImpl(
-            proposalId, collectionDone.imageRoot, collectionDone.status
+            proposalId,
+            collectionDone.status,
+            collectionDone.procWithLatticeParams,
+            scanIdMap,
+            centrings,
         )
 
     def _SelectedLattice_to_java(self, selectedLattice):
