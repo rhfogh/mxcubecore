@@ -2505,6 +2505,24 @@ class GphlWorkflow(HardwareObjectYaml):
                 "No scan matching prefix: %s, run_number: %s, start_image_number: %s at end"
                 % key
             )
+    def handle_collection_start(
+        self, owner, blsampleid, barcode, location, collect_dict, osc_id
+    ):
+        """ Read and process collectOscillationStarted signal
+        Used to set actual centring positions
+
+        NB only collect_dict is reliably non-null"""
+        key = (
+            collect_dict["fileinfo"].get("prefix"),
+            collect_dict["fileinfo"].get("run_number"),
+            collect_dict["oscillation_sequence"][0].get("start_image_number")
+        )
+        scan = self._key_to_scan.get(key)
+        if scan is None:
+            raise RuntimeError(
+                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at start"
+                % key
+            )
 
         translation_settings = dict(
             (role, collect_dict["motors"].get(role))
@@ -2535,22 +2553,6 @@ class GphlWorkflow(HardwareObjectYaml):
             print ('@~@~ NEW transl', key, translation.id_)
 
 
-    def handle_collection_start(
-        self, owner, blsampleid, barcode, location, collect_dict, osc_id
-    ):
-        """ Read and process collectOscillationStarted signal
-        Used to set actual centring positions
-
-        NB only collect_dict is reliably non-null"""
-        key = (
-            collect_dict["fileinfo"].get("directory"),
-            collect_dict["fileinfo"].get("prefix"),
-            collect_dict["fileinfo"].get("run_number"),
-            collect_dict["oscillation_sequence"].get("start_image_number")
-        )
-        if key in self._scan_to_motors:
-            raise RuntimeError("Duplicate scan found: " + str(key))
-        self._scan_to_motors[key] = collect_dict["motors"].copy()
 
     # Utility functions
 
