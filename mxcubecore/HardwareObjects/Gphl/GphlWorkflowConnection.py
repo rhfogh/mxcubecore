@@ -662,6 +662,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
     def _GeometricStrategy_to_python(self, py4jGeometricStrategy):
         uuidString = py4jGeometricStrategy.getId().toString()
+        print ('@~@~ GEOMETRIV_STRATEGT')
         sweeps = frozenset(
             self._Sweep_to_python(x) for x in py4jGeometricStrategy.getSweeps()
         )
@@ -717,6 +718,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
     def _CollectionProposal_to_python(self, py4jCollectionProposal):
         uuidString = py4jCollectionProposal.getId().toString()
+        print ('@~@~ COLLECTION PROPOSAL')
         strategy = self._GeometricStrategy_to_python(
             py4jCollectionProposal.getStrategy()
         )
@@ -775,6 +777,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
         uuidString = py4jGoniostatRotation.getId().toString()
         axisSettings = py4jGoniostatRotation.getAxisSettings()
+        print ('@~@~ getting ROT uuid', uuidString)
         if isSweepSetting:
             scanAxis = py4jGoniostatRotation.getScanAxis()
             result = GphlMessages.GoniostatSweepSetting(
@@ -789,6 +792,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
         if py4jGoniostatTranslation:
             translationAxisSettings = py4jGoniostatTranslation.getAxisSettings()
             translationUuidString = py4jGoniostatTranslation.getId().toString()
+            print ('@~@~ TRANSL uuid', translationUuidString)
             # Next line creates Translation and links it to Rotation
             GphlMessages.GoniostatTranslation(
                 id_=uuid.UUID(translationUuidString),
@@ -1018,6 +1022,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
             result.setBeamstopSetting(self._BeamstopSetting_to_java(beamstopSetting))
 
         translationSettings = sampleCentred.goniostatTranslations
+        print ('@~@~ SampleCentred translations:', len(translationSettings))
         if translationSettings:
             result.setGoniostatTranslations(
                 list(self._GoniostatTranslation_to_java(x) for x in translationSettings)
@@ -1034,6 +1039,8 @@ class GphlWorkflowConnection(HardwareObjectYaml):
             self._GoniostatTranslation_to_java(translation)
             for translation in collectionDone.centrings
         )
+        print ('@~@~ PASSING centrings', centrings)
+        print ('@~@~ PASSING IdMap', list(collectionDone.scanIdMap.items()))
         scanIdMap = {}
         for item in collectionDone.scanIdMap.items():
             scanIdMap[
@@ -1204,9 +1211,12 @@ class GphlWorkflowConnection(HardwareObjectYaml):
         javaRotationId = jvm.java.util.UUID.fromString(
             conversion.text_type(gts.requestedRotationId)
         )
+        print (
+            '@~@~ SENDING transl',conversion.text_type(gts.id_), conversion.text_type(gts.requestedRotationId))
         axisSettings = dict(((x, float(y)) for x, y in gts.axisSettings.items()))
         newRotation = gts.newRotation
         if newRotation:
+            '@~@~ SENDING newrotationid',conversion.text_type(newRotation.id_),
             if isinstance(newRotation, GphlMessages.GoniostatSweepSetting):
                 javaNewRotation = self._GoniostatSweepSetting_to_java(newRotation)
             else:
@@ -1232,6 +1242,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
         grs = goniostatRotation
         javaUuid = jvm.java.util.UUID.fromString(conversion.text_type(grs.id_))
+        print ('@~@~ sending ROT uuid', conversion.text_type(grs.id_))
         axisSettings = dict(((x, float(y)) for x, y in grs.axisSettings.items()))
         # Long problematic, but now fixed (on both sides)
         return jvm.astra.messagebus.messages.instrumentation.GoniostatRotationImpl(
@@ -1247,6 +1258,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
             return None
 
         gss = goniostatSweepSetting
+        print ('@~@~ sending ROT sweep uuid', conversion.text_type(gss.id_))
         javaUuid = jvm.java.util.UUID.fromString(conversion.text_type(gss.id_))
         axisSettings = dict(((x, float(y)) for x, y in gss.axisSettings.items()))
         return jvm.astra.messagebus.messages.instrumentation.GoniostatSweepSettingImpl(
