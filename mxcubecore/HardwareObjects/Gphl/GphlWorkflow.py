@@ -1592,7 +1592,6 @@ class GphlWorkflow(HardwareObjectYaml):
             translation, current_pos_dict = self.execute_sample_centring(
                 q_e, sweepSetting
             )
-            print ('@~@~ new translation 1', str(translation.id_))
             self._latest_translation_id = translation.id_
             self._recentrings.append(translation)
             # Update current position
@@ -1635,7 +1634,6 @@ class GphlWorkflow(HardwareObjectYaml):
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **translation_settings
                 )
-                print ('@~@~ new translation 2', str(translation.id_))
                 self._latest_translation_id = translation.id_
                 self._recentrings.append(translation)
                 gphl_workflow_model.current_rotation_id = sweepSetting.id_
@@ -1648,14 +1646,12 @@ class GphlWorkflow(HardwareObjectYaml):
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
-                        print ('@~@~ new translation 3', str(translation.id_))
                         self._latest_translation_id = None
                 else:
                     if has_recentring_file:
                         settings.update(translation_settings)
                     q_e = self.enqueue_sample_centring(motor_settings=settings)
                     translation, dummy = self.execute_sample_centring(q_e, sweepSetting)
-                    print ('@~@~ new translation 4', str(translation.id_))
                     self._latest_translation_id = translation.id_
                     self._recentrings.append(translation)
                     gphl_workflow_model.current_rotation_id = sweepSetting.id_
@@ -1674,7 +1670,6 @@ class GphlWorkflow(HardwareObjectYaml):
                 (role, current_pos_dict[role]) for role in sweepSetting.axisSettings
             )
             newRotation = GphlMessages.GoniostatRotation(**rotation_settings)
-            print ('@~@~ new rotation')
             translation_settings = dict(
                 (role, current_pos_dict.get(role))
                 for role in self.translation_axis_roles
@@ -1684,7 +1679,6 @@ class GphlWorkflow(HardwareObjectYaml):
                 requestedRotationId=sweepSetting.id_,
                 **translation_settings
             )
-            print ('@~@~ new translation 5', str(translation.id_))
             self._latest_translation_id = translation.id_
             self._recentrings.append(translation)
             gphl_workflow_model.current_rotation_id = newRotation.id_
@@ -1719,7 +1713,6 @@ class GphlWorkflow(HardwareObjectYaml):
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **settings
                 )
-                print ('@~@~ new translation 6', str(translation.id_))
                 logging.getLogger("HWR").debug(
                     "GPHL calculate recentring: " +
                     ", ".join("%s:%s" % item for item in sorted(settings.items()))
@@ -2539,16 +2532,9 @@ class GphlWorkflow(HardwareObjectYaml):
             (role, collect_dict["motors"].get(role))
             for role in self.translation_axis_roles
         )
-        print ('@~@~ translatino settings', sorted(translation_settings.items()))
-        print (
-            '@~@~ latest, map', self._latest_translation_id,
-            list(self._scan_id_to_translation_id.items())
-        )
         if not self._scan_id_to_translation_id or None in translation_settings.values():
             # First sweep or not first scan in sweep
             # No new centring done
-            print ('@~@~ IDs', key, self._latest_translation_id, scan.id_,
-                   type(self._latest_translation_id), type(scan.id_))
             if self._latest_translation_id:
                 self._scan_id_to_translation_id[scan.id_] = self._latest_translation_id
             else:
@@ -2569,7 +2555,6 @@ class GphlWorkflow(HardwareObjectYaml):
             self._latest_translation_id = translation.id_
             self._scan_id_to_translation_id[scan.id_] = translation.id_
             self._recentrings.append(translation)
-            print ('@~@~ NEW transl', key, translation.id_)
 
 
 
