@@ -1594,6 +1594,7 @@ class GphlWorkflow(HardwareObjectYaml):
             )
             print ('@~@~ new translation 1', str(translation.id_))
             self._latest_translation_id = translation.id_
+            self._recentrings.append(translation)
             # Update current position
             current_okp = tuple(
                 current_pos_dict[role] for role in self.rotation_axis_roles
@@ -1636,6 +1637,7 @@ class GphlWorkflow(HardwareObjectYaml):
                 )
                 print ('@~@~ new translation 2', str(translation.id_))
                 self._latest_translation_id = translation.id_
+                self._recentrings.append(translation)
                 gphl_workflow_model.current_rotation_id = sweepSetting.id_
 
             else:
@@ -1655,6 +1657,7 @@ class GphlWorkflow(HardwareObjectYaml):
                     translation, dummy = self.execute_sample_centring(q_e, sweepSetting)
                     print ('@~@~ new translation 4', str(translation.id_))
                     self._latest_translation_id = translation.id_
+                    self._recentrings.append(translation)
                     gphl_workflow_model.current_rotation_id = sweepSetting.id_
                     if recentring_mode == "start":
                         # We want snapshots in this mode,
@@ -1683,6 +1686,7 @@ class GphlWorkflow(HardwareObjectYaml):
             )
             print ('@~@~ new translation 5', str(translation.id_))
             self._latest_translation_id = translation.id_
+            self._recentrings.append(translation)
             gphl_workflow_model.current_rotation_id = newRotation.id_
         goniostatTranslations.append(translation)
 
@@ -2564,6 +2568,7 @@ class GphlWorkflow(HardwareObjectYaml):
             )
             self._latest_translation_id = translation.id_
             self._scan_id_to_translation_id[scan.id_] = translation.id_
+            self._recentrings.append(translation)
             print ('@~@~ NEW transl', key, translation.id_)
 
 

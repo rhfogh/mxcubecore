@@ -1039,7 +1039,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
             self._GoniostatTranslation_to_java(translation)
             for translation in collectionDone.centrings
         )
-        print ('@~@~ PASSING centrings', centrings)
+        print ('@~@~ PASSING centrings', list(conversion.text_type(obj.id_) for obj in centrings))
         print ('@~@~ PASSING IdMap', list(collectionDone.scanIdMap.items()))
         scanIdMap = {}
         for item in collectionDone.scanIdMap.items():
