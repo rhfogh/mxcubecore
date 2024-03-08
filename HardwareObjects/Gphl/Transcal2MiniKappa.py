@@ -199,6 +199,23 @@ if __name__ == "__main__":
 
     from argparse import ArgumentParser, RawTextHelpFormatter
 
+    # # Quick test for calculating recen from minkappa data
+    # centring_axes = (
+    #     0.0,  1.0,  0.0,
+    #     -0.9999505209310272,  0, -0.00994764744888108,
+    #     -0.00994764744888108, 0,  0.9999505209310272
+    # )
+    # axis_names = ('phiy', 'sampx', 'sampy')
+    # kappadir = [0.0,-0.40673767,-0.913545]
+    # kappapos = [0.8748993557, 1.08189697255, 26.16091332]
+    # phidir =  [0, 0, -1]
+    # phipos = [0.76074652345, 1.01323486305, 26.26131615]
+    # home,csoc = make_home_data(
+    #     centring_axes, axis_names, kappadir, kappapos, phidir, phipos
+    # )
+    # print ('HOME: ', home)
+    # print ('CSOC', csoc)
+    # raise  Exception("Ka-BOOM!")
     parser = ArgumentParser(
         prog="Transcal2MiniKappa.py",
         formatter_class=RawTextHelpFormatter,

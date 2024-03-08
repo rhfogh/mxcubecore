@@ -2203,6 +2203,13 @@ class GphlWorkflow(HardwareObject, object):
             # Here we DO want to set translation motors,
             # even if MiniKappaCorrection is active
             settings.update(goniostatTranslation.axisSettings)
+
+        # Pre-move kappa and phi. This avoids going into centring phase during centring
+        current_motors = api.diffractometer.get_motor_positions()
+        kappa = settings.get("kappa", current_motors["kappa"])
+        kappa_phi = settings.get("kappa_phi", current_motors["kappa_phi"])
+        api.diffractometer.move_kappa_and_phi(kappa, kappa_phi, timeout = 60)
+
         centring_queue_entry = self.enqueue_sample_centring(motor_settings=settings)
         goniostatTranslation, dummy = self.execute_sample_centring(
             centring_queue_entry, goniostatRotation
@@ -2441,7 +2448,7 @@ class GphlWorkflow(HardwareObject, object):
             # First scan in sweep (not first sweep)
             # We have recentred. Make new translation object
             translation_settings = dict(
-                (role, HWR.beamline.diffractometer.get_motor_positions().get(role))
+                (role, api.diffractometer.get_motor_positions().get(role))
                 for role in self.translation_axis_roles
             )
             translation = GphlMessages.GoniostatTranslation(
