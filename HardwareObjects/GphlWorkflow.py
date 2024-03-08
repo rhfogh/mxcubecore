@@ -2208,7 +2208,9 @@ class GphlWorkflow(HardwareObject, object):
         current_motors = api.diffractometer.get_motor_positions()
         kappa = settings.get("kappa", current_motors["kappa"])
         kappa_phi = settings.get("kappa_phi", current_motors["kappa_phi"])
-        api.diffractometer.move_kappa_and_phi(kappa, kappa_phi, timeout = 60)
+        api.diffractometer.move_to_motors_positions(
+            {"kappa": kappa, "kappa_phi":kappa_phi}, wait=True
+        )
 
         centring_queue_entry = self.enqueue_sample_centring(motor_settings=settings)
         goniostatTranslation, dummy = self.execute_sample_centring(
