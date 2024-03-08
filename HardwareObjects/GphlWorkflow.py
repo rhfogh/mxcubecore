@@ -176,6 +176,15 @@ class GphlWorkflow(HardwareObject, object):
         # Subprocess names to track which subprocess is getting info
         self._server_subprocess_names = {}
 
+        # Dictionary holding (prefix, run_number, first_image) : scan_id
+        self._key_to_scan = OrderedDict()
+        # Dictionary of scan_id to id of actual translation used
+        self._scan_id_to_translation_id = {}
+        # Translation ID matching current centring
+        self._latest_translation_id = None
+        # GoniostatTranslations generated in recentring
+        self._recentrings = []
+
         # Rotation axis role names, ordered from holder towards sample
         self.rotation_axis_roles = []
 
@@ -407,31 +416,53 @@ class GphlWorkflow(HardwareObject, object):
             self._workflow_queue, self._queue_entry.get_data_model()
         )
 
-        while True:
-            if self._workflow_queue is None:
-                # We can only get that value if we have already done post_execute
-                # but the mechanics of aborting means we conme back
-                # Stop further processing here
-                raise QueueAbortedException("Aborting...", self)
+        dispatcher.connect(
+            self.handle_collection_start,
+            "collectOscillationStarted",
+            api.collect,
+        )
+        dispatcher.connect(
+            self.handle_collection_end,
+            "collectOscillationFinished",
+            api.collect,
+        )
+        try:
+            while True:
+                if self._workflow_queue is None:
+                    # We can only get that value if we have already done post_execute
+                    # but the mechanics of aborting means we conme back
+                    # Stop further processing here
+                    raise QueueAbortedException("Aborting...", self)
 
-            tt0 = self._workflow_queue.get()
-            if tt0 is StopIteration:
-                logging.getLogger("HWR").debug("GPhL queue StopIteration")
-                break
+                tt0 = self._workflow_queue.get()
+                if tt0 is StopIteration:
+                    logging.getLogger("HWR").debug("GPhL queue StopIteration")
+                    break
 
-            message_type, payload, correlation_id, result_list = tt0
-            func = self._processor_functions.get(message_type)
-            if func is None:
-                logging.getLogger("HWR").error(
-                    "GPhL message %s not recognised by MXCuBE. Terminating...",
-                    message_type,
-                )
-                break
-            else:
-                logging.getLogger("HWR").info("GPhL queue processing %s", message_type)
-                response = func(payload, correlation_id)
-                if result_list is not None:
-                    result_list.append((response, correlation_id))
+                message_type, payload, correlation_id, result_list = tt0
+                func = self._processor_functions.get(message_type)
+                if func is None:
+                    logging.getLogger("HWR").error(
+                        "GPhL message %s not recognised by MXCuBE. Terminating...",
+                        message_type,
+                    )
+                    break
+                else:
+                    logging.getLogger("HWR").info("GPhL queue processing %s", message_type)
+                    response = func(payload, correlation_id)
+                    if result_list is not None:
+                        result_list.append((response, correlation_id))
+        finally:
+            dispatcher.disconnect(
+                self.handle_collection_start,
+                "collectOscillationStarted",
+                api.collect,
+            )
+            dispatcher.disconnect(
+                self.handle_collection_end,
+                "collectOscillationFinished",
+                api.collect,
+            )
 
     def post_execute(self):
         """
@@ -1058,6 +1089,11 @@ class GphlWorkflow(HardwareObject, object):
 
     def setup_data_collection(self, payload, correlation_id):
         geometric_strategy = payload
+
+        self._key_to_scan.clear()
+        self._scan_id_to_translation_id.clear()
+        self._recentrings = []
+
         sweeps = geometric_strategy.get_ordered_sweeps()
         gphl_workflow_model = self._queue_entry.get_data_model()
         angular_tolerance = float(self.getProperty("angular_tolerance", 1.0))
@@ -1191,13 +1227,14 @@ class GphlWorkflow(HardwareObject, object):
             translation, current_pos_dict = self.execute_sample_centring(
                 qe, sweepSetting
             )
+            self._latest_translation_id = translation.id_
+            self._recentrings.append(translation)
             current_okp = tuple(
                 current_pos_dict[role] for role in self.rotation_axis_roles
             )
             current_xyz = tuple(
                 current_pos_dict[role] for role in self.translation_axis_roles
             )
-            goniostatTranslations.append(translation)
             gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
 
         elif gphl_workflow_model.lattice_selected or strategy_type == "diffractcal":
@@ -1229,7 +1266,8 @@ class GphlWorkflow(HardwareObject, object):
                 translation = GphlMessages.GoniostatTranslation(
                     rotation=sweepSetting, **translation_settings
                 )
-                goniostatTranslations.append(translation)
+                self._latest_translation_id = translation.id_
+                self._recentrings.append(translation)
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
 
             else:
@@ -1241,7 +1279,7 @@ class GphlWorkflow(HardwareObject, object):
                         translation = GphlMessages.GoniostatTranslation(
                             rotation=sweepSetting, **translation_settings
                         )
-                        goniostatTranslations.append(translation)
+                    self._latest_translation_id = None
                 else:
                     # We need to centre
                     if self.recentring_file:
@@ -1249,7 +1287,8 @@ class GphlWorkflow(HardwareObject, object):
                         settings.update(translation_settings)
                     qe = self.enqueue_sample_centring(motor_settings=settings)
                     translation, dummy = self.execute_sample_centring(qe, sweepSetting)
-                    goniostatTranslations.append(translation)
+                    self._latest_translation_id = translation.id_
+                    self._recentrings.append(translation)
                     gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
                     if recentring_mode == "start":
                         # We want snapshots in this mode,
@@ -1275,8 +1314,10 @@ class GphlWorkflow(HardwareObject, object):
                 requestedRotationId=sweepSetting.id_,
                 **translation_settings
             )
-            goniostatTranslations.append(translation)
+            self._latest_translation_id = translation.id_
+            self._recentrings.append(translation)
             gphl_workflow_model.set_current_rotation_id(newRotation.id_)
+        goniostatTranslations.append(translation)
 
         # calculate or determine centring for remaining sweeps
         for sweepSetting in sweepSettings[1:]:
@@ -1536,6 +1577,13 @@ class GphlWorkflow(HardwareObject, object):
             path_template.start_num = acq_parameters.first_image
             path_template.num_files = acq_parameters.num_images
 
+            key = (
+                path_template.base_prefix,
+                path_template.run_number,
+                path_template.start_num
+            )
+            self._key_to_scan[key] = scan
+
             # Handle orientations and (re) centring
 
             # NB this gets rotation axes always, and translation axes if present
@@ -1630,6 +1678,8 @@ class GphlWorkflow(HardwareObject, object):
         else:
             status = 0
 
+        failedScanIds = set(scan.id_ for scan in self._key_to_scan.values())
+
         # NB, uses last path_template,
         # but directory should be the same for all
         return GphlMessages.CollectionDone(
@@ -1638,6 +1688,8 @@ class GphlWorkflow(HardwareObject, object):
             procWithLatticeParams=gphl_workflow_model.get_use_cell_for_processing(),
             # Only if you want to override prior information rootdir, which we do not
             # imageRoot=path_template.directory
+            scanIdMap=self._scan_id_to_translation_id,
+            centrings=set(self._recentrings),
         )
 
     def select_lattice(self, payload, correlation_id):
@@ -1652,7 +1704,7 @@ class GphlWorkflow(HardwareObject, object):
 
             if not field_widget.block_updates:
                 # NB Needed in this function (only) as SelectionTable is not
-                # a parent l;ike for other fields
+                # a parent like for other fields
                 try:
                     field_widget.block_updates = True
 
@@ -2334,6 +2386,72 @@ class GphlWorkflow(HardwareObject, object):
         )
         #
         return priorInformation
+
+
+    def handle_collection_end(
+        self, dummy1, dummy2, dummy3, dummy4, dummy5, collect_dict
+    ):
+        """ Read and process collectOscillationFinished signal
+        which means scan finished successfully"""
+        key = (
+            collect_dict["fileinfo"].get("prefix"),
+            collect_dict["fileinfo"].get("run_number"),
+            collect_dict["oscillation_sequence"][0].get("start_image_number")
+        )
+        scan = self._key_to_scan.pop(key, None)
+        if scan is None:
+            raise RuntimeError(
+                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at end"
+                % key
+            )
+
+    def handle_collection_start(
+        self, owner, blsampleid, barcode, location, collect_dict, osc_id
+    ):
+        """ Read and process collectOscillationStarted signal
+        Used to set actual centring positions
+
+        NB only collect_dict is reliably non-null"""
+        key = (
+            collect_dict["fileinfo"].get("prefix"),
+            collect_dict["fileinfo"].get("run_number"),
+            collect_dict["oscillation_sequence"][0].get("start_image_number")
+        )
+        scan = self._key_to_scan.get(key)
+        if scan is None:
+            raise RuntimeError(
+                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at start"
+                % key
+            )
+
+        translation_settings = dict(
+            (role, collect_dict["motors"].get(role))
+            for role in self.translation_axis_roles
+        )
+        if not self._scan_id_to_translation_id or None in translation_settings.values():
+            # First sweep or not first scan in sweep
+            # No new centring done
+            if self._latest_translation_id:
+                self._scan_id_to_translation_id[scan.id_] = self._latest_translation_id
+            else:
+                # NBNB RECHECK!!!
+                # We must be in centring mode None: No real centring known, use calculated
+                self._scan_id_to_translation_id[scan.id_] = None
+        else:
+            # First scan in sweep (not first sweep)
+            # We have recentred. Make new translation object
+            translation_settings = dict(
+                (role, HWR.beamline.diffractometer.get_motor_positions().get(role))
+                for role in self.translation_axis_roles
+            )
+            translation = GphlMessages.GoniostatTranslation(
+                requestedRotationId=scan.sweep.goniostatSweepSetting.id_,
+                **translation_settings
+            )
+            self._latest_translation_id = translation.id_
+            self._scan_id_to_translation_id[scan.id_] = translation.id_
+            self._recentrings.append(translation)
+
 
     # Utility functions
 
