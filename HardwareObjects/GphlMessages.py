@@ -937,6 +937,7 @@ class UserProvidedInfo(MessageData):
         cell=None,
         expectedResolution=None,
         isAnisotropic=None,
+        referenceReflectionFile=None,
     ):
 
         self._scatterers = scatterers
@@ -950,6 +951,7 @@ class UserProvidedInfo(MessageData):
         self._cell = cell
         self._expectedResolution = expectedResolution
         self._isAnisotropic = isAnisotropic
+        self._referenceReflectionFile = referenceReflectionFile
 
     @property
     def scatterers(self):
@@ -978,6 +980,10 @@ class UserProvidedInfo(MessageData):
     @property
     def isAnisotropic(self):
         return self._isAnisotropic
+
+    @property
+    def referenceReflectionFile(self):
+        return self._referenceReflectionFile
 
 
 class Sweep(IdentifiedElement):

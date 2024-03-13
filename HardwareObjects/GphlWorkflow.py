@@ -2344,6 +2344,7 @@ class GphlWorkflow(HardwareObject, object):
             cell=unitCell,
             expectedResolution=api.collect.get_resolution(),
             isAnisotropic=None,
+            referenceReflectionFile=workflow_model.get_reference_reflection_file(),
         )
         ll0 = ["PriorInformation"]
         for tag in (

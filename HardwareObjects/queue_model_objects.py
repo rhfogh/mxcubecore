@@ -1818,6 +1818,7 @@ class GphlWorkflow(TaskNode):
         )
         self._recentring_mode = str()
         self._current_rotation_id = None
+        self._reference_reflection_file = None
 
         self._dose_budget = None
         self._decay_limit = workflow_hwobj.getProperty("default_decay_limit", 25)
@@ -2025,6 +2026,12 @@ class GphlWorkflow(TaskNode):
 
     def set_current_rotation_id(self, value):
         self._current_rotation_id = value
+
+    def get_reference_reflection_file(self):
+        return self._reference_reflection_file
+
+    def set_reference_reflection_file(self, value):
+        self._reference_reflection_file = value
 
     def get_path_template(self):
         return self.path_template
