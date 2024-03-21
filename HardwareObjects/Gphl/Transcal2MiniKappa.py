@@ -44,7 +44,7 @@ minikappa_xml_template = """<device class="MiniKappaCorrection">
 
 transcal_nml_template = """&SDCP_INSTRUMENT_LIST
 TRANS_CALIBRATION_NAME='transcal_p14'
-TRANS_HOME= %s, %s, -%s
+TRANS_HOME= %s, %s, %s
 TRANS_CROSS_SEC_OF_SOC=%s, %s, %s
 /"""
 
