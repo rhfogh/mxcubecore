@@ -4,8 +4,10 @@
     <!-- combined with instcfgout parameter (see below); see also <newinstr> option -->
     <!--<instcfgout_dir>/MXCuBE/mxcube</instcfgout_dir>-->
 
+    <default_exposure_time>0.01</default_exposure_time>
+
     <!-- Use multitrigger collection when set -->
-    <!--    <use_multitrigger>True</use_multitrigger>-->
+    <use_multitrigger>True</use_multitrigger>
 
     <!-- Use advanced_mode for adidtional UI options. Uncoment to set -->
     <advanced_mode>True</advanced_mode>
@@ -17,7 +19,7 @@
 
     <!-- default values for image width popup; may be overridden by the workflow -->
     <!-- The first value is the default; values are sorted before use -->
-    <default_image_widths> 0.1 0.05 0.2</default_image_widths>
+    <default_image_widths> 0.1 0.01 0.025 0.05 0.2</default_image_widths>
 
     <!-- tolerance for deciding whether angles match, in degrees;
     used to compare kappa and phi to decide if orientation needs separate centring -->
@@ -32,21 +34,16 @@
     <!-- at the highest resolution is 25% of t starting intensity -->
     <!-- Assuming an in increase in B factor of 1 A^2/MGy -->
     <!-- The formula used is dose_budget =
-          2 * resolution**2 * log(100. / decay_limit) -->
+          2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
     <default_decay_limit>25</default_decay_limit>
-
-    <!-- Optional. If not set, or too short, set to lower time limit -->
-    <default_exposure_time>0.01</default_exposure_time>
-
-    <!-- Default force use input unit cell and space group for processing -->
-    <use_cell_for_processing>True</use_cell_for_processing>
 
     <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
     <maximum_dose_budget>20</maximum_dose_budget>
 
     <!-- Percentage of dose budget to propose for use in characterisation.  -->
-    <characterisation_budget_percent>5</characterisation_budget_percent>
+    <characterisation_budget_fraction>0.05</characterisation_budget_fraction>
 
+    <!--disable_recen>True</disable_recen-->
 
     <!-- Characterisation strategies popup. -->
     <!-- names refer to stategies in  strategylib.nml -->
@@ -70,7 +67,7 @@
     <display_energy_decimals>4</display_energy_decimals>
 
     <!-- Default wedge width in degrees, for interleaved data collection -->
-    <default_wedge_width>15</default_wedge_width>
+    <default_wedge_width>30</default_wedge_width>
 
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
     <default_snapshot_count>2</default_snapshot_count>
@@ -89,10 +86,6 @@
         )
      mode "none" is not allowed as default -->
     <default_recentring_mode>sweep</default_recentring_mode>
-
-    <!-- If set (to *any* non-empty value) will disable precalculation of centrings-->
-<!--    <disable_recen>True</disable_recen>-->
-
 
     <!-- Popup of test crystal parameters for Diffreaction calibration -->
     <!-- The cell dimensions will be used for aP_wf_rotcal calculation -->
@@ -203,6 +196,7 @@
 
     <!-- Java invocation properties - syntax is e.g. '-Dfile.encoding=UTF-8' -->
     <invocation_properties>
+        <file.encoding>UTF-8</file.encoding>
         <!-- Logging properties. -->
 
         <!-- File name prefix for workflow log files -->
@@ -239,7 +233,8 @@
         <co.gphl.wf.simcal_predict.cell_dim_sd_scale>1.5e-3</co.gphl.wf.simcal_predict.cell_dim_sd_scale>
 <!--        <co.gphl.wf.simcal_predict.mosaicity>0.2</co.gphl.wf.simcal_predict.mosaicity>-->
         <co.gphl.wf.simcal_predict.mosaicity>0.05</co.gphl.wf.simcal_predict.mosaicity>
-    </workflow_properties>
+        <co.gphl.wf.process.detach>true</co.gphl.wf.process.detach>
+   </workflow_properties>
 
     <!-- List of supported workflows, with control options for each -->
     <!-- This defines the workflow pulldown. -->

@@ -384,7 +384,7 @@ class GphlWorkflow(HardwareObject, object):
 
         default_exposure_time = float(self.getProperty("default_exposure_time", 0))
         default_exposure_time = max(
-            default_exposure_time,  api.detector.get_exposure_time_limits()[0]
+            default_exposure_time,  api.detector.get_exposure_time_limits()[0] * 1.001
         )
         queue_entry.get_data_model().set_default_exposure_time(default_exposure_time)
 
@@ -524,6 +524,8 @@ class GphlWorkflow(HardwareObject, object):
 
         # Number of decimals for rounding use_dose values
         use_dose_decimals = 4
+        # Number of decimals for rounding exposure times
+        exposure_time_decimals = 6
 
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
@@ -749,6 +751,12 @@ class GphlWorkflow(HardwareObject, object):
             use_dose = float(parameters.get("use_dose") or 0.0)
             transmission = float(parameters.get("transmission") or 0.0)
             min_exposure, max_exposure = exposure_limits
+            # Adjust min/max values to avoid problems with set values right on limits
+            padding = 2 * 0.1 ** exposure_time_decimals
+            if min_exposure:
+                min_exposure += padding
+            if max_exposure:
+                max_exposure = max(min_exposure , max_exposure - padding)
 
             # NB total_strategy_length use_dose and experiment_time
             # all relate to a single repetition
@@ -859,7 +867,7 @@ class GphlWorkflow(HardwareObject, object):
                     "defaultValue": default_exposure,
                     "lowerBound": exposure_limits[0],
                     "upperBound": exposure_limits[1],
-                    "decimals": 6,
+                    "decimals": exposure_time_decimals,
                     "update_function": update_exptime,
                 },
                 {
@@ -1172,6 +1180,7 @@ class GphlWorkflow(HardwareObject, object):
             "GphlWorkflow: setting transmission to %7.3f %%" % (100.0 * transmission)
         )
         api.transmission.set_value(100 * transmission)
+        api.transmission .wait_ready(20)
 
         new_resolution = parameters.pop("resolution")
         if (
