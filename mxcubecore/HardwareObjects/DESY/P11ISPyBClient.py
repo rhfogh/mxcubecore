@@ -1,6 +1,6 @@
 import logging
 import ssl
-from mxcubecore.mxcubecore.HardwareObjects.ProposalISPyBLims import ISPyBClient
+from mxcubecore.mxcubecore.HardwareObjects.ISPyBLims import ISPyBClient
 from mxcubecore import HardwareRepository as HWR
 
 ssl._create_default_https_context = ssl._create_unverified_context
