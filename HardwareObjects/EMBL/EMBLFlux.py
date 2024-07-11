@@ -473,29 +473,30 @@ class EMBLFlux(AbstractFlux):
             logging.getLogger("HWR").debug("Measure flux: Fast shutter closed")
 
             intensity_value = intens_value[0] - 6.65e-7 #2.780e-6
-            self.measured_flux_list.append(
-                self.get_flux_result(intensity_value)
-                )
+            self.measured_flux_list.append(self.get_flux_result(intensity_value))
             try:
-	       self.cmd_slits_record([self.measured_flux_list[0]['size_x'],
-                                      self.measured_flux_list[0]['size_y']])
-               self.cmd_flux_record(self.measured_flux_list[0]['flux'])
-               gevent.sleep(2)
+                self.cmd_slits_record(
+                    [
+                        self.measured_flux_list[0]['size_x'],
+                        self.measured_flux_list[0]['size_y']
+                    ]
+                )
+                self.cmd_flux_record(self.measured_flux_list[0]['flux'])
+                gevent.sleep(2)
             except:
                pass
             self.print_log(
-            "GUI",
-            "info",
-            "Flux measurement results: \n\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.1f sec \nNumber of frames @ %d Hz= %d\n"
-	     %(self.measured_flux_list[0]['size_x']*1000,
-	       self.measured_flux_list[0]['size_y']*1000,
-               self.measured_flux_list[0]['flux'],
-               self.measured_flux_list[0]["dose_rate"],
-               self.measured_flux_list[0]["time_to_reach_limit"],
-               max_frame_rate,
-               self.measured_flux_list[0]["frames_to_reach_limit"])
-        )
-
+                "GUI",
+                "info",
+                "Flux measurement results: \n\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.1f sec \nNumber of frames @ %d Hz= %d\n"
+                %(self.measured_flux_list[0]['size_x']*1000,
+                self.measured_flux_list[0]['size_y']*1000,
+                self.measured_flux_list[0]['flux'],
+                self.measured_flux_list[0]["dose_rate"],
+                self.measured_flux_list[0]["time_to_reach_limit"],
+                max_frame_rate,
+                self.measured_flux_list[0]["frames_to_reach_limit"])
+            )
 
 
         self.emit("progressStep", 10, "Restoring original state")
