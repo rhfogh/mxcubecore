@@ -1477,6 +1477,7 @@ class GphlWorkflow(HardwareObject, object):
         last_orientation = ()
         maxdev = -1
         snapshotted_rotation_ids = set()
+        last_detector_distance = -999.0
         for scan in scans:
             sweep = scan.sweep
             goniostatRotation = sweep.goniostatSweepSetting
@@ -1508,10 +1509,15 @@ class GphlWorkflow(HardwareObject, object):
             ##
             wavelength = sweep.beamSetting.wavelength
             acq_parameters.energy = api.energy._calculate_energy(wavelength)
-            detdistance = sweep.detectorSetting.axisSettings["Distance"]
-            # not needed when detdistance is set :
-            # acq_parameters.resolution = resolution
-            acq_parameters.detdistance = detdistance
+            detector_distance = sweep.detectorSetting.axisSettings["Distance"]
+            if detector_distance == last_detector_distance:
+                # Keep last detector distance without resetting
+                acq_parameters.detector_distance = None
+            else:
+                last_detector_distance = detector_distance
+                acq_parameters.detector_distance =  detector_distance
+            # not needed, since we always use detector distance:
+            acq_parameters.resolution = None
             # transmission is not passed from the workflow (yet)
             # it defaults to current value (?), so no need to set it
             # acq_parameters.transmission = transmission*100.0
