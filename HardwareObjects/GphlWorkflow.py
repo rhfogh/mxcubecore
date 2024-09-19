@@ -1282,12 +1282,9 @@ class GphlWorkflow(HardwareObject, object):
             else:
 
                 if recentring_mode == "none":
-                    if self.recentring_file:
-                        # If we have recentring use it
-                        # If not, never mind, presumably we have MiniKappaCorrescion
-                        translation = GphlMessages.GoniostatTranslation(
-                            rotation=sweepSetting, **translation_settings
-                        )
+                    translation = GphlMessages.GoniostatTranslation(
+                        rotation=sweepSetting, **translation_settings
+                    )
                     self._latest_translation_id = None
                 else:
                     # We need to centre
