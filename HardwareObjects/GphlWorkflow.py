@@ -1278,13 +1278,18 @@ class GphlWorkflow(HardwareObject, object):
                 self._latest_translation_id = translation.id_
                 self._recentrings.append(translation)
                 gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
+                goniostatTranslations.append(translation)
 
             else:
 
                 if recentring_mode == "none":
-                    translation = GphlMessages.GoniostatTranslation(
-                        rotation=sweepSetting, **translation_settings
-                    )
+                    if self.recentring_file:
+                        # If we have recentring use it
+                        # If not, never mind, presumably we have MiniKappaCorrescion
+                        translation = GphlMessages.GoniostatTranslation(
+                            rotation=sweepSetting, **translation_settings
+                        )
+                        goniostatTranslations.append(translation)
                     self._latest_translation_id = None
                 else:
                     # We need to centre
@@ -1296,6 +1301,7 @@ class GphlWorkflow(HardwareObject, object):
                     self._latest_translation_id = translation.id_
                     self._recentrings.append(translation)
                     gphl_workflow_model.set_current_rotation_id(sweepSetting.id_)
+                    goniostatTranslations.append(translation)
                     if recentring_mode == "start":
                         # We want snapshots in this mode,
                         # and the first sweep is skipped in the loop below
@@ -1323,7 +1329,7 @@ class GphlWorkflow(HardwareObject, object):
             self._latest_translation_id = translation.id_
             self._recentrings.append(translation)
             gphl_workflow_model.set_current_rotation_id(newRotation.id_)
-        goniostatTranslations.append(translation)
+            goniostatTranslations.append(translation)
 
         # calculate or determine centring for remaining sweeps
         for sweepSetting in sweepSettings[1:]:
