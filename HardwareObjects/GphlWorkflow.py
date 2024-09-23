@@ -1238,6 +1238,7 @@ class GphlWorkflow(HardwareObject, object):
             )
             self._latest_translation_id = translation.id_
             self._recentrings.append(translation)
+            goniostatTranslations.append(translation)
             current_okp = tuple(
                 current_pos_dict[role] for role in self.rotation_axis_roles
             )
