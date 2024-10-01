@@ -145,7 +145,7 @@ class AbstractMultiCollect(object):
     def set_detector_filenames(
         self, is_first_frame, frame_number, start, filename, shutterless
     ):
-        passself.number_of_snapshots = 0
+        pass
 
     @abc.abstractmethod
     def last_image_saved(self):
@@ -316,16 +316,16 @@ class AbstractMultiCollect(object):
     def new_take_snapshots(self, dc_params):
         snapshot_directory = dc_params["fileinfo"]["archive_directory"]
 
+        number_of_snapshots = self.number_of_snapshots
         if HWR.beamline.diffractometer.in_plate_mode():
-            if number_of_snapshots > 0:
-                number_of_snapshots = 1
+            number_of_snapshots = min(number_of_snapshots, 1)
 
         if not os.path.exists(snapshot_directory):
             self.create_directories(snapshot_directory)
 
         image_path_list = []
 
-        for snapshot_index in range(self.number_of_snapshots):
+        for snapshot_index in range(number_of_snapshots):
             snapshot_filename = os.path.join(
                 snapshot_directory,
                 "%s_%s_%s.snapshot.jpeg"
