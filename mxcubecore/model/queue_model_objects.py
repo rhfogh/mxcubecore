@@ -1982,6 +1982,7 @@ class GphlWorkflow(TaskNode):
         self.space_group = str()
         self.crystal_classes = ()
         self._cell_parameters = ()
+        self.crystal_thickness = 0.0 # Minimum dimension of crystal, in micron
         self.detector_setting = None  # from 'resolution' parameter or defaults
         self.aimed_resolution = None  # from 'resolution' parameter or defaults
         self.wavelengths = ()  # from 'energies' parametes
@@ -2053,6 +2054,7 @@ class GphlWorkflow(TaskNode):
             "space_group",
             "crystal_classes",
             "_cell_parameters",
+            "crystal_thickness",
             "use_cell_for_processing",
             "relative_rad_sensitivity",
             "aimed_resolution",
@@ -2091,6 +2093,7 @@ class GphlWorkflow(TaskNode):
         init_spot_dir=None,
         relative_rad_sensitivity=None,
         use_cell_for_processing=None,
+        crystal_thickness=None,
         **unused,
     ):
         """
@@ -2105,6 +2108,7 @@ class GphlWorkflow(TaskNode):
         :param init_spot_dir (str):
         :param relative_rad_sensitivity (float):
         :param use_cell_for_processing (bool):
+        :param crystal_thickness (float):
         :param unused (dict):
         :return (None):
         """
@@ -2131,6 +2135,9 @@ class GphlWorkflow(TaskNode):
             )
         if cell_parameters:
             self.cell_parameters = cell_parameters
+
+        if crystal_thickness:
+            self.crystal_thickness = crystal_thickness
 
         interleave_order = self.strategy_settings.get("interleave_order")
         if interleave_order:
@@ -2329,6 +2336,7 @@ class GphlWorkflow(TaskNode):
             "decay_limit",
             "maximum_dose_budget",
             "characterisation_budget_fraction",
+            "crystal_thickness",
         ):
             value = params.get(tag)
             if value:
