@@ -62,6 +62,8 @@ from mxcubecore.queue_entry import (
     QueueAbortedException,
 )
 
+from mxlims import crystallography as mxmodel
+
 
 @enum.unique
 class GphlWorkflowStates(enum.Enum):
@@ -906,6 +908,11 @@ class GphlWorkflow(HardwareObject):
 
         self._workflow_queue = gevent.queue.Queue()
 
+    def start_enactment(self, enactment_id:str):
+        """Set enactment_id and initialise MXLIMS MXExperiment"""
+        self._queue_entry.get_data_model().enactment_id = enactment_id
+        self._queue_entry.start_enactment()
+
     def execute(self):
         if self._workflow_queue is None:
             return
@@ -955,6 +962,8 @@ class GphlWorkflow(HardwareObject):
                 elif message_type == "String":
                     if not self.config.settings.get("suppress_external_log_output"):
                         func(payload, correlation_id)
+                elif message_type == "StartEnactment":
+                    self.start_enactment(payload)
                 else:
                     self.log.info("GPhL queue processing %s", message_type)
                     response = func(payload, correlation_id)
