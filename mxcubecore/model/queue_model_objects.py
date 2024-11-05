@@ -1971,6 +1971,7 @@ class GphlWorkflow(TaskNode):
         self.maximum_dose_budget = 20.0
         self.decay_limit = 25
         self.characterisation_budget_fraction = 0.05
+        self.enactment_id = None
 
         # string. Only active mode currently is 'MASSIF1'
         self.automation_mode = None
