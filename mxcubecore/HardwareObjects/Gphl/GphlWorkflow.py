@@ -38,6 +38,7 @@ import subprocess
 import time
 from collections import OrderedDict
 from urllib.parse import urlparse
+from uuid import uuid1
 
 import f90nml
 import gevent
@@ -921,7 +922,10 @@ class GphlWorkflow(HardwareObject):
             workflow_parameters.get("workflow_type")
             or data_model.strategy_type
         )
-        tracking_data.location_id = workflow_parameters.get("workflow_position_id")
+        tracking_data.location_id = (
+            workflow_parameters.get("workflow_position_id")
+            or uuid1().hex
+        )
         # NB first orientation only:
         tracking_data.orientation_id = workflow_parameters.get(
             "workflow_kappa_settings_id"
@@ -2164,7 +2168,7 @@ class GphlWorkflow(HardwareObject):
             data_collection.workflow_parameters = new_workflow_parameters
             tracking_data = data_collection.tracking_data
             tracking_data.uuid = scan.id_
-            tracking_data.workflow_name = wf_tracking_data.experiment_strategy
+            tracking_data.workflow_name = wf_tracking_data.workflow_name
             tracking_data.workflow_type = wf_tracking_data.workflow_type
             tracking_data.workflow_uid = wf_tracking_data.uuid
             tracking_data.location_id = wf_tracking_data.location_id
