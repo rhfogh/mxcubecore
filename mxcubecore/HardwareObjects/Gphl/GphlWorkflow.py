@@ -36,7 +36,6 @@ import os
 import socket
 import subprocess
 import time
-import uuid
 from collections import OrderedDict
 from urllib.parse import urlparse
 
@@ -62,8 +61,6 @@ from mxcubecore.queue_entry import (
     QueueAbortedException,
 )
 
-from mxlims import crystallography as mxmodel
-
 
 @enum.unique
 class GphlWorkflowStates(enum.Enum):
@@ -82,7 +79,6 @@ class GphlWorkflowStates(enum.Enum):
     ABORTED = 3
     COMPLETED = 4
     UNKNOWN = 5
-
 
 __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
@@ -249,6 +245,9 @@ class GphlWorkflow(HardwareObject):
 
         self.recentring_file = None
 
+        # Scan number for MXLISM Scan ordering
+        self.next_scan_number = 0
+
         # # TEST mxcubeweb UI
         # self.gevent_event = gevent.event.Event()
         # self.params_dict = {}
@@ -271,6 +270,7 @@ class GphlWorkflow(HardwareObject):
             "WorkflowAborted": self.workflow_aborted,
             "WorkflowCompleted": self.workflow_completed,
             "WorkflowFailed": self.workflow_failed,
+            "StartEnactment": self.start_enactment,
         }
 
         # Set standard configurable file paths
@@ -770,7 +770,6 @@ class GphlWorkflow(HardwareObject):
             dispatcher.connect(
                 self.receive_pre_strategy_data,
                 self.PARAMETER_RETURN_SIGNAL,
-                dispatcher.Any,
             )
             responses = dispatcher.send(
                 self.PARAMETERS_NEEDED,
@@ -793,7 +792,6 @@ class GphlWorkflow(HardwareObject):
             dispatcher.disconnect(
                 self.receive_pre_strategy_data,
                 self.PARAMETER_RETURN_SIGNAL,
-                dispatcher.Any,
             )
             self._return_parameters = None
 
@@ -908,10 +906,30 @@ class GphlWorkflow(HardwareObject):
 
         self._workflow_queue = gevent.queue.Queue()
 
-    def start_enactment(self, enactment_id:str):
+    def start_enactment(self, enactment_id:str, correlation_id:str):
         """Set enactment_id and initialise MXLIMS MXExperiment"""
-        self._queue_entry.get_data_model().enactment_id = enactment_id
-        self._queue_entry.start_enactment()
+        data_model = self._queue_entry.get_data_model()
+        tracking_data = data_model.tracking_data
+        workflow_parameters = data_model.workflow_parameters
+        tracking_data.uuid = enactment_id
+        tracking_data.workflow_uid = (
+            workflow_parameters.get("workflow_uid") or enactment_id
+        )
+        # NB it is not set it will be overwritten later
+        tracking_data.workflow_name = workflow_parameters.get("workflow_name")
+        tracking_data.workflow_type = (
+            workflow_parameters.get("workflow_type")
+            or data_model.strategy_type
+        )
+        tracking_data.location_id = workflow_parameters.get("workflow_position_id")
+        # NB first orientation only:
+        tracking_data.orientation_id = workflow_parameters.get(
+            "workflow_kappa_settings_id"
+        )
+        tracking_data.characterisation_id = workflow_parameters.get(
+            "characterisation_id"
+        )
+        self._queue_entry.init_mxlims()
 
     def execute(self):
         if self._workflow_queue is None:
@@ -962,8 +980,6 @@ class GphlWorkflow(HardwareObject):
                 elif message_type == "String":
                     if not self.config.settings.get("suppress_external_log_output"):
                         func(payload, correlation_id)
-                elif message_type == "StartEnactment":
-                    self.start_enactment(payload)
                 else:
                     self.log.info("GPhL queue processing %s", message_type)
                     response = func(payload, correlation_id)
@@ -1334,7 +1350,6 @@ class GphlWorkflow(HardwareObject):
         use_modes = ["sweep"]
         if len(grouped_sweeps) > 1:
             use_modes.append("start")
-            use_modes.append("none")
         if is_interleaved:
             use_modes.append("scan")
         for indx in range(len(modes) - 1, -1, -1):
@@ -1448,7 +1463,6 @@ class GphlWorkflow(HardwareObject):
             dispatcher.connect(
                 self.receive_pre_collection_data,
                 self.PARAMETER_RETURN_SIGNAL,
-                dispatcher.Any,
             )
             responses = dispatcher.send(
                 self.PARAMETERS_NEEDED,
@@ -1468,7 +1482,6 @@ class GphlWorkflow(HardwareObject):
             dispatcher.disconnect(
                 self.receive_pre_collection_data,
                 self.PARAMETER_RETURN_SIGNAL,
-                dispatcher.Any,
             )
             self._return_parameters = None
 
@@ -2138,31 +2151,45 @@ class GphlWorkflow(HardwareObject):
 
             # Handle orientations and (re) centring
             goniostatRotation = sweep.goniostatSweepSetting
-            rotation_id = orientation_id = goniostatRotation.id_
+            rotation_id = goniostatRotation.id_
 
-            model_workflow_parameters = gphl_workflow_model.workflow_parameters
-            if not model_workflow_parameters.get("workflow_name"):
-                model_workflow_parameters["workflow_name"] = gphl_workflow_model.wfname
-            if not model_workflow_parameters.get("workflow_type"):
-                model_workflow_parameters["workflow_type"] = gphl_workflow_model.wftype
-            if not model_workflow_parameters.get("workflow_uid"):
-                model_workflow_parameters["workflow_uid"] = str(
-                    HWR.beamline.gphl_connection._enactment_id
-                )
-            if not model_workflow_parameters.get("workflow_position_id"):
-                # As of 20240911 all workflows use a single position,
-                model_workflow_parameters["workflow_position_id"] = str(uuid.uuid1())
+
+            # handle mxlims
+            # handle workflow parameters
+            new_workflow_parameters = gphl_workflow_model.workflow_parameters.copy()
+            wf_tracking_data = gphl_workflow_model.tracking_data
+            data_collection = queue_model_objects.DataCollection([acq], crystal)
+            # Workflow parameters for ICAT / external workflow
+            # The 'if' statement is to allow this to work in multiple versions
+            data_collection.workflow_parameters = new_workflow_parameters
+            tracking_data = data_collection.tracking_data
+            tracking_data.uuid = scan.id_
+            tracking_data.workflow_name = wf_tracking_data.experiment_strategy
+            tracking_data.workflow_type = wf_tracking_data.workflow_type
+            tracking_data.workflow_uid = wf_tracking_data.uuid
+            tracking_data.location_id = wf_tracking_data.location_id
+            tracking_data.orientation_id = rotation_id
+            tracking_data.sweep_id = sweep.id_
             if (
                 gphl_workflow_model.wftype == "acquisition"
                 and not gphl_workflow_model.characterisation_done
-                and not model_workflow_parameters.get("workflow_characterisation_id")
             ):
-                model_workflow_parameters["workflow_characterisation_id"] = str(
-                    sweep.id_
-                )
-            model_workflow_parameters["workflow_kappa_settings_id"] = str(
-                orientation_id
-            )
+                characterisation_id = sweep.id_
+                tracking_data.characterisation_id = characterisation_id#
+                wf_tracking_data.characterisation_id = characterisation_id
+                tracking_data.role = "Characterisation"
+            else:
+                tracking_data.characterisation_id = wf_tracking_data.characterisation_id#
+                tracking_data.role = "Result"
+            tracking_data.scan_number = self.next_scan_number
+            self.next_scan_number += 1
+
+            new_workflow_parameters["workflow_name"] = tracking_data.workflow_name
+            new_workflow_parameters["workflow_type"] = tracking_data.workflow_type
+            new_workflow_parameters["workflow_uid"] = tracking_data.workflow_uid
+            new_workflow_parameters["workflow_position_id"] = tracking_data.location_id
+            new_workflow_parameters["characterisation_id"] = tracking_data.characterisation_id
+            new_workflow_parameters["workflow_kappa_settings_id"] = tracking_data.orientation_id
 
             initial_settings = sweep.get_initial_settings()
             orientation = (
@@ -2228,11 +2255,6 @@ class GphlWorkflow(HardwareObject):
                     acq_parameters.num_images_per_trigger * acq_parameters.osc_range
                     - sweep_offset
                 )
-            data_collection = queue_model_objects.DataCollection([acq], crystal)
-            # Workflow parameters for ICAT / external workflow
-            # The 'if' statement is to allow this to work in multiple versions
-            if hasattr(data_collection, "workflow_parameters"):
-                data_collection.workflow_parameters.update(model_workflow_parameters)
             data_collections.append(data_collection)
             data_collection.set_enabled(True)
             data_collection.ispyb_group_data_collections = True
