@@ -5,6 +5,7 @@ from datetime import (
 from typing import (
     List,
     Optional,
+    Dict,
 )
 
 from pydantic.v1 import (
@@ -77,4 +78,4 @@ class LimsUser(BaseModel):
 class LimsSessionManager(BaseModel):
     active_session: Optional[Session] = None
     sessions: Optional[List[Session]] = []
-    users: Optional[dict[str, LimsUser]] = {}
+    users: Optional[Dict[str, LimsUser]] = {}
