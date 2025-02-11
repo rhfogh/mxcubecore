@@ -3,9 +3,9 @@ from datetime import (
     timedelta,
 )
 from typing import (
+    Dict,
     List,
     Optional,
-    Dict,
 )
 
 from pydantic.v1 import (
