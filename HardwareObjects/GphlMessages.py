@@ -27,8 +27,6 @@ import enum
 from collections import OrderedDict
 from collections import namedtuple
 
-from ConvertUtils import string_types
-from HardwareRepository.HardwareObjects import queue_model_enumerables
 from HardwareRepository.HardwareObjects.Gphl import crystal_symmetry
 
 __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
@@ -945,7 +943,7 @@ class UserProvidedInfo(MessageData):
             self._crystalClasses = tuple(crystalClasses)
         else:
             self._crystalClasses = ()
-        sginfo = queue_model_enumerables.SPACEGROUP_MAP.get(spaceGroup)
+        sginfo = crystal_symmetry.SPACEGROUP_MAP.get(spaceGroup)
         self._spaceGroup = sginfo.number if sginfo else None
         self._spaceGroupString = spaceGroup or None
         self._cell = cell

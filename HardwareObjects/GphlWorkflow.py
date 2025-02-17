@@ -46,14 +46,12 @@ import ConvertUtils
 from HardwareRepository.BaseHardwareObjects import HardwareObject
 
 from HardwareRepository.HardwareObjects import queue_model_objects
-from HardwareRepository.HardwareObjects import queue_model_enumerables
 from HardwareRepository.HardwareObjects.queue_entry import (
     QUEUE_ENTRY_STATUS,
     QueueAbortedException,
 )
 
 from HardwareRepository.HardwareObjects import GphlMessages
-from HardwareRepository.HardwareObjects.Gphl.Transcal2MiniKappa import make_home_data
 from HardwareRepository.HardwareObjects.Gphl import crystal_symmetry
 
 try:
@@ -201,6 +199,9 @@ class GphlWorkflow(HardwareObject, object):
 
         # HACK
         self.strategyWavelength = None
+
+        # Used to calculate does for multio-transmission strategy(es)
+        self.dose_correction_factor = 1.0
 
     def _init(self):
         super(GphlWorkflow, self)._init()
@@ -530,26 +531,33 @@ class GphlWorkflow(HardwareObject, object):
         data_model = self._queue_entry.get_data_model()
         wf_parameters = data_model.get_workflow_parameters()
 
-        sweep_group_counts = {}
-        orientations = OrderedDict()
+        grouped_sweeps = []
+        inverse_beam = False
         strategy_length = 0
-        axis_setting_dicts = OrderedDict()
         for sweep in geometric_strategy.get_ordered_sweeps():
             strategy_length += sweep.width
-            rotation_id = sweep.goniostatSweepSetting.id_
-            if rotation_id in orientations:
-                orientations[rotation_id].append(sweep)
-            else:
-                orientations[rotation_id] = [sweep]
-                axis_settings = sweep.goniostatSweepSetting.axisSettings.copy()
-                axis_settings.pop(sweep.goniostatSweepSetting.scanAxis, None)
-                axis_setting_dicts[rotation_id] = axis_settings
-            count = sweep_group_counts.get(sweep.sweepGroup, 0) + 1
-            sweep_group_counts[sweep.sweepGroup] = count
+            last = grouped_sweeps and grouped_sweeps[-1]
+            if last:
+                if sweep.sweepGroup == last["group_no"]:
+                    inverse_beam = True
+                if sweep.goniostatSweepSetting.id_ == last["rotation_id"]:
+                    last["sweeps"].append(sweep)
+                    continue
+
+            axis_settings = sweep.goniostatSweepSetting.axisSettings.copy()
+            axis_settings.pop(sweep.goniostatSweepSetting.scanAxis, None)
+            grouped_sweeps.append(
+                {
+                    "sweeps": [sweep],
+                    "rotation_id": sweep.goniostatSweepSetting.id_,
+                    "group_no": sweep.sweepGroup,
+                    "axis_settings": axis_settings,
+                }
+            )
 
         is_interleaved = data_model.lattice_selected and (
             len(data_model.get_beam_energy_tags()) > 1
-            or max(sweep_group_counts.values()) > 1
+            or inverse_beam
         )
         # Make info_text and do some setting up
         axis_names = self.rotation_axis_roles
@@ -583,7 +591,7 @@ class GphlWorkflow(HardwareObject, object):
             if not self.getProperty("recentre_before_start"):
                 # replace planned orientation with current orientation
                 current_pos_dict = api.diffractometer.get_motor_positions()
-                dd0 = list(axis_setting_dicts.values())[0]
+                dd0 = grouped_sweeps[0]["axis_settings"]
                 for tag in dd0:
                     pos = current_pos_dict.get(tag)
                     if pos is not None:
@@ -597,15 +605,15 @@ class GphlWorkflow(HardwareObject, object):
         else:
             lines.append("Experiment length (per repetition): %6.1f°" % strategy_length)
 
-        for rotation_id, sweeps in orientations.items():
-            axis_settings = axis_setting_dicts[rotation_id]
+        for dd0 in grouped_sweeps:
+            axis_settings = dd0["axis_settings"]
             ss0 = "\nSweep :     " + ",  ".join(
                 "%s= %6.1f°" % (x, axis_settings.get(x))
                 for x in axis_names
                 if x in axis_settings
             )
             ll1 = []
-            for sweep in sweeps:
+            for sweep in dd0["sweeps"]:
                 start = sweep.start
                 width = sweep.width
                 ss1 = "%s= %6.1f°,  sweep width= %6.1f°" % (
@@ -661,7 +669,15 @@ class GphlWorkflow(HardwareObject, object):
         default_exposure = data_model.get_default_exposure_time()
         exposure_limits = api.detector.get_exposure_time_limits()
         total_strategy_length = strategy_length * len(beam_energies)
-        # NB update_dose is called at start of poup.
+
+        if data_model.lattice_selected and data_model.get_variant() == "two_transmission":
+            self.dose_correction_factor = (
+                1.0 - 0.9 * geometric_strategy.get_ordered_sweeps()[-1].width / total_strategy_length
+            )
+        else:
+            self.dose_correction_factor = 1.0
+
+        # NB update_dose is called at start of popup.
         # Setting 100% transmission here guarantees max transmission for the given dose
         transmission = 100.0
         if (
@@ -678,6 +694,7 @@ class GphlWorkflow(HardwareObject, object):
                 # than proposed 5% of dose budget
                 currdose = (
                     total_strategy_length
+                    * self.dose_correction_factor
                     * default_exposure
                     * std_dose_rate
                     * transmission
@@ -722,7 +739,13 @@ class GphlWorkflow(HardwareObject, object):
                 # If we get here, Adjust dose
                 # NB dose is calculated for *one* repetition
                 experiment_time = exposure_time * total_strategy_length / image_width
-                use_dose = std_dose_rate * experiment_time * transmission / 100
+                use_dose = (
+                    std_dose_rate
+                    * experiment_time
+                    * transmission
+                    * self.dose_correction_factor
+                    / 100
+                )
                 field_widget.set_values(use_dose=use_dose)
 
         def update_resolution(field_widget):
@@ -765,7 +788,11 @@ class GphlWorkflow(HardwareObject, object):
                 experiment_time = exposure_time * total_strategy_length / image_width
                 if transmission:
                     prev_dose = round(
-                        std_dose_rate * experiment_time * transmission / 100,
+                        std_dose_rate
+                        * experiment_time
+                        * self.dose_correction_factor
+                        * transmission
+                        / 100,
                         use_dose_decimals
                     )
                     factor = use_dose / prev_dose
@@ -777,7 +804,9 @@ class GphlWorkflow(HardwareObject, object):
                         experiment_time *= factor
 
                 else:
-                    transmission = 100 * use_dose / (std_dose_rate * experiment_time)
+                    transmission = 100 * use_dose / (
+                        std_dose_rate * experiment_time * self.dose_correction_factor
+                    )
 
                 if transmission > 100.0:
                     # Transmission too high. Try max transmission and longer exposure
@@ -934,17 +963,18 @@ class GphlWorkflow(HardwareObject, object):
 
         if is_interleaved:
             # NB We do not want the wedgeWdth widget for Diffractcal
+            wedge_widths = self.getProperty("wedge_widths")
+            if wedge_widths:
+                wedge_widths = wedge_widths.split()
+            else:
+                wedge_widths = ["48", "24", "72", "360"]
             field_list.append(
                 {
                     "variableName": "wedgeWidth",
                     "uiLabel": "Wedge width (deg)",
                     "type": "text",
-                    "defaultValue": (
-                        "%s" % self.getProperty("default_wedge_width", 15)
-                    ),
-                    "lowerBound": 0.1,
-                    "upperBound": 7200,
-                    "decimals": 2,
+                    "defaultValue": str(wedge_widths[0]),
+                    "enum": list(str(val) for val in sorted(wedge_widths)),
                 }
             )
 
@@ -986,7 +1016,7 @@ class GphlWorkflow(HardwareObject, object):
                 "invalid default recentring mode '%s' " % default_recentring_mode
             )
         use_modes = ["sweep"]
-        if len(orientations) > 1:
+        if len(grouped_sweeps) > 1:
             use_modes.append("start")
             use_modes.append("none")
         if is_interleaved:
@@ -1505,6 +1535,8 @@ class GphlWorkflow(HardwareObject, object):
         sweep_offset = geometric_strategy.sweepOffset
         scan_count = len(scans)
 
+        lastsweep = scans[-1].sweep
+
         if repeat_count and sweep_offset and self.getProperty("use_multitrigger"):
             # commpress unrolled multi-trigger sweep
             # NBNB as of 202103 this is only allowed for a single sweep
@@ -1551,9 +1583,15 @@ class GphlWorkflow(HardwareObject, object):
             # not needed when detdistance is set :
             # acq_parameters.resolution = resolution
             acq_parameters.detdistance = detdistance
-            # transmission is not passed from the workflow (yet)
-            # it defaults to current value (?), so no need to set it
-            # acq_parameters.transmission = transmission*100.0
+            if (
+                scan.sweep is lastsweep
+                and gphl_workflow_model.lattice_selected
+                and gphl_workflow_model.variant == "twotransmission"
+            ):
+                # NB exposure.transmission is in fraction, transmission in %
+                acq_parameters.transmission = 10 * scan.exposure.transmission
+            else:
+                acq_parameters.transmission = 100 * scan.exposure.transmission
 
             # acq_parameters.shutterless = self._has_shutterless()
             # acq_parameters.detector_mode = self._get_roi_modes()
@@ -1977,6 +2015,8 @@ class GphlWorkflow(HardwareObject, object):
         options["strategy_type"] = wf_parameters["strategy_type"]
         options["variant"] = variant = params["variant"]
         data_model.set_variant(variant)
+        options["delphi_block"] = self.getProperty("delphi_block", 4.8)
+        options["stratcal_step"] = self.getProperty("stratcal_step", 0.8)
         kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
         #
         data_model.lattice_selected = True
