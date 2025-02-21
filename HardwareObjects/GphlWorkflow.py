@@ -644,9 +644,6 @@ class GphlWorkflow(HardwareObject, object):
                 "No allowed image widths returned by strategy - use defaults"
             )
 
-        # set starting and unchanging values of parameters
-        acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
-
         resolution = api.resolution.get_value()
 
         # For calculating dose-budget transmission
@@ -723,7 +720,11 @@ class GphlWorkflow(HardwareObject, object):
                 if std_dose_rate and transmission:
                     # NB - dose is calculated for *one* repetition
                     dd0["use_dose"] = (
-                        std_dose_rate * experiment_time * transmission / 100.0
+                        std_dose_rate
+                        * experiment_time
+                        * transmission
+                        *self.dose_correction_factor
+                        / 100.0
                     )
                 dd0["experiment_time"] = experiment_time * repetition_count
                 field_widget.set_values(**dd0)
@@ -972,9 +973,9 @@ class GphlWorkflow(HardwareObject, object):
                 {
                     "variableName": "wedgeWidth",
                     "uiLabel": "Wedge width (deg)",
-                    "type": "text",
+                    "type": "combo",
                     "defaultValue": str(wedge_widths[0]),
-                    "enum": list(str(val) for val in sorted(wedge_widths)),
+                    "textChoices": list(str(val) for val in sorted(wedge_widths)),
                 }
             )
 
@@ -1586,7 +1587,7 @@ class GphlWorkflow(HardwareObject, object):
             if (
                 scan.sweep is lastsweep
                 and gphl_workflow_model.lattice_selected
-                and gphl_workflow_model.variant == "twotransmission"
+                and gphl_workflow_model.get_variant() == "twotransmission"
             ):
                 # NB exposure.transmission is in fraction, transmission in %
                 acq_parameters.transmission = 10 * scan.exposure.transmission
@@ -2016,7 +2017,7 @@ class GphlWorkflow(HardwareObject, object):
         options["variant"] = variant = params["variant"]
         data_model.set_variant(variant)
         options["delphi_block"] = self.getProperty("delphi_block", 4.8)
-        options["stratcal_step"] = self.getProperty("stratcal_step", 0.8)
+        options["stratcal_step"] = self.getProperty("stratcal_step", 0.6)
         kwArgs["strategyControl"] = json.dumps(options, indent=4, sort_keys=True)
         #
         data_model.lattice_selected = True
