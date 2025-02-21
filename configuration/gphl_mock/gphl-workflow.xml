@@ -7,7 +7,7 @@
     <default_exposure_time>0.01</default_exposure_time>
 
     <!-- Use multitrigger collection when set -->
-    <use_multitrigger>True</use_multitrigger>
+<!--    <use_multitrigger>True</use_multitrigger>-->
 
     <!-- Use advanced_mode for adidtional UI options. Uncoment to set -->
     <advanced_mode>True</advanced_mode>
@@ -41,13 +41,16 @@
           2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
     <default_decay_limit>25</default_decay_limit>
 
+    <!-- Default force use input unit cell and space group for processing -->
+    <use_cell_for_processing>True</use_cell_for_processing>
+    <!--disable_recen>True</disable_recen-->
+
     <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
     <maximum_dose_budget>20</maximum_dose_budget>
 
     <!-- Percentage of dose budget to propose for use in characterisation.  -->
     <characterisation_budget_fraction>0.05</characterisation_budget_fraction>
 
-    <!--disable_recen>True</disable_recen-->
 
     <!-- Characterisation strategies popup. -->
     <!-- names refer to stategies in  strategylib.nml -->
@@ -74,7 +77,7 @@
     <default_snapshot_count>2</default_snapshot_count>
 
     <delphi_block>4.8</delphi_block>
-    <stratcal_step>0.8</stratcal_step>
+    <stratcal_step>0.6</stratcal_step>
 
     <!-- Sample centring options -->
     <!-- (Re)centre sample when workflow starts? By default assumes sample is already centred -->
