@@ -470,28 +470,16 @@ class GphlWorkflowConnection(HardwareObjectYaml):
         message_type = xx0.message_type
         payload = xx0.payload
         correlation_id = xx0.correlation_id
-        enactment_id = xx0.enactment_id
-
         if not payload:
             logging.getLogger("HWR").warning(
                 "GΦL Empty or unparsable information message. Ignored"
             )
 
-        else:
-            if not enactment_id:
-                logging.getLogger("HWR").warning(
-                    "GΦL information message lacks enactment ID:"
-                )
-            elif self._enactment_id != enactment_id:
-                logging.getLogger("HWR").warning(
-                    "Workflow enactment ID %s != info message enactment ID %s."
-                    % (self._enactment_id, enactment_id)
-                )
-            if self.workflow_queue is not None:
-                # Could happen if we have ended the workflow
-                self.workflow_queue.put_nowait(
-                    (message_type, payload, correlation_id, None)
-                )
+        elif self.workflow_queue is not None:
+            # Could happen if we have ended the workflow
+            self.workflow_queue.put_nowait(
+                (message_type, payload, correlation_id, None)
+            )
 
     def processMessage(self, py4j_message):
         """Receive and process message from workflow server
@@ -530,30 +518,11 @@ class GphlWorkflowConnection(HardwareObjectYaml):
         message_type = xx0.message_type
         payload = xx0.payload
         correlation_id = xx0.correlation_id
-        enactment_id = xx0.enactment_id
 
-        if not enactment_id:
-            logging.getLogger("HWR").error(
-                "GΦL message lacks enactment ID - sending 'Abort' to external workflow"
-            )
-            return self._response_to_server(
-                GphlMessages.BeamlineAbort(), correlation_id
-            )
-
-        elif self._enactment_id is None:
+        if self._enactment_id is None:
             # NB this should be made less primitive
             # once we are past direct function calls
-            self._enactment_id = enactment_id
-
-        elif self._enactment_id != enactment_id:
-            logging.getLogger("HWR").error(
-                "Workflow enactment ID %s != message enactment ID %s"
-                " - sending 'Abort' to external workflow"
-                % (self._enactment_id, enactment_id)
-            )
-            return self._response_to_server(
-                GphlMessages.BeamlineAbort(), correlation_id
-            )
+            self._enactment_id = xx0.enactment_id
 
         elif not payload:
             logging.getLogger("HWR").error(
@@ -613,8 +582,8 @@ class GphlWorkflowConnection(HardwareObjectYaml):
                     self.workflow_ended()
                 else:
                     logging.getLogger("HWR").debug(
-                        "GΦL - response=%s jobId=%s messageId=%s"
-                        % (result.__class__.__name__, enactment_id, correlation_id)
+                        "GΦL - response=%s messageId=%s"
+                        % (result.__class__.__name__, correlation_id)
                     )
                 return self._response_to_server(result, correlation_id)
 
@@ -643,24 +612,26 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
         # Determine message type
         message_type = py4j_message.getPayloadClass().getSimpleName()
+        if message_type.endswith("Impl"):
+            message_type = message_type[:-4]
 
-        xx0 = py4j_message.getEnactmentId()
-        enactment_id = xx0 and xx0.toString()
+        if message_type == "RequestConfiguration":
+            xx0 = py4j_message.getEnactmentId()
+            enactment_id = xx0 and xx0.toString()
+        else:
+            enactment_id = None
 
         xx0 = py4j_message.getCorrelationId()
         correlation_id = xx0 and xx0.toString()
-        if message_type != "String":
-            logging.getLogger("HWR").debug(
-                "GΦL incoming: message=%s, jobId=%s,  messageId=%s"
-                % (message_type, enactment_id, correlation_id)
-            )
 
         if message_type == "String":
             payload = py4j_message.getPayload()
 
         else:
-            if message_type.endswith("Impl"):
-                message_type = message_type[:-4]
+            logging.getLogger("HWR").debug(
+                "GΦL incoming: message=%s, jobId=%s,  messageId=%s"
+                % (message_type, enactment_id, correlation_id)
+            )
             converterName = "_%s_to_python" % message_type
 
             try:
@@ -963,13 +934,6 @@ class GphlWorkflowConnection(HardwareObjectYaml):
     def _response_to_server(self, payload, correlation_id):
         """Create py4j message from py4j wrapper and current ids"""
 
-        if self._enactment_id is None:
-            enactment_id = None
-        else:
-            enactment_id = self._gateway.jvm.java.util.UUID.fromString(
-                self._enactment_id
-            )
-
         if correlation_id is not None:
             correlation_id = self._gateway.jvm.java.util.UUID.fromString(correlation_id)
 
@@ -977,7 +941,7 @@ class GphlWorkflowConnection(HardwareObjectYaml):
 
         try:
             response = self._gateway.jvm.Py4jMessage(
-                py4j_payload, enactment_id, correlation_id
+                py4j_payload, correlation_id
             )
         except:
             self.abort_workflow(
