@@ -1956,7 +1956,7 @@ class GphlWorkflow(HardwareObject, object):
             ref_files = {
                 "variableName": "_footer",
                 "uiLabel": "Reference MTZ file Urls, one per line",
-                "type": "textarea",
+                "type": "urltextarea",
                 "defaultValue": "",
                 "update_function": update_reffiles,
             }
@@ -2053,41 +2053,14 @@ class GphlWorkflow(HardwareObject, object):
         data_model.set_use_cell_for_processing(space_group and use_cell_for_processing)
         reffiles = params["_footer"].strip()
         if reffiles:
-            # Validate Urls.
-            # NB Urls supported are
-            # - a path starting with "/" optionally preceded by "file:"
-            # - a string starting with "http://" or "https://"
-            # containing a hostname, an optional port,
-            # a path starting with "/" and nothing else
-            ll1 = []
-            for line in reffiles.splitlines():
-                tpl = urlparse(line)
-                scheme = tpl.scheme
-                if not tpl.path.startswith("/"):
-                    raise ValueError("Url path does not start with '/': %s" % line)
-                if tpl.query or tpl.fragment or tpl.username or tpl.password:
-                    raise ValueError("Invalid field in Url: %s" % line)
-                if not tpl.netloc and (not scheme or scheme == "file"):
-                    ll1.append("file:%s" % tpl.path)
-                elif scheme in ("http", "https")  and tpl.hostname:
-                    if tpl.port:
-                        ll1.append(
-                            "%s://%s:%i%s"
-                            % (scheme, tpl.hostname, tpl.port, tpl.path)
-                        )
-                    else:
-                        ll1.append(
-                            "%s://%s%s"
-                            % (scheme, tpl.hostname, tpl.path)
-                        )
-                else:
-                    raise ValueError("Invalid Url: %s" % line)
+            # NB Urls should come valid from GUI.
+            ll1 = list(reffiles)
             if len(ll1) > 1:
                 logging.getLogger("user_level_log").warning(
                     "Only one reference file supported for now, skipping the rest"
                 )
-            if ll1:
-                kwArgs["reference_reflection_files"] = ll1
+                ll1 = ll1[:1]
+            kwArgs["reference_reflection_files"] = ll1
         #
         return GphlMessages.SelectedLattice(
             solution=solution,
