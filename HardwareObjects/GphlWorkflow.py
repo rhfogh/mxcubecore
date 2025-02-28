@@ -1817,9 +1817,6 @@ class GphlWorkflow(HardwareObject, object):
                 "space_group", textChoices=sgoptions, defaultValue=sgvalue
             )
 
-        def update_reffiles(field_widget):
-            pass
-
         prior_space_group = choose_lattice.priorSpaceGroupString
         header, solutions_dict, select_row = self.parse_indexing_solution(choose_lattice)
         lattice = list(solutions_dict.values())[select_row].bravaisLattice
@@ -1955,10 +1952,9 @@ class GphlWorkflow(HardwareObject, object):
         if self.getProperty("advanced_mode", False):
             ref_files = {
                 "variableName": "_footer",
-                "uiLabel": "Reference MTZ file Urls, one per line",
+                "uiLabel": "Reference MTZ file Url (multiple Urls not yet supported)",
                 "type": "urltextarea",
                 "defaultValue": "",
-                "update_function": update_reffiles,
             }
             field_list.append(ref_files)
 
@@ -2053,8 +2049,14 @@ class GphlWorkflow(HardwareObject, object):
         data_model.set_use_cell_for_processing(space_group and use_cell_for_processing)
         reffiles = params["_footer"].strip()
         if reffiles:
-            # NB Urls should come valid from GUI.
-            ll1 = list(reffiles)
+            # NB Urls should come valid from GUI, except for missing 'file:' prefix
+            ll1 = []
+            for txt in reffiles.splitlines():
+                txt = txt.strip()
+                if txt:
+                    if txt[0] == "/":
+                        txt = "file:" + txt
+                    ll1.append(txt)
             if len(ll1) > 1:
                 logging.getLogger("user_level_log").warning(
                     "Only one reference file supported for now, skipping the rest"
