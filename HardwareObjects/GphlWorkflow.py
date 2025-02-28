@@ -33,6 +33,11 @@ import math
 import subprocess
 import json
 import socket
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 import f90nml
 
 import gevent
@@ -1812,6 +1817,9 @@ class GphlWorkflow(HardwareObject, object):
                 "space_group", textChoices=sgoptions, defaultValue=sgvalue
             )
 
+        def update_reffiles(field_widget):
+            pass
+
         prior_space_group = choose_lattice.priorSpaceGroupString
         header, solutions_dict, select_row = self.parse_indexing_solution(choose_lattice)
         lattice = list(solutions_dict.values())[select_row].bravaisLattice
@@ -1944,6 +1952,16 @@ class GphlWorkflow(HardwareObject, object):
             }
         )
 
+        if self.getProperty("advanced_mode", False):
+            ref_files = {
+                "variableName": "_footer",
+                "uiLabel": "Reference MTZ file Urls, one per line",
+                "type": "textarea",
+                "defaultValue": "",
+                "update_function": update_reffiles,
+            }
+            field_list.append(ref_files)
+
         # Color green (figuratively) if matches lattices,
         lattices = set(
             crystal_symmetry.CRYSTAL_CLASS_MAP[crystal_class].bravais_lattice
@@ -2033,6 +2051,44 @@ class GphlWorkflow(HardwareObject, object):
         data_model.set_space_group(space_group)
         use_cell_for_processing = params.pop("use_cell_for_processing", False)
         data_model.set_use_cell_for_processing(space_group and use_cell_for_processing)
+        reffiles = params["_footer"].strip()
+        if reffiles:
+            # Validate Urls.
+            # NB Urls supported are
+            # - a path starting with "/" optionally preceded by "file:"
+            # - a string starting with "http://" or "https://"
+            # containing a hostname, an optional port,
+            # a path starting with "/" and nothing else
+            ll1 = []
+            for line in reffiles.splitlines():
+                tpl = urlparse(line)
+                scheme = tpl.scheme
+                if not tpl.path.startswith("/"):
+                    raise ValueError("Url path does not start with '/': %s" % line)
+                if tpl.query or tpl.fragment or tpl.username or tpl.password:
+                    raise ValueError("Invalid field in Url: %s" % line)
+                if not tpl.netloc and (not scheme or scheme == "file"):
+                    ll1.append("file:%s" % tpl.path)
+                elif scheme in ("http", "https")  and tpl.hostname:
+                    if tpl.port:
+                        ll1.append(
+                            "%s://%s:%i%s"
+                            % (scheme, tpl.hostname, tpl.port, tpl.path)
+                        )
+                    else:
+                        ll1.append(
+                            "%s://%s%s"
+                            % (scheme, tpl.hostname, tpl.path)
+                        )
+                else:
+                    raise ValueError("Invalid Url: %s" % line)
+            if len(ll1) > 1:
+                logging.getLogger("user_level_log").warning(
+                    "Only one reference file supported for now, skipping the rest"
+                )
+            if ll1:
+                kwArgs["reference_reflection_files"] = ll1
+        #
         return GphlMessages.SelectedLattice(
             solution=solution,
             crystalClasses=crystal_classes,
@@ -2399,7 +2455,6 @@ class GphlWorkflow(HardwareObject, object):
             cell=unitCell,
             expectedResolution=api.collect.get_resolution(),
             isAnisotropic=None,
-            referenceReflectionFile=workflow_model.get_reference_reflection_file(),
         )
         ll0 = ["PriorInformation"]
         for tag in (

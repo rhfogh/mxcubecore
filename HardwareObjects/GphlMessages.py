@@ -421,7 +421,9 @@ class SelectedLattice(MessageData):
         spaceGroup=None,
         strategyDetectorSetting=None,
         strategyWavelength=None,
-        strategyControl=None):
+        strategyControl=None,
+        reference_reflection_files=None,
+    ):
 
         self._solution = solution
         self._userCrystalClasses = crystalClasses
@@ -430,6 +432,10 @@ class SelectedLattice(MessageData):
         self._strategyDetectorSetting = strategyDetectorSetting
         self._strategyWavelength = strategyWavelength
         self._strategyControl = strategyControl
+        if reference_reflection_files:
+            self._reference_reflection_files = list(reference_reflection_files)
+        else:
+            self._reference_reflection_files = []
 
     @property
     def solution(self):
@@ -461,6 +467,10 @@ class SelectedLattice(MessageData):
     def userSpaceGroup(self):
         """Space group (int) given by user"""
         return self._userSpaceGroup
+
+    @property
+    def reference_reflection_files(self):
+        return list(self._reference_reflection_files)
 
 
 class IndexingSolution(MessageData):
@@ -935,7 +945,6 @@ class UserProvidedInfo(MessageData):
         cell=None,
         expectedResolution=None,
         isAnisotropic=None,
-        referenceReflectionFile=None,
     ):
 
         self._scatterers = scatterers
@@ -949,7 +958,6 @@ class UserProvidedInfo(MessageData):
         self._cell = cell
         self._expectedResolution = expectedResolution
         self._isAnisotropic = isAnisotropic
-        self._referenceReflectionFile = referenceReflectionFile
 
     @property
     def scatterers(self):
@@ -978,10 +986,6 @@ class UserProvidedInfo(MessageData):
     @property
     def isAnisotropic(self):
         return self._isAnisotropic
-
-    @property
-    def referenceReflectionFile(self):
-        return self._referenceReflectionFile
 
 
 class Sweep(IdentifiedElement):
@@ -1376,6 +1380,7 @@ class SampleCentred(Payload):
     @property
     def wavelengths(self):
         return self._wavelengths
+
     @property
     def repetition_count(self):
         return self._repetition_count
