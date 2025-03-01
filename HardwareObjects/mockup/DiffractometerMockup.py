@@ -70,6 +70,7 @@ class DiffractometerMockup(GenericDiffractometer):
             "kappa_phi": 22.0,
         }
         self.move_motors(self._get_random_centring_position())
+        self.move_motors({"sampx":0.5, "sampy":-0.3, "phiy":26.1, })
 
         self.current_state_dict = {}
         self.centring_status = {"valid": False}
