@@ -1180,7 +1180,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             port = urltpl.port or None
             if host:
                 builder = builder.referenceFile(
-                    urltpl.scheme, urltpl.hostname, urltpl.port, urltpl.path
+                    urltpl.scheme, urltpl.hostname, port, urltpl.path
                 )
             elif urltpl :
                 builder = builder.referenceFile(urltpl.scheme, urltpl.path)

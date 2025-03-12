@@ -672,7 +672,7 @@ class GphlWorkflow(HardwareObject, object):
         exposure_limits = api.detector.get_exposure_time_limits()
         total_strategy_length = strategy_length * len(beam_energies)
 
-        if data_model.lattice_selected and data_model.get_variant() == "two_transmission":
+        if data_model.lattice_selected and data_model.get_variant() == "twotransmission":
             self.dose_correction_factor = (
                 1.0 - 0.9 * geometric_strategy.get_ordered_sweeps()[-1].width / total_strategy_length
             )
@@ -1216,7 +1216,7 @@ class GphlWorkflow(HardwareObject, object):
             "GphlWorkflow: setting transmission to %7.3f %%" % (100.0 * transmission)
         )
         api.transmission.set_value(100 * transmission)
-        api.transmission .wait_ready(20)
+        api.transmission.wait_ready(20)
 
         new_resolution = parameters.pop("resolution")
         if (
