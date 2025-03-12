@@ -3,8 +3,8 @@
     <!-- Directory locations. Can also be used with ${} syntax in this file -->
     <directory_locations>
         <!-- MANDATORY Location of GPhL release, directory containing the GPhL setup.sh sctipt) -->
-        <GPHL_INSTALLATION>/alt/rhfogh/Software/GPhL/gphl_release</GPHL_INSTALLATION>
-<!--        <GPHL_INSTALLATION>/alt/rhfogh/Software/GPhL/nightly_20230309/Files_workflow_BETA_beta-academic/</GPHL_INSTALLATION>-->
+        <GPHL_INSTALLATION>/home/rhfogh/Software/GPhL/gphl_release</GPHL_INSTALLATION>
+<!--        <GPHL_INSTALLATION>/home/rhfogh/Software/GPhL/nightly_20230309/Files_workflow_BETA_beta-academic/</GPHL_INSTALLATION>-->
         <!-- OPTIONAL. Directory for custom wrapper scrkpts. Used in this file only  -->
         <!--	    <GPHL_WRAPPERS>/data/users/p3l-gleb1/gphl/</GPHL_WRAPPERS>-->
     </directory_locations>
@@ -48,17 +48,17 @@
 
         <!-- MANDATORY for CCP4 => $GPHL_CCP4_PATH/bin/ccp4.setup-sh,
              unless already sourced in environment-->
-        <GPHL_CCP4_PATH >/alt/rhfogh/Software/CCP4/latest/bin/</GPHL_CCP4_PATH>
+        <GPHL_CCP4_PATH >/home/rhfogh/Software/CCP4/latest/bin/</GPHL_CCP4_PATH>
         <!-- MANDATORY for XDS => $GPHL_XDS_PATH/xds_par
              unless already sourced in environment-->
-        <GPHL_XDS_PATH>/alt/rhfogh/Software/XDS/latest/</GPHL_XDS_PATH>
+        <GPHL_XDS_PATH>/home/rhfogh/Software/XDS/latest/</GPHL_XDS_PATH>
 
         <!-- OPTIONAL parameters for non-standard software locations -->
         <!-- Passed to workflow as environment variabhles -->
         <!-- OPTIONAL for autoPROC => $GPHL_AUTOPROC_PATH/autoPROC/bin/linux64 -->
         <!--        <GPHL_AUTOPROC_PATH >/write/me/here</GPHL_AUTOPROC_PATH>-->
         <!-- OPTIONAL for miniconda Pythyon installation => $GPHL_MINICONDA_PATH/bin/activate -->
-<!--                <GPHL_MINICONDA_PATH >/alt/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_BETA_beta-academic/.mc38/</GPHL_MINICONDA_PATH>-->
+<!--                <GPHL_MINICONDA_PATH >/home/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_BETA_beta-academic/.mc38/</GPHL_MINICONDA_PATH>-->
 
         <!-- OPTIONAL directory containing bin/java. If not set java is called as just 'java' -->
         <java_home>/opt/jdk11</java_home>
@@ -75,7 +75,7 @@
 
         <!-- MANDATORY pending change in workflow -->
         <co.gphl.wf.stratcal.bin>{GPHL_INSTALLATION}/exe/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>
-<!--        <co.gphl.wf.stratcal.bin>/alt/rhfogh/Software/GPhL/mxcube_setup/stratcal/scripts/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>-->
+<!--        <co.gphl.wf.stratcal.bin>/home/rhfogh/Software/GPhL/mxcube_setup/stratcal/scripts/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>-->
         <!--        <co.gphl.wf.stratcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.stratcal.bdg_licence_dir>-->
 
         <!-- OPTIONAL location of alternative executables (wrappers) supported by the workflow -->
@@ -91,8 +91,8 @@
         <!--        <co.gphl.wf.recen.bin>{GPHL_WRAPPERS}/scripts/recen</co.gphl.wf.recen.bin>-->
         <!--        <co.gphl.wf.recen.bdg_licence_dir>/fill/me/in</co.gphl.wf.recen.bdg_licence_dir>-->
         <!-- OPTIONAL. simcal *binary* and licence dir. For Mock collection emulation only. Not used by ASTRA workflow -->
-        <co.gphl.wf.simcal.bin>/alt/rhfogh/Software/GPhL/nightly_20250301/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
-        <co.gphl.wf.simcal.bdg_licence_dir>/alt/rhfogh/Software/GPhL/nightly_20250301/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
+        <co.gphl.wf.simcal.bin>/home/rhfogh/Software/GPhL/nightly_20250306/Files_workflow_TRUNK_alpha-bdg/autoPROC/bin/linux64/simcal</co.gphl.wf.simcal.bin>
+        <co.gphl.wf.simcal.bdg_licence_dir>/home/rhfogh/Software/GPhL/nightly_20250306/Files_workflow_TRUNK_alpha-bdg</co.gphl.wf.simcal.bdg_licence_dir>
     </software_properties>
 
 </object>
