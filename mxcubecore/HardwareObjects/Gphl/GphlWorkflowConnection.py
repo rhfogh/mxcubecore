@@ -507,9 +507,12 @@ class GphlWorkflowConnection(HardwareObject):
         correlation_id = xx0.correlation_id
 
         if self._enactment_id is None:
-            # NB this should be made less primitive
-            # once we are past direct function calls
-            self._enactment_id = xx0.enactment_id
+            enactment_id = xx0.enactment_id
+            if enactment_id:
+                self._enactment_id = enactment_id
+                self.workflow_queue.put_nowait(
+                    "StartEnactment", enactment_id, None, None
+                )
 
         elif not payload:
             self.log.error(
@@ -572,17 +575,6 @@ class GphlWorkflowConnection(HardwareObject):
                         "GPhL - response=%s messageId=%s"
                         % (result.__class__.__name__, correlation_id)
                     )
-                if message_type == "ObtainPriorInformation":
-                    # At this point we have the enactment_id and can set the workflow_id
-                    self.workflow_queue.put_nowait(
-                        (
-                            "StartEnactment",
-                            self._enactment_id,
-                            None,
-                            None,
-                        )
-                    )
-
                 return self._response_to_server(result, correlation_id)
 
         elif message_type in ("WorkflowAborted", "WorkflowCompleted", "WorkflowFailed"):
