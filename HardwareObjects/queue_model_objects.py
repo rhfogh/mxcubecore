@@ -1433,7 +1433,6 @@ class PathTemplate(object):
         :returns: Archive directory
         """
         folders = self.directory.split("/")
-        self.synchrotron_name = "EMBL-HH"
         #TODO remove the line later and find the bug    
 
         #if PathTemplate.synchrotron_name == "MAXLAB":
