@@ -574,7 +574,7 @@ class DataCollection(TaskNode):
         self.id = int()
         self.lims_group_id = None
         self.run_processing_after = None
-        self.run_processing_parallel = False
+        self.run_processing_parallel = True
         self.grid = None
         self.parallel_processing_result = None
         self.processing_msg_list = []
@@ -1433,6 +1433,7 @@ class PathTemplate(object):
         :returns: Archive directory
         """
         folders = self.directory.split("/")
+        self.synchrotron_name = "EMBL-HH"
         #TODO remove the line later and find the bug    
 
         #if PathTemplate.synchrotron_name == "MAXLAB":
@@ -1835,7 +1836,7 @@ class GphlWorkflow(TaskNode):
         # TODO remove when workflow gives relevant information
         self.lattice_selected = False
 
-        self.set_requires_centring(False)
+        self.set_requires_centring(True)
 
     # Workflow name (string) - == path_template.base_prefix.
     def get_name(self):
@@ -2248,7 +2249,10 @@ def dc_from_edna_output(
         except AttributeError:
             screening_id = None
 
-        for i in range(0, len(wedges)):
+        #GB merging wedges wedges
+        osc_very_end = wedges[-1].getExperimentalCondition().getGoniostat().getRotationAxisEnd().getValue()
+
+        for i in range(0, 1): #len(wedges)):
 
             wedge = wedges[i]
             exp_condition = wedge.getExperimentalCondition()
@@ -2272,7 +2276,7 @@ def dc_from_edna_output(
             # the directories of the reference collection.
             ref_pt = reference_image_collection.acquisitions[0].path_template
             acq.path_template = copy.deepcopy(ref_pt)
-            acq.path_template.wedge_prefix = "w" + str(i + 1)
+            #acq.path_template.wedge_prefix = "w" + str(i + 1)
             acq.path_template.reference_image_prefix = str()
 
             if resolution:
@@ -2321,12 +2325,13 @@ def dc_from_edna_output(
 
             except AttributeError:
                 pass
-
+            """
             try:
                 acquisition_parameters.transmission = beam.getTransmission().getValue()
             except AttributeError:
                 pass
-
+            """
+            acquisition_parameters.osc_end = osc_very_end
             try:
                 acquisition_parameters.energy = round(
                     (123984.0 / beam.getWavelength().getValue()) / 10000.0, 4
