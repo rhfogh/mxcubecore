@@ -1952,7 +1952,7 @@ class GphlWorkflow(HardwareObject, object):
         if self.getProperty("advanced_mode", False):
             ref_files = {
                 "variableName": "_footer",
-                "uiLabel": "Reference MTZ file Url (multiple Urls not yet supported)",
+                "uiLabel": "Reference MTZ absolute file name or Url (multiple Urls not yet supported)",
                 "type": "urltextarea",
                 "defaultValue": "",
             }

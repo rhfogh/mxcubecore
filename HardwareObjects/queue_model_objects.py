@@ -1427,7 +1427,7 @@ class PathTemplate(object):
     def get_archive_directory(self):
         """
         Returns the archive directory, for longer term storage. synchrotron_name
-        is set via static function calles from session hwobj
+        is set via static function calls from session hwobj
 
         :rtype: str
         :returns: Archive directory
@@ -2030,7 +2030,7 @@ class GphlWorkflow(TaskNode):
     def get_reference_reflection_files(self):
         return list(self._reference_reflection_files)
 
-    def set_reference_reflection_file(self, value):
+    def set_reference_reflection_files(self, value):
         self._reference_reflection_files = list(value)
 
     def get_path_template(self):
