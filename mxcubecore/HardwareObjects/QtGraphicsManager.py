@@ -72,6 +72,7 @@ class QtGraphicsManager(SampleView):
 
         self.camera_hwobj = None
         self.diffractometer_hwobj = None
+        self.camera_hwobj = None
 
         self.graphics_config_filename = None
         self.omega_angle = 0
