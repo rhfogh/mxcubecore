@@ -1,6 +1,3 @@
-#! /usr/bin/env python
-# encoding: utf-8
-#
 """
 
 License:
@@ -42,7 +39,7 @@ from mxlims.pydantic.objects.MxProcessing import MxProcessing
 from mxcubecore.model import queue_model_objects as qmo
 
 
-def make_mx_experiment(  # noqa: C901
+def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
     sample: qmo.Sample,
     tracking_data: qmo.TrackingData,
     start_time: Optional[datetime] = None,

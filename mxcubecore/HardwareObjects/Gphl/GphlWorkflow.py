@@ -2294,9 +2294,7 @@ class GphlWorkflow(HardwareObject):
                 tracking_data.role = "Characterisation"
                 tracking_data.sweep_id = characterisation_id
             else:
-                tracking_data.characterisation_id = (
-                    wf_tracking_data.characterisation_id
-                )
+                tracking_data.characterisation_id = wf_tracking_data.characterisation_id
                 tracking_data.role = "Result"
                 tracking_data.sweep_id = str(sweep.id_)
             tracking_data.scan_number = gphl_workflow_model.next_scan_number
@@ -2338,6 +2336,8 @@ class GphlWorkflow(HardwareObject):
                     {goniostatRotation.scanAxis: scan.start}
                 )
                 orientation_id = gphl_workflow_model.current_rotation_id
+                new_workflow_parameters["workflow_kappa_settings_id"] = orientation_id
+                tracking_data.orientation_id = orientation_id
             else:
                 # New sweep, or recentring_mode == scan
                 # # We need to recentre
