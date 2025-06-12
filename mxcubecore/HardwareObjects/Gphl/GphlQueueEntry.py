@@ -22,10 +22,6 @@ Module contains Gphl specific queue entries
 """
 
 import logging
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mxlims.pydantic.objects.MxExperiment import MxExperiment
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.queue_entry.base_queue_entry import BaseQueueEntry
