@@ -30,7 +30,7 @@ import logging
 import os
 from typing import Optional
 
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 from mxcubecore.model import queue_model_enumerables
 
