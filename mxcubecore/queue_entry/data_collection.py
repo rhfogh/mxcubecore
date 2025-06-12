@@ -155,7 +155,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             self._mxlims_job, mxlims_sample = mxutils.make_mx_experiment(
                 sample=data_model.get_sample_node(),
                 tracking_data=tracking_data,
-                measured_flux = HWR.beamline.flux.get_value()
+                measured_flux=HWR.beamline.flux.get_value(),
             )
 
         if data_model.get_parent():

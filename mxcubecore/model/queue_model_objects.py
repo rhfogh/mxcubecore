@@ -85,7 +85,7 @@ class TrackingData(BaseModel):
     orientation_id: Optional[str] = Field(
         default=None,
         description="Unique identifier string for the orientation (kappa/phi/chi settings) "
-                    "for this queue_model_object",
+        "for this queue_model_object",
     )
     characterisation_id: Optional[str] = Field(
         default=None,
@@ -95,7 +95,7 @@ class TrackingData(BaseModel):
     sweep_id: Optional[str] = Field(
         default=None,
         description="Unique identifier string for the sweep that this queue_model_object "
-        "is part of. Used to combine multiple Acquisitions as scans of a single sweep."
+        "is part of. Used to combine multiple Acquisitions as scans of a single sweep.",
     )
     scan_number: Optional[int] = Field(
         default=None,
