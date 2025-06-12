@@ -905,7 +905,7 @@ class GphlWorkflow(HardwareObject):
 
         self._workflow_queue = gevent.queue.Queue()
 
-    def start_enactment(self, enactment_id:str, correlation_id:str):
+    def start_enactment(self, enactment_id: str, correlation_id: str):
         """Set enactment_id and initialise MXLIMS MxExperimentMessage"""
         data_model = self._queue_entry.get_data_model()
         tracking_data = data_model.tracking_data
@@ -917,13 +917,11 @@ class GphlWorkflow(HardwareObject):
         # NB if it is not set it will be overwritten later
         tracking_data.workflow_name = workflow_parameters.get("workflow_name")
         tracking_data.workflow_type = (
-            workflow_parameters.get("workflow_type")
-            or data_model.strategy_type
+            workflow_parameters.get("workflow_type") or data_model.strategy_type
         )
-        tracking_data.location_id = (
-            workflow_parameters.get("workflow_position_id")
-            or str(uuid.uuid1())
-        )
+        tracking_data.location_id = workflow_parameters.get(
+            "workflow_position_id"
+        ) or str(uuid.uuid1())
         # NB first orientation only:
         tracking_data.orientation_id = workflow_parameters.get(
             "workflow_kappa_settings_id"
@@ -2157,7 +2155,6 @@ class GphlWorkflow(HardwareObject):
             goniostatRotation = sweep.goniostatSweepSetting
             rotation_id = goniostatRotation.id_
 
-
             # handle mxlims
             # handle workflow parameters
             new_workflow_parameters = gphl_workflow_model.workflow_parameters.copy()
@@ -2185,7 +2182,9 @@ class GphlWorkflow(HardwareObject):
                 tracking_data.role = "Characterisation"
                 tracking_data.sweep_id = characterisation_id
             else:
-                tracking_data.characterisation_id = wf_tracking_data.characterisation_id#
+                tracking_data.characterisation_id = (
+                    wf_tracking_data.characterisation_id
+                )
                 tracking_data.role = "Result"
                 tracking_data.sweep_id = str(sweep.id_)
             tracking_data.scan_number = gphl_workflow_model.next_scan_number
@@ -2195,8 +2194,12 @@ class GphlWorkflow(HardwareObject):
             new_workflow_parameters["workflow_type"] = tracking_data.workflow_type
             new_workflow_parameters["workflow_uid"] = tracking_data.workflow_uid
             new_workflow_parameters["workflow_position_id"] = tracking_data.location_id
-            new_workflow_parameters["characterisation_id"] = tracking_data.characterisation_id
-            new_workflow_parameters["workflow_kappa_settings_id"] = tracking_data.orientation_id
+            new_workflow_parameters["characterisation_id"] = (
+                tracking_data.characterisation_id
+            )
+            new_workflow_parameters["workflow_kappa_settings_id"] = (
+                tracking_data.orientation_id
+            )
 
             initial_settings = sweep.get_initial_settings()
             orientation = (
