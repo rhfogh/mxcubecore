@@ -73,7 +73,7 @@ def make_mx_experiment(  # noqa: C901
         "start_time": start_time or datetime.now(),  # noqa: DTZ005
         "end_time": end_time,
         "job_status": job_status,
-        "uuid":tracking_data.uuid,
+        "uuid": tracking_data.uuid,
     }
     workflow_name = tracking_data.workflow_name
     if diffraction_plan and not workflow_name:
@@ -125,7 +125,7 @@ def make_mx_experiment(  # noqa: C901
             "beta": crystal.cell_beta,
             "gamma": crystal.cell_gamma,
         }
-        unit_cell = UnitCell.UnitCell(**dd1) if  all(dd1.values()) else None
+        unit_cell = UnitCell.UnitCell(**dd1) if all(dd1.values()) else None
         if unit_cell:
             jobdata["expected_unit_cell"] = unit_cell
 
@@ -145,12 +145,11 @@ def make_mx_experiment(  # noqa: C901
         if radiation_sensitivity:
             jobdata["radiation_sensitivity"] = radiation_sensitivity
 
-    sample = MacromoleculeSample(
-        uuid=uuid.uuid1(), **sampledata,
-    )
+    sample = MacromoleculeSample(uuid=uuid.uuid1(), **sampledata)
     jobdata["sample_id"] = sample.uuid
     experiment = MxExperiment(**jobdata)
     return experiment, sample
+
 
 def add_data_collection(
     mx_experiment: MxExperiment,
@@ -202,10 +201,12 @@ def add_data_collection(
         # This is a scan for an existing sweep. Add and update
         sweep.scans.append(scan)
         sweep.axis_positions_start[scan_axis] = min(
-            sweep.axis_positions_start[scan_axis], axis_pos_start,
+            sweep.axis_positions_start[scan_axis],
+            axis_pos_start,
         )
         sweep.axis_positions_end[scan_axis] = max(
-            sweep.axis_positions_end[scan_axis], axis_pos_end,
+            sweep.axis_positions_end[scan_axis],
+            axis_pos_end,
         )
         # No new Collection Sweep made
         return None
@@ -282,19 +283,19 @@ def export_mxjob(  # noqa: C901
     message = MxlimsMessage.from_pydantic_objects(list(objects_by_uuid.values()))
     # The stringification is needed because model_dump_json required for UUID
     message_str = message.model_dump_json(
-            indent=4,
-            by_alias=True,
-            exclude_none=True,
-            serialize_as_any=True,
+        indent=4,
+        by_alias=True,
+        exclude_none=True,
+        serialize_as_any=True,
     )
     message_json = json.loads(message_str)
     to_export_json(message_json)
     path.write_text(json.dumps(message_json, indent=4))
 
+
 if __name__ == "__main__":
     # Test file loading
     from argparse import ArgumentParser, RawTextHelpFormatter
-
 
     parser = ArgumentParser(
         prog="generate_mxlims.py",
@@ -316,9 +317,9 @@ MXLIMS code generation. Assumes standard directory structure""",
 
     message = MxlimsMessage.from_message_file(Path(options_dict["filename"]))
     text = message.model_dump_json(
-            indent=4,
-            by_alias=True,
-            exclude_none=True,
-            serialize_as_any=True,
+        indent=4,
+        by_alias=True,
+        exclude_none=True,
+        serialize_as_any=True,
     )
-    Path(options_dict["filename"]+ "_out").write_text(text)
+    Path(options_dict["filename"] + "_out").write_text(text)

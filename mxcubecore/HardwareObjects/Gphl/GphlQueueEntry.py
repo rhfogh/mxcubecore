@@ -75,8 +75,8 @@ class GphlWorkflowQueueEntry(BaseQueueEntry):
 
         if self.get_mxlims_job() is None:
             data_model = self.get_data_model()
-            self._mxlims_job, mxlims_sample= mxutils.make_mx_experiment(
+            self._mxlims_job, mxlims_sample = mxutils.make_mx_experiment(
                 sample=data_model.get_sample_node(),
                 tracking_data=data_model.tracking_data,
-                measured_flux = HWR.beamline.flux.get_value()
+                measured_flux=HWR.beamline.flux.get_value(),
             )
