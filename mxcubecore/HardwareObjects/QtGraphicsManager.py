@@ -627,7 +627,6 @@ class QtGraphicsManager(SampleView):
         :type beam_info: dict with beam info parameters
         """
         if beam_info:
-            print ('@~@~ beam_info_changed', beam_info)
             self.beam_info_dict = beam_info
             for graphics_item in self.graphics_view.graphics_scene.items():
                 if isinstance(graphics_item, GraphicsLib.GraphicsItem):
