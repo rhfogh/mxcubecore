@@ -263,6 +263,8 @@ class QtGraphicsManager(SampleView):
             self.log.error("GraphicsManager: Diffractometer hwobj not defined")
 
         if HWR.beamline.beam is not None:
+            # Call get_value. Necessary, as this triggers update
+            yes_we_need_this_call = HWR.beamline.beam.get_value()
             self.beam_info_dict = HWR.beamline.beam.get_beam_info_dict()
             self.beam_position = HWR.beamline.beam.get_beam_position_on_screen()
             self.connect(
@@ -625,6 +627,7 @@ class QtGraphicsManager(SampleView):
         :type beam_info: dict with beam info parameters
         """
         if beam_info:
+            print ('@~@~ beam_info_changed', beam_info)
             self.beam_info_dict = beam_info
             for graphics_item in self.graphics_view.graphics_scene.items():
                 if isinstance(graphics_item, GraphicsLib.GraphicsItem):
