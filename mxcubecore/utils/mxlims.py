@@ -278,16 +278,7 @@ def export_mxjob(  # noqa: C901
             if sample is not None:
                 objects_by_uuid[sample.uuid] = sample
     message = MxlimsMessage.from_pydantic_objects(list(objects_by_uuid.values()))
-    # The stringification is needed because model_dump_json required for UUID
-    message_str = message.model_dump_json(
-        indent=4,
-        by_alias=True,
-        exclude_none=True,
-        serialize_as_any=True,
-    )
-    message_json = json.loads(message_str)
-    to_export_json(message_json)
-    path.write_text(json.dumps(message_json, indent=4))
+    message.export_message(path)
 
 
 if __name__ == "__main__":
