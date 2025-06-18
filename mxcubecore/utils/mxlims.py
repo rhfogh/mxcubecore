@@ -22,13 +22,11 @@ __copyright__ = """ Copyright © 2024 -  2024 MXLIMS collaboration."""
 __author__ = "rhfogh"
 __date__ = "05/11/2024"
 
-import json
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-from mxlims.impl.MxlimsBase import to_export_json
 from mxlims.pydantic.datatypes import Scan, UnitCell
 from mxlims.pydantic.mxlims_messages import MxlimsMessage
 from mxlims.pydantic.objects.CollectionSweep import CollectionSweep
