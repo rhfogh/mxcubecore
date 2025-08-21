@@ -22,6 +22,7 @@ inherits QueueEntryContainer. This makes it possible to arrange and
 execute queue entries in a hierarchical manner.
 """
 
+from __future__ import annotations
 import copy
 import logging
 import sys
@@ -32,7 +33,7 @@ from datetime import datetime
 from enum import Enum
 
 import gevent
-from mxlims.pydantic.messages import JobMessage
+from typing import Optional, TYPE_CHECKING
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.HardwareObjects import autoprocessing
@@ -42,6 +43,8 @@ from mxcubecore.model.queue_model_enumerables import (
     EXPERIMENT_TYPE,
 )
 from mxcubecore.utils import mxlims as mxutils
+if TYPE_CHECKING:
+    from mxlims.pydantic.objects.MxExperiment import MxExperiment
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
@@ -261,7 +264,7 @@ class BaseQueueEntry(QueueEntryContainer):
         self._data_model.lims_session_id = HWR.beamline.session.session_id
 
         # MXLIMS record for currently running experiment
-        self._mxlims_record: Optional[JobMessage.JobMessage] = None
+        self._mxlims_job: Optional[MxExperiment] = None
 
     def is_failed(self):
         """Returns True if failed"""
@@ -335,13 +338,13 @@ class BaseQueueEntry(QueueEntryContainer):
         """
         self._checked_for_exec = state
 
-    def get_mxlims_record(self) -> JobMessage.JobMessage:
+    def get_mxlims_job(self) -> Optional[MxExperiment]:
         """Get MxExperiment MXLIMS record if the entry is currently running"""
         obj = self
         result = None
         container = obj.get_container()
         while result is None and container is not None:
-            result = obj._mxlims_record
+            result = obj._mxlims_job
             obj = container
             container = obj.get_container()
         return result
@@ -383,13 +386,11 @@ class BaseQueueEntry(QueueEntryContainer):
         self.get_data_model().set_enabled(False)
         self.set_enabled(False)
 
-        mxlims_record = self._mxlims_record
-        if mxlims_record is not None:
-            self._mxlims_record = None
-            mxlims_record.job.end_time = datetime.now()
-            mxutils.export_mxrecord(
-                mxlims_record, None,
-            )
+        mxlims_job = self._mxlims_job
+        if mxlims_job is not None:
+            self._mxlims_job = None
+            mxlims_job.end_time = datetime.now()
+            mxutils.export_mxjob(mxlims_job, None,)
 
         # self._set_background_color()
 
