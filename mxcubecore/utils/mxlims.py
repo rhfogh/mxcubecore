@@ -27,8 +27,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-from mxlims.pydantic.datatypes import Scan, UnitCell
-from mxlims.pydantic.mxlims_messages import MxlimsMessage
+from mxlims.pydantic.datatypes.Scan import Scan
+from mxlims.pydantic.datatypes.UnitCell import UnitCell
+from mxlims.pydantic.messages.MxlimsMessage import MxlimsMessage
 from mxlims.pydantic.objects.CollectionSweep import CollectionSweep
 from mxlims.pydantic.objects.MacromoleculeSample import MacromoleculeSample
 from mxlims.pydantic.objects.MxExperiment import MxExperiment
@@ -120,7 +121,7 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
             "beta": crystal.cell_beta,
             "gamma": crystal.cell_gamma,
         }
-        unit_cell = UnitCell.UnitCell(**dd1) if all(dd1.values()) else None
+        unit_cell = UnitCell(**dd1) if all(dd1.values()) else None
         if unit_cell:
             jobdata["expected_unit_cell"] = unit_cell
 
@@ -179,7 +180,7 @@ def add_data_collection(
     detector_distance = parameters.pop("detector_distance", None)
     if detector_distance is not None:
         startpos["detector_distance"] = detector_distance
-    scan = Scan.Scan(
+    scan = Scan(
         scan_position_start=axis_pos_start,
         first_image_number=acqparams.first_image,
         number_images=acqparams.num_images,
