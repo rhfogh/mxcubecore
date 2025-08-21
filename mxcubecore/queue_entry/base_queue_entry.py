@@ -23,6 +23,7 @@ execute queue entries in a hierarchical manner.
 """
 
 from __future__ import annotations
+
 import copy
 import logging
 import sys
@@ -31,9 +32,9 @@ import traceback
 from collections import namedtuple
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
 
 import gevent
-from typing import Optional, TYPE_CHECKING
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.HardwareObjects import autoprocessing
@@ -43,6 +44,8 @@ from mxcubecore.model.queue_model_enumerables import (
     EXPERIMENT_TYPE,
 )
 from mxcubecore.utils import mxlims as mxutils
+
+
 if TYPE_CHECKING:
     from mxlims.pydantic.objects.MxExperiment import MxExperiment
 
@@ -391,7 +394,7 @@ class BaseQueueEntry(QueueEntryContainer):
         if mxlims_job is not None:
             self._mxlims_job = None
             mxlims_job.end_time = datetime.now()
-            mxutils.export_mxjob(mxlims_job, None,)
+            mxutils.export_mxjob(mxlims_job, None)
 
         # self._set_background_color()
 
