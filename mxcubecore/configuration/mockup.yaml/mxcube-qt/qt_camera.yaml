@@ -1,5 +1,0 @@
-%YAML 1.2
----
-class: QtVideoMockup.QtVideoMockup
-configuration:
-  interval: 1

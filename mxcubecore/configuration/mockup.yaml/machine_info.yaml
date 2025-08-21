@@ -1,5 +1,0 @@
-%YAML 1.2
----
-class: MachineInfoMockup.MachineInfoMockup
-configuration:
-  parameters: '["current", "message", "lifetime"]'
