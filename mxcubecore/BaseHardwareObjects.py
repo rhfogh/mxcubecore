@@ -505,12 +505,15 @@ class HardwareObjectNode:
         if result is None:
             # Can we not get rid of this at some point? Please?
             #
-            # Does depth-first search of all contained HWO to look for any HWO
+            # Does breadth-first search of all contained HWO to look for any HWO
             # that has the right role name
-            for obj in self._hwobj_by_role.values():
+            objects = list(self._hwobj_by_role.values())
+            for obj in objects:
                 result = obj.get_object_by_role(role)
-                if result is not None:
-                    return result
+                if result is None:
+                    objects.extend(obj._hwobj_by_role.values())
+                else:
+                    break
         return result
 
     def _objects_names(self) -> List[Union[str, None]]:
