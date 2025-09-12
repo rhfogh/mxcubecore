@@ -500,35 +500,18 @@ class HardwareObjectNode:
             Union[HardwareObject, None]: Hardware object.
         """
         role = str(role).lower()
-        #
-        # A hack to emulate get_object_by_role() for objects loaded from YAML config
-        # files.
-        #
-        # When HWOBJ is loaded from YAML, we don't populate it's '_objects_by_role'
-        # dictionary, thus that normal code path to look-up and object by role does
-        # not work.
-        #
-        # However, objects are attached to the parents _hwobj_by_role object via
-        # assignment. Try accessing using that attribute.
-        #
-        if hasattr(self, "_hwobj_by_role"):
-            obj = self._hwobj_by_role.get(role, None)
+        result = self._hwobj_by_role.get(role)
 
-            if obj is not None:
-                return obj
-
-        #
-        # Look-up object by role the old way.
-        #
-        objects = [self]
-
-        for curr in objects:
-            result = curr._objects_by_role.get(role)
-            if result is None:
-                objects.extend(obj for obj in curr if obj)
-
-            else:
-                return result
+        if result is None:
+            # Can we not get rid of this at some point? Please?
+            #
+            # Does depth-first search of all contained HWO to look for any HWO
+            # that has the right role name
+            for obj in self._hwobj_by_role.values():
+                result = obj.get_object_by_role(role)
+                if result is not None:
+                    return result
+        return result
 
     def _objects_names(self) -> List[Union[str, None]]:
         """Return hardware object names.
