@@ -202,6 +202,40 @@ class ConfiguredObject:
         """
         return list(self._hwobj_by_role.keys())
 
+    def get_object_by_role(self, role: str) -> Union["HardwareObject", None]:
+        """Get hardware object by role.
+
+        Args:
+            role (str): Role.
+
+        Returns:
+            Union[HardwareObject, None]: Hardware object.
+        """
+        role = str(role).lower()
+        result = self.objects_by_role.get(role)
+
+        if result is None:
+            # Does breadth-first search of all contained HWO to look for any HWO
+            # that has the right role name
+            # This entire block is deprecated.
+            #
+            # NB if this block is removed, the entire function can be removed
+            # and replaced by self.objects_by_role.get(role)
+            objects = list(self.objects_by_role.values())
+            for obj in objects:
+                objs_by_role = obj.objects_by_role
+                result = objs_by_role.get(role)
+                if result is None:
+                    objects.extend(objs_by_role.values())
+                else:
+                    warnings.warn(
+                        "%s.%s: get_object_by_role for nested objects is Deprecated."
+                        "Avoid"
+                        % (self.__class__.__name__, role)
+                    )
+                    break
+        return result
+
     def print_log(
         self,
         log_type: str = "HWR",
@@ -489,32 +523,6 @@ class HardwareObjectNode:
         else:
             for obj in self.__objects[index]:
                 yield obj
-
-    def get_object_by_role(self, role: str) -> Union["HardwareObject", None]:
-        """Get hardware object by role.
-
-        Args:
-            role (str): Role.
-
-        Returns:
-            Union[HardwareObject, None]: Hardware object.
-        """
-        role = str(role).lower()
-        result = self._hwobj_by_role.get(role)
-
-        if result is None:
-            # Can we not get rid of this at some point? Please?
-            #
-            # Does breadth-first search of all contained HWO to look for any HWO
-            # that has the right role name
-            objects = list(self._hwobj_by_role.values())
-            for obj in objects:
-                result = obj.get_object_by_role(role)
-                if result is None:
-                    objects.extend(obj._hwobj_by_role.values())
-                else:
-                    break
-        return result
 
     def _objects_names(self) -> List[Union[str, None]]:
         """Return hardware object names.
