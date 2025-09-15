@@ -230,8 +230,7 @@ class ConfiguredObject:
                 else:
                     warnings.warn(
                         "%s.%s: get_object_by_role for nested objects is Deprecated."
-                        "Avoid"
-                        % (self.__class__.__name__, role)
+                        "Avoid" % (self.__class__.__name__, role)
                     )
                     break
         return result
