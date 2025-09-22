@@ -13,7 +13,7 @@
     <advanced_mode>True</advanced_mode>
 
     <!-- Maximum allowed value of Chi, for strategy calculation -->
-    <maximum_chi>48.0</maximum_chi>
+    <maximum_chi>20.0</maximum_chi>
 
     <!-- UI popup specification: -->
 

@@ -88,7 +88,7 @@ class GphlWorkflowConnection(HardwareObject, object):
 
         # Py4J gateway to external workflow program
         self._gateway = None
-        self.msg_class_imported = False
+        self.jvm_imports_checked = False
 
         # ID for current workflow calculation
         self._enactment_id = None
@@ -248,7 +248,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             # so we are never in state 'ON'/STANDBY
             raise RuntimeError("Workflow is already running, cannot be started")
 
-        self.msg_class_imported = False
+        self.jvm_imports_checked = False
 
         # Cannot be done in init, where the api.sessions link is not yet ready
         self.software_paths["GPHL_WDIR"] = os.path.join(
@@ -508,30 +508,33 @@ class GphlWorkflowConnection(HardwareObject, object):
         """Receive and process message from workflow server
         Return goes to server
 
-        NB Callled freom external java) workflow"""
+        NB Called from external java) workflow"""
         if self.get_state() is self.STATES.OFF:
             return None
 
-        if not self.msg_class_imported:
-            try:
-                msg_class = self._gateway.jvm.py4j.reflection.ReflectionUtil.classForName(
-                    "co.gphl.sdcp.astra.service.py4j.Py4jMessage"
-                )
-                java_gateway.java_import(
-                    self._gateway.jvm, "co.gphl.sdcp.astra.service.py4j.Py4jMessage"
-                )
-            except Py4JJavaError:
-                msg_class = self._gateway.jvm.py4j.reflection.ReflectionUtil.classForName(
-                    "co.gphl.sdcp.py4j.Py4jMessage"
-                )
-                java_gateway.java_import(
-                    self._gateway.jvm, "co.gphl.sdcp.py4j.Py4jMessage"
-                )
+        if not self.jvm_imports_checked:
+            # We need to use dir to check for the presence or absence of an imported class. hasattr/getattr don't do
+            # what is needed here, because if the attribute name is not present java_gateway receives
+            # proto.SUCCESS_PACKAGE from the Java side and instantiates a JavaPackage with the name, even though
+            # no such package exists in the JVM. See:
+            # https://github.com/py4j/py4j/blob/cb9e392d8fc5bec6b99a612e2911017900061628/py4j-python/src/py4j/java_gateway.py#L1748
+            # This looks like a py4j bug on the Java side but needs more investigation.
 
-            logging.getLogger("HWR").debug(
-                "GΦL workflow Py4jMessage class is: %s" % msg_class
-            )
-        self.msg_class_imported = True
+            # The Py4jMessage class is used as the indicator class here: we assume that if it has been imported,
+            # all other unqualified Java classnames used via the default JVM view have been imported, otherwise
+            # none of them have been imported and we need to do it here.
+            if "Py4jMessage" not in dir(self._gateway.jvm):
+                for qualified_class_name in (
+                        "co.gphl.sdcp.astra.service.py4j.Py4jMessage",
+                        "co.gphl.beamline.v2_unstable.instrumentation.CentringStatus",
+                        "co.gphl.beamline.v2_unstable.domain_types.CrystalClass",
+                        "co.gphl.beamline.v2_unstable.domain_types.ChemicalElement",
+                        "co.gphl.beamline.v2_unstable.domain_types.AbsorptionEdge"
+                ):
+                    java_gateway.java_import(self._gateway.jvm, qualified_class_name)
+                logging.getLogger("HWR").warn("Importing required unqualified class names from the JVM explicitly")
+                logging.getLogger("HWR").warn("Please consider upgrading the GPhL workflow application")
+            self.jvm_imports_checked = True
 
         xx0 = self._decode_py4j_message(py4j_message)
         message_type = xx0.message_type
@@ -1057,9 +1060,7 @@ class GphlWorkflowConnection(HardwareObject, object):
     def _CentringDone_to_java(self, centringDone):
         jvm = self._gateway.jvm
         return jvm.astra.messagebus.messages.information.CentringDoneImpl(
-            jvm.co.gphl.beamline.v2_unstable.instrumentation.CentringStatus.valueOf(
-                centringDone.status
-            ),
+            jvm.CentringStatus.valueOf(centringDone.status),
             self.to_java_time(centringDone.timestamp),
             self._GoniostatTranslation_to_java(centringDone.goniostatTranslation),
         )
@@ -1168,9 +1169,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         crystal_classes = selectedLattice.userCrystalClasses
         if crystal_classes:
             ccset = set(
-                jvm.co.gphl.beamline.v2_unstable.domain_types.CrystalClass.fromStringList(
-                    self.toJStringArray(crystal_classes)
-                )
+                jvm.CrystalClass.fromStringList(self.toJStringArray(crystal_classes))
             )
             builder = builder.userCrystalClasses(ccset)
         urlstrings = selectedLattice.reference_reflection_files
@@ -1221,9 +1220,7 @@ class GphlWorkflowConnection(HardwareObject, object):
         crystal_classes = userProvidedInfo.crystalClasses
         if crystal_classes:
             ccset = set(
-                jvm.co.gphl.beamline.v2_unstable.domain_types.CrystalClass.fromStringList(
-                    self.toJStringArray(crystal_classes)
-                )
+                jvm.CrystalClass.fromStringList(self.toJStringArray(crystal_classes))
             )
             builder = builder.crystalClasses(ccset)
         xx0 = userProvidedInfo.spaceGroup
@@ -1250,12 +1247,8 @@ class GphlWorkflowConnection(HardwareObject, object):
         if anomalousScatterer is None:
             return None
 
-        element = jvm.co.gphl.beamline.v2_unstable.domain_types.ChemicalElement.valueOf(
-            anomalousScatterer.element
-        )
-        edge = jvm.co.gphl.beamline.v2_unstable.domain_types.AbsorptionEdge.valueOf(
-            anomalousScatterer.edge
-        )
+        element = jvm.ChemicalElement.valueOf(anomalousScatterer.element)
+        edge = jvm.AbsorptionEdge.valueOf(anomalousScatterer.edge)
         return jvm.astra.messagebus.messages.domain_types.AnomalousScattererImpl(
             element, edge
         )
