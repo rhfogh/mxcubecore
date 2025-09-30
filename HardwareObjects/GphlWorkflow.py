@@ -761,15 +761,7 @@ class GphlWorkflow(HardwareObject, object):
                 float(parameters.get("resolution")),
                 decay_limit=data_model.get_decay_limit(),
             )
-            characterisation_dose = data_model.get_characterisation_dose()
-            if characterisation_dose:
-                use_dose = dbg - data_model.get_characterisation_dose()
-            else:
-                use_dose = dbg * data_model.get_characterisation_budget_fraction()
-            field_widget.set_values(
-                dose_budget=dbg, use_dose=use_dose, exposure=default_exposure
-            )
-            update_dose(field_widget)
+            field_widget.set_values(dose_budget=dbg)
 
         def update_dose(field_widget):
             """When use_dose changes, update transmission and/or exposure_time
