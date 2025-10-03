@@ -328,7 +328,7 @@ class ICATLIMS(AbstractLims):
                     destination_folder = (
                         HWR.beamline.session.get_base_process_directory()
                     )
-                    msg = "Download restource: "
+                    msg = "Download resource: "
                     msg += f"sample_sheet_id={sample_sheet_id} "
                     msg += f"destination_folder={destination_folder}"
                     logger.debug(msg)
