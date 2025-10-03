@@ -325,31 +325,30 @@ class ICATLIMS(AbstractLims):
                     self.__get_sample_information_by(sample_sheet_id)
                 )
                 if sample_information is not None:
-                    if len(HWR.beamline.session.get_full_path("", "")) > 0:
-                        destination_folder = (
-                            HWR.beamline.session.get_base_process_directory()
-                        )
-                        msg = "Download restource: "
-                        msg += f"sample_sheet_id={sample_sheet_id} "
-                        msg += f"destination_folder={destination_folder}"
-                        logger.debug(msg)
-                        downloads = self._download_resources(
-                            sample_sheet_id,
-                            sample_information.resources,
-                            destination_folder,
-                            sample_name,
-                        )
-                        msg = f"downloaded {len(downloads)} resources"
-                        logger.debug(msg)
-                        if len(downloads) > 0:
-                            try:
-                                self.__add_download_path_to_processing_plan(
-                                    processing_plan, downloads
-                                )
-                            except RuntimeError:
-                                logger.exception(
-                                    "Failed __add_download_path_to_processing_plan"
-                                )
+                    destination_folder = (
+                        HWR.beamline.session.get_base_process_directory()
+                    )
+                    msg = "Download restource: "
+                    msg += f"sample_sheet_id={sample_sheet_id} "
+                    msg += f"destination_folder={destination_folder}"
+                    logger.debug(msg)
+                    downloads = self._download_resources(
+                        sample_sheet_id,
+                        sample_information.resources,
+                        destination_folder,
+                        sample_name,
+                    )
+                    msg = f"downloaded {len(downloads)} resources"
+                    logger.debug(msg)
+                    if len(downloads) > 0:
+                        try:
+                            self.__add_download_path_to_processing_plan(
+                                processing_plan, downloads
+                            )
+                        except RuntimeError:
+                            logger.exception(
+                                "Failed __add_download_path_to_processing_plan"
+                            )
 
                 processing_plan = {
                     item["key"]: item["value"] for item in processing_plan
