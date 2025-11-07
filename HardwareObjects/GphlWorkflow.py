@@ -2408,10 +2408,13 @@ class GphlWorkflow(HardwareObject, object):
                 "cell_gamma",
             )
         )
+        unitCell = None
         if all(cell_params):
             unitCell = GphlMessages.UnitCell(*cell_params)
         else:
-            unitCell = None
+            cell_params = workflow_model.get_cell_parameters()
+            if all(cell_params):
+                unitCell = GphlMessages.UnitCell(*cell_params)
 
         # NB Expected resolution is deprecated.
         # It is set to the current resolution value, for now
