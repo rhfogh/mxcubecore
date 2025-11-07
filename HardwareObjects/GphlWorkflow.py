@@ -1403,7 +1403,7 @@ class GphlWorkflow(HardwareObject, object):
             id_ = dds._id
         else:
             id_ = None
-        if gphl_workflow_model.lattice_selected or strategy_type == "diffractcal":
+        if gphl_workflow_model.lattice_selected:
             detectorSetting = None
         else:
             detectorSetting = GphlMessages.BcsDetectorSetting(
