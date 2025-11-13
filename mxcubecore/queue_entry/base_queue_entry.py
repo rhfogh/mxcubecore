@@ -45,7 +45,6 @@ from mxcubecore.model.queue_model_enumerables import (
 )
 from mxcubecore.utils import mxlims as mxutils
 
-
 if TYPE_CHECKING:
     from mxlims.pydantic.objects.MxExperiment import MxExperiment
 
@@ -392,7 +391,7 @@ class BaseQueueEntry(QueueEntryContainer):
         mxlims_job = self._mxlims_job
         if mxlims_job is not None:
             self._mxlims_job = None
-            mxlims_job.end_time = datetime.now()
+            mxlims_job.end_time = datetime.now()  # noqa: DTZ005
             mxutils.export_mxjob(mxlims_job, None)
 
         # self._set_background_color()
