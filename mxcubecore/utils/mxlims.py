@@ -24,6 +24,7 @@ __date__ = "05/11/2024"
 
 import uuid
 from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -245,22 +246,23 @@ def export_mxjob(  # noqa: C901
     path_template: Optional[qmo.PathTemplate] = None,
 ):
     """Export MxExperiment mxlims record with linked objects to JSON file"""
-    if path_template is None:
-        path = Path(mxlims_job.results[-1].path)
-        file_name = "MxExperiment.json"
-    else:
+    if path_template:
         template = "MXExperiment_%s_%s.json"
         file_name = template % (path_template.get_prefix(), path_template.run_number)
         path = Path(path_template.directory) / file_name
-    path = path / file_name
-    print("WRITING MXLIMS JSON TO", path)  # noqa: T201
+    else:
+        path = None
 
     jobs = [mxlims_job]
     objects_by_uuid = {}
     for job in jobs:
         objects_by_uuid[job.uuid] = job
         jobs.extend(job.subjobs)
-        for tag in ("results", "template_data", "reference_data"):
+        for obj in job.results:
+            objects_by_uuid[obj.uuid] = obj
+            if path is None:
+                path = Path(obj.path) / "MxExperiment.json"
+        for tag in ("template_data", "reference_data"):
             for obj in getattr(job, tag):
                 objects_by_uuid[obj.uuid] = obj
         if hasattr(job, "input_data"):
@@ -276,8 +278,14 @@ def export_mxjob(  # noqa: C901
             sample = getattr(logistical_sample, "sample", None)
             if sample is not None:
                 objects_by_uuid[sample.uuid] = sample
-    message = MxlimsMessage.from_pydantic_objects(list(objects_by_uuid.values()))
-    message.export_message(path)
+    if path is None:
+        logging.getLogger("user_level_log").debug(
+            "Job has no results; MXLIMS not exported"
+        )
+    else:
+        message = MxlimsMessage.from_pydantic_objects(list(objects_by_uuid.values()))
+        print("WRITING MXLIMS JSON TO", path)  # noqa: T201
+        message.export_message(path)
 
 
 if __name__ == "__main__":
