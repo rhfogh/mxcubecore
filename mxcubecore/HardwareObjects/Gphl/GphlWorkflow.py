@@ -195,6 +195,9 @@ class GphlWorkflow(HardwareObject):
 
     TEST_SAMPLE_PREFIX = "emulate"
 
+    # Key for gphl workflow extensions used in MXLIMS
+    GPHL_WORKFLOW_EXTENSION = "workflow.gphl.co"
+
     # Signals
     PARAMETERS_NEEDED = "GphlJsonParametersNeeded"
     PARAMETER_RETURN_SIGNAL = "GphlParameterReturn"
