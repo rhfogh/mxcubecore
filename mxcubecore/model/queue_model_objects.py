@@ -28,7 +28,7 @@ import ast
 import copy
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -113,6 +113,9 @@ class TrackingData(BaseModel):
                 "Centring",
             ],
         },
+    )
+    extensions: dict[str, dict[str, Any]] = Field(
+        default_factory=dict
     )
 
 
@@ -2056,7 +2059,6 @@ class GphlWorkflow(TaskNode):
         self.aimed_resolution = None  # from 'resolution' parameter or defaults
         self.wavelengths = ()  # from 'energies' parameters
         self.use_cell_for_processing = False
-        self.strategy_variant = None  # from 'strategy' Used for acquisition
         self.strategy_options = {}
         self.relative_rad_sensitivity = 1.0
         self.processing_macro = None
@@ -2143,7 +2145,7 @@ class GphlWorkflow(TaskNode):
         summary["wavelengths"] = tuple(x.wavelength for x in self.wavelengths)
         summary["resolution"] = self.detector_setting.resolution
         summary["orgxy"] = self.detector_setting.orgxy
-        summary["strategy_variant"] = self.strategy_options.get("variant", "not set")
+        summary["strategy_variant"] = self.strategy_variant
         summary["orientation_count"] = len(self.goniostat_translations)
         summary["characterisation_dose"] = self.characterisation_dose
         summary["dose_per_repetition"] = self.acquisition_dose
@@ -2308,15 +2310,22 @@ class GphlWorkflow(TaskNode):
             or self.strategy_settings["variants"][0]
         )
         if self.characterisation_done:
-            self.strategy_options["variant"] = self.strategy_variant = strategy_variant
+            self.strategy_options["variant"] = strategy_variant
         elif self.wftype == "diffractcal":
-            self.strategy_options["variant"] = self.strategy_variant = strategy_variant
+            self.strategy_options["variant"] = strategy_variant
             self.initial_strategy = strategy_variant
         elif self.wftype != "transcal":
             # This must be characterisation - here we do not accept defaults
             self.initial_strategy = (
                 strategy or settings["characterisation_strategies"][0]
             )
+        if not self.tracking_data.workflow_name:
+            self.tracking_data.workflow_name = self.workflow_name
+        self.tracking_data.extensions[
+            HWR.beamline.gphl_workflow.GPHL_WORKFLOW_EXTENSION
+        ] = {
+            "workflow_name": self.workflow_name,
+        }
 
         # NB init_spot_dir must be re-set every time, hence no if test
         self.init_spot_dir = init_spot_dir
@@ -2602,7 +2611,17 @@ class GphlWorkflow(TaskNode):
     @property
     def strategy_short_name(self):
         """ "Strategy short name, e.g. "2wvlMAD" """
-        return self.strategy_settings["short_name"]
+        return self.strategy_settings.get("short_name") or self.strategy_type
+
+    @property
+    def strategy_variant(self):
+        """Strategy variant"""
+        return self.strategy_options.get("variant") or "no_variant"
+
+    @property
+    def workflow_name(self):
+        """ "Full workflow name, for use e.g. for MXLIMS,experiment_strategy """
+        return ".".join(("gphl", self.strategy_short_name, self.strategy_variant))
 
     # Run name equal to base_prefix
     def get_name(self):
