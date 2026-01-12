@@ -55,6 +55,7 @@
     <!-- Characterisation strategies popup. -->
     <!-- names refer to stategies in  strategylib.nml -->
     <characterisation_strategies>
+        Char_72_6_multitrigger
         Char_6_5_multitrigger
         Char_24deg
 <!--        Characterisation_6_5-->

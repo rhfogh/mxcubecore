@@ -2413,7 +2413,7 @@ class GphlWorkflow(HardwareObject, object):
             unitCell = GphlMessages.UnitCell(*cell_params)
         else:
             cell_params = workflow_model.get_cell_parameters()
-            if all(cell_params):
+            if cell_params and all(cell_params):
                 unitCell = GphlMessages.UnitCell(*cell_params)
 
         # NB Expected resolution is deprecated.
