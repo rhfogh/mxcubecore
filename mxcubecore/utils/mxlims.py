@@ -114,15 +114,14 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
         space_group_name = crystal.space_group
         if space_group_name:
             jobdata["expected_space_group_name"] = space_group_name
-        dd1 = {
-            "a": crystal.cell_a,
-            "b": crystal.cell_b,
-            "c": crystal.cell_c,
-            "alpha": crystal.cell_alpha,
-            "beta": crystal.cell_beta,
-            "gamma": crystal.cell_gamma,
-        }
-        unit_cell = UnitCell(**dd1) if all(dd1.values()) else None
+        unit_cell = make_unit_cell(
+            crystal.cell_a,
+            crystal.cell_b,
+            crystal.cell_c,
+            crystal.cell_alpha,
+            crystal.cell_beta,
+            crystal.cell_gamma,
+        )
         if unit_cell:
             jobdata["expected_unit_cell"] = unit_cell
 
@@ -147,6 +146,18 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
     experiment = MxExperiment(**jobdata)
     return experiment, sample
 
+def make_unit_cell(a, b, c, alpha, beta, gamma):
+    """Make UnitCell object"""
+    dd1 = {
+        "a": a,
+        "b": b,
+        "c": c,
+        "alpha": alpha,
+        "beta": beta,
+        "gamma": gamma,
+    }
+    unit_cell = UnitCell(**dd1) if all(dd1.values()) else None
+    return unit_cell
 
 def add_data_collection(
     mx_experiment: MxExperiment,
@@ -260,8 +271,7 @@ def export_mxjob(  # noqa: C901
         jobs.extend(job.subjobs)
         for obj in job.results:
             objects_by_uuid[obj.uuid] = obj
-            if path is None:
-                path = Path(obj.path) / "MxExperiment.json"
+            path = Path(obj.path) / "MxExperiment.json"
         for tag in ("template_data", "reference_data"):
             for obj in getattr(job, tag):
                 objects_by_uuid[obj.uuid] = obj

@@ -134,8 +134,8 @@ class DataCollectionQueueEntry(BaseQueueEntry):
 
         data_model = self.get_data_model()
 
-        mxexperiment: MxExperiment = self.get_mxlims_job()
-        if mxexperiment is None:
+        mx_experiment: MxExperiment = self.get_mxlims_job()
+        if mx_experiment is None:
             tracking_data = data_model.tracking_data
             workflow_parameters = data_model.workflow_parameters
             tracking_data.workflow_uid = workflow_parameters.get("workflow_uid")
