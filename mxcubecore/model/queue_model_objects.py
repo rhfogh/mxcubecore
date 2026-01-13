@@ -114,9 +114,6 @@ class TrackingData(BaseModel):
             ],
         },
     )
-    extensions: dict[str, dict[str, Any]] = Field(
-        default_factory=dict
-    )
 
 
 class TaskNode(object):
@@ -2026,6 +2023,10 @@ class Workflow(TaskNode):
 
 
 class GphlWorkflow(TaskNode):
+
+    # Key for gphl workflow extensions used in MXLIMS
+    GPHL_WORKFLOW_EXTENSION = "workflow.gphl.co"
+
     def __init__(self):
         TaskNode.__init__(self)
 
@@ -2149,11 +2150,7 @@ class GphlWorkflow(TaskNode):
         summary["orientation_count"] = len(self.goniostat_translations)
         summary["characterisation_dose"] = self.characterisation_dose
         summary["dose_per_repetition"] = self.acquisition_dose
-
-        summary["total_radiation_dose"] = (
-            summary["dose_per_repetition"] * summary["repetition_count"]
-            + summary["characterisation_dose"]
-        )
+        summary["total_radiation_dose"] = self.total_radiation_dose
         summary["total_dose_budget"] = self.recommended_dose_budget()
         return summary
 
@@ -2321,11 +2318,6 @@ class GphlWorkflow(TaskNode):
             )
         if not self.tracking_data.workflow_name:
             self.tracking_data.workflow_name = self.workflow_name
-        self.tracking_data.extensions[
-            HWR.beamline.gphl_workflow.GPHL_WORKFLOW_EXTENSION
-        ] = {
-            "workflow_name": self.workflow_name,
-        }
 
         # NB init_spot_dir must be re-set every time, hence no if test
         self.init_spot_dir = init_spot_dir
@@ -2654,6 +2646,13 @@ class GphlWorkflow(TaskNode):
         if energy_tags and self.characterisation_done:
             result *= len(energy_tags)
         return result
+
+    @property
+    def total_radiation_dose(self):
+        """Total radiation dose for entire workflow"""
+        return (
+            self.acquisition_dose * self.repetition_count + self.characterisation_dose
+        )
 
     def calc_maximum_dose(self, energy=None, exposure_time=None, image_width=None):
         """Dose at transmission=100 for given energy, exposure time and image width
