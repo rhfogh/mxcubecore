@@ -32,6 +32,7 @@ import datetime
 import enum
 import logging
 import math
+import numpy
 import os
 import socket
 import subprocess
