@@ -682,11 +682,8 @@ class GenericDiffractometer(HardwareObject):
         self.wait_device_ready(timeout)
         self.ready_event.set()
 
-    def in_plate_mode(self):
-        """Returns True if diffractometer in plate mod
-
-        :returns: boolean
-        """
+    @property
+    def in_plate_mode(self) -> bool:
         return self.head_type == GenericDiffractometer.HEAD_TYPE_PLATE
 
     def get_head_type(self):
@@ -1000,7 +997,7 @@ class GenericDiffractometer(HardwareObject):
                 # if 3 click centring move -180. well. dont, in principle the calculated
                 # centred positions include omega to initial position
                 pass
-                # if not self.in_plate_mode():
+                # if not self.in_plate_mode:
                 #    self.log.debug("Centring finished. Moving omega back to initial position")
                 #    self.motor_hwobj_dict['phi'].set_value_relative(-180, timeout=None)
                 #    self.log.debug("         Moving omega done")

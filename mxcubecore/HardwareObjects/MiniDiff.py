@@ -396,7 +396,8 @@ class MiniDiff(HardwareObject):
             and HWR.beamline.sample_view.camera is not None
         )
 
-    def in_plate_mode(self):
+    @property
+    def in_plate_mode(self) -> bool:
         return False
 
     def apertureChanged(self, *args):
@@ -1010,7 +1011,7 @@ class MiniDiff(HardwareObject):
             )
             HWR.beamline.sample_view.save_snapshot(path=image_path)
             # do not move 90 degrees if not needed
-            if not self.in_plate_mode() and snapshot_index < len(image_path_list) - 1:
+            if not self.in_plate_mode and snapshot_index < len(image_path_list) - 1:
                 self.phiMotor.set_value_relative(90, timeout=5)
 
     def snapshotsDone(self, snapshotsProcedure):

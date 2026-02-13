@@ -415,7 +415,7 @@ class AbstractDiffractometer(HardwareObject):
         )
 
     @property
-    def get_head_enum(self):
+    def head_enum(self):
         """Get the diffractometer head Enum. Used when no import wished."""
         return DiffractometerHead
 

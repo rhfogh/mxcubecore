@@ -112,7 +112,8 @@ class DiffractometerMockup(AbstractDiffractometer):
             "get_current_phase is deprecated, please use get get_phase instead",
             DeprecationWarning,
         )
-        return self.get_phase().name
+        phase = self.get_phase()
+        return phase and phase.name
 
     def _set_phase(self, value: DiffractometerPhase):
         """Set a phase."""
