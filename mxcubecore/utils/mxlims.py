@@ -23,7 +23,7 @@ __author__ = "rhfogh"
 __date__ = "05/11/2024"
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from pathlib import Path
 from typing import Optional, Tuple, Union
@@ -32,6 +32,7 @@ from mxlims.pydantic.datatypes.Scan import Scan
 from mxlims.pydantic.datatypes.UnitCell import UnitCell
 from mxlims.pydantic.messages.MxlimsMessage import MxlimsMessage
 from mxlims.pydantic.objects.CollectionSweep import CollectionSweep
+from mxlims.pydantic.objects.Crystal import Crystal
 from mxlims.pydantic.objects.MacromoleculeSample import MacromoleculeSample
 from mxlims.pydantic.objects.MxExperiment import MxExperiment
 from mxlims.pydantic.objects.MxProcessing import MxProcessing
@@ -60,6 +61,12 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
     Returns:
 
     """
+    if end_time:
+        end_time = end_time.astimezone(timezone.utc)
+    if start_time:
+        start_time = start_time.astimezone(timezone.utc)
+    else:
+        start_time = datetime.now(timezone.utc)
     crystal = sample.crystals[0] if sample.crystals else None
     diffraction_plan = sample.diffraction_plan
     sampledata = {
@@ -67,7 +74,7 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
     }
 
     jobdata = {
-        "start_time": start_time or datetime.now(),  # noqa: DTZ005
+        "start_time": start_time,
         "end_time": end_time,
         "job_status": job_status,
         "uuid": tracking_data.uuid,
@@ -125,11 +132,6 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
         if unit_cell:
             jobdata["expected_unit_cell"] = unit_cell
 
-        # LogisticalSample, not really modeled yet, so not much to put in
-        crystal_uuid = crystal.crystal_uuid
-        if crystal_uuid:
-            jobdata["logistical_sample_id"] = crystal_uuid
-
     # Set parameters from diffraction plan
     if diffraction_plan:
         # It is not clear if diffraction_plan is a dict or an object,
@@ -142,6 +144,15 @@ def make_mx_experiment(  # noqa: C901, PLR0912, PLR0915
             jobdata["radiation_sensitivity"] = radiation_sensitivity
 
     sample = MacromoleculeSample(uuid=uuid.uuid1(), **sampledata)
+
+    if crystal:
+        # Crystal.uuid is unfortunately not a uuid, but a name string
+        crystal_name = crystal.crystal_uuid
+        if crystal_name:
+            mxlims_crystal = Crystal(
+                uuid=uuid.uuid1(), sample_id=sample.uuid, name=crystal_name
+            )
+            jobdata["logistical_sample_id"] = mxlims_crystal.uuid
     jobdata["sample_id"] = sample.uuid
     experiment = MxExperiment(**jobdata)
     return experiment, sample
