@@ -30,7 +30,7 @@ import sys
 import time
 import traceback
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
@@ -392,7 +392,7 @@ class BaseQueueEntry(QueueEntryContainer):
         mxlims_job = self._mxlims_job
         if mxlims_job is not None:
             self._mxlims_job = None
-            mxlims_job.end_time = datetime.now()  # noqa: DTZ005
+            mxlims_job.end_time = datetime.now(timezone.utc)
             mxutils.export_mxjob(mxlims_job, None)
 
         # self._set_background_color()
