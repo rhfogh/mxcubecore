@@ -43,10 +43,10 @@ from mxcubecore.model.queue_model_enumerables import (
     CENTRING_METHOD,
     EXPERIMENT_TYPE,
 )
-from mxcubecore.utils import mxlims as mxutils
+from mxcubecore.utils import mxutils
 
 if TYPE_CHECKING:
-    from mxlims.pydantic.objects.MxExperiment import MxExperiment
+    from mxlims.mxpydantic.objects.MxExperiment import MxExperiment
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"

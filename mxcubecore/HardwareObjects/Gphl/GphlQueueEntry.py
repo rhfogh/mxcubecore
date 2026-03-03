@@ -25,7 +25,7 @@ import logging
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.queue_entry.base_queue_entry import BaseQueueEntry
-from mxcubecore.utils import mxlims as mxutils
+from mxcubecore.utils import mxutils
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"

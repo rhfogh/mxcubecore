@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import gevent
 
 if TYPE_CHECKING:
-    from mxlims.pydantic.objects.MxExperiment import MxExperiment
+    from mxlims.mxpydantic.objects.MxExperiment import MxExperiment
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.dispatcher import dispatcher
@@ -39,7 +39,7 @@ from mxcubecore.queue_entry.base_queue_entry import (
     QueueExecutionException,
     center_before_collect,
 )
-from mxcubecore.utils import mxlims as mxutils
+from mxcubecore.utils import mxutils
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
