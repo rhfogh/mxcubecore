@@ -28,14 +28,14 @@ import logging
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-from mxlims.pydantic.datatypes.Scan import Scan
-from mxlims.pydantic.datatypes.UnitCell import UnitCell
-from mxlims.pydantic.messages.MxlimsMessage import MxlimsMessage
-from mxlims.pydantic.objects.CollectionSweep import CollectionSweep
-from mxlims.pydantic.objects.Crystal import Crystal
-from mxlims.pydantic.objects.MacromoleculeSample import MacromoleculeSample
-from mxlims.pydantic.objects.MxExperiment import MxExperiment
-from mxlims.pydantic.objects.MxProcessing import MxProcessing
+from mxlims.mxpydantic.datatypes.Scan import Scan
+from mxlims.mxpydantic.datatypes.UnitCell import UnitCell
+from mxlims.mxpydantic.messages.MxlimsMessage import MxlimsMessage
+from mxlims.mxpydantic.objects.CollectionSweep import CollectionSweep
+from mxlims.mxpydantic.objects.Crystal import Crystal
+from mxlims.mxpydantic.objects.MacromoleculeSample import MacromoleculeSample
+from mxlims.mxpydantic.objects.MxExperiment import MxExperiment
+from mxlims.mxpydantic.objects.MxProcessing import MxProcessing
 
 from mxcubecore.model import queue_model_objects as qmo
 
