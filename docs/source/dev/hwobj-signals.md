@@ -352,7 +352,7 @@ motor_positions = {
     "kappa": float,
     "kappa_phi": float,
     "phi": float,
-    "zoom": float?, # optional
+    "zoom": float, # ? optional
     "beam_x": float,
     "beam_y": float
 }
@@ -361,9 +361,9 @@ motor_positions = {
 #### `GenericDiffractometer.py`
 
 | Signal                             | Description | Signature                                                     | Notes                                      |
-| ---------------------------------- | ----------- | ------------------------------------------------------------- | ------------------------------------------ |
+|------------------------------------| ----------- | ------------------------------------------------------------- | ------------------------------------------ |
 | minidiffTransferModeChanged        |             | "minidiffTransferModeChanged", mode                           |                                            |
-| minidiffPhaseChanged               |             | "minidiffPhaseChanged", currentPhase                          |                                            |
+| phaseChanged                       |             | "phaseChanged", currentPhase                          |                                            |
 | newAutomaticCentringPoint          |             | "newAutomaticCentringPoint", motorPositions                   |                                            |
 | centringInvalid                    |             | "centringInvalid"                                             |                                            |
 | centringStarted                    |             | "centringStarted", (method, False)                            |                                            |

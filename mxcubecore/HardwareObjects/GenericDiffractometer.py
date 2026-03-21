@@ -1360,7 +1360,7 @@ class GenericDiffractometer(HardwareObject):
             logging.getLogger("GUI").info(
                 "Diffractometer: Current phase changed to %s" % current_phase
             )
-        self.emit("minidiffPhaseChanged", (current_phase,))
+        self.emit("phaseChanged", (current_phase,))
 
     def sample_is_loaded_changed(self, sample_is_loaded):
         """

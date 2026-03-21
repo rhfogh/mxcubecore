@@ -1356,7 +1356,7 @@ class P11NanoDiff(GenericDiffractometer):
             if self.current_phase != current_phase:
                 self.log.debug("PHASE changed to %s" % current_phase)
                 self.current_phase = current_phase
-                self.emit("minidiffPhaseChanged", (self.current_phase,))
+                self.emit("phaseChanged", (self.current_phase,))
 
         # if omega_moving or cover_moving or light_moving:
         #    phase_state = self.PHASE_STATES.MOVING

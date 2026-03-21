@@ -325,7 +325,7 @@ class PX2Diffractometer(GenericDiffractometer):
             logging.getLogger("GUI").info(
                 "Diffractometer: Current phase changed to %s" % current_phase
             )
-        self.emit("minidiffPhaseChanged", (current_phase,))
+        self.emit("phaseChanged", (current_phase,))
 
     def phi_motor_moved(self, pos):
         """
@@ -1100,7 +1100,7 @@ class PX2Diffractometer(GenericDiffractometer):
         """
         Description:
         """
-        self.emit("minidiffPhaseChanged", (self.current_phase,))
+        self.emit("phaseChanged", (self.current_phase,))
         self.emit("omegaReferenceChanged", (self.reference_pos,))
         self.emit("minidiffShutterStateChanged", (self.fast_shutter_is_open,))
 

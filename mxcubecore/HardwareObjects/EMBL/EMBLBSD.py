@@ -210,7 +210,7 @@ class EMBLBSD(GenericDiffractometer):
 
     def re_emit_values(self):
         """Reemits all signals"""
-        self.emit("minidiffPhaseChanged", (self.current_phase,))
+        self.emit("phaseChanged", (self.current_phase,))
         self.emit("minidiffShutterStateChanged", (self.fast_shutter_is_open,))
         self.emit("pixelsPerMmChanged", ((self.pixels_per_mm_x, self.pixels_per_mm_y),))
 

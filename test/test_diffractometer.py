@@ -54,26 +54,26 @@ class TestDiffarctometer(TestHardwareObjectBase):
             assert hasattr(test_object, role)
 
     def test_get_set_phase(self, test_object):
-        phase_enum = test_object.get_phase_enum
+        phase_enum = test_object.PHASE_ENUM
         # in the mockup we set the initial phase to CENTRE
         assert test_object.get_phase() == phase_enum.CENTRE
         test_object.set_phase(phase_enum.COLLECT, timeout=0)
         assert test_object.get_phase() == phase_enum.COLLECT
 
     def test_get_phase_list(self, test_object):
-        phase_enum = test_object.get_phase_enum
+        phase_enum = test_object.PHASE_ENUM
         # subtract one for the UNKNOWN
         assert len(phase_enum) - 1 == len(test_object.get_phase_list())
 
     def test_head_type(self, test_object):
-        head_enum = test_object.head_enum
+        HEAD_ENUM = test_object.HEAD_ENUM
         # in the mockup we set the head to be minikappa
-        assert test_object.head_type == head_enum.MINI_KAPPA
+        assert test_object.head_type == HEAD_ENUM.MINI_KAPPA
         assert test_object.in_kappa_mode
         assert not test_object.in_plate_mode
 
     def test_get_set_constraint(self, test_object):
-        constraint_enum = test_object.get_constraint_enum
+        constraint_enum = test_object.CONSTRAINT_ENUM
         # in the mockup we set the initial constraint RELEASE
         assert test_object.get_constraint() == constraint_enum.RELEASE
         test_object.set_constraint(constraint_enum.STILL)

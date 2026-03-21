@@ -73,7 +73,7 @@ class MD2MultiCollect(ESRFMultiCollect):
         # move to DataCollection phase
         logging.getLogger("user_level_log").info("Moving MD2 to DataCollection")
         # AB next line to speed up the data collection
-        diffr.set_phase(diffr.get_phase_enum.COLLECT, timeout=0)
+        diffr.set_phase(diffr.PHASE_ENUM.COLLECT, timeout=0)
 
     @task
     def data_collection_cleanup(self):

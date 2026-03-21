@@ -35,7 +35,7 @@ corresponding objects, accessible via beamline.diffractometer hardware object.
 
 1. Motor objects (roles)  and their functionality:
   omega - the rotation axis, independent of the orientation (up, down or side).
-          Pisitive direction is clockwise.
+          Positive direction is clockwise.
   sampx - centring table x axis
   sampy - centring table y axis
   focus - alignment table x axis
@@ -201,6 +201,11 @@ class AbstractDiffractometer(HardwareObject):
     """
 
     __metaclass__ = abc.ABCMeta
+
+    CONSTRAINT_ENUM  = DiffractometerConstraint
+    HEAD_ENUM = DiffractometerHead
+    PHASE_ENUM = DiffractometerPhase
+
 
     def __init__(self, name):
         super().__init__(name)
@@ -406,11 +411,6 @@ class AbstractDiffractometer(HardwareObject):
             and self.current_constraint == DiffractometerConstraint.INJECTOR
         )
 
-    @property
-    def head_enum(self):
-        """Get the diffractometer head Enum. Used when no import wished."""
-        return DiffractometerHead
-
     def get_chip_configuration(self) -> Union[GonioHeadConfiguration, None]:
         """Get the chip configuration."""
 
@@ -493,11 +493,6 @@ class AbstractDiffractometer(HardwareObject):
                 phase_list.append(_nam)
         return phase_list
 
-    @property
-    def get_phase_enum(self):
-        """Get the phase Enum. Used when no import wished."""
-        return DiffractometerPhase
-
     def update_phase(self, value: DiffractometerPhase | None = None):
         """Update the phase value, Emit phaseChanged signal.
 
@@ -547,11 +542,6 @@ class AbstractDiffractometer(HardwareObject):
             (Enum): DiffractometerConstraint member.
         """
         return self.current_constraint
-
-    @property
-    def get_constraint_enum(self):
-        """Get the constraints Enum. Used when no import wished."""
-        return DiffractometerConstraint
 
     # -------- data acquisition scans --------
     def do_oscillation_scan(self, *args, **kwargs):
@@ -607,3 +597,13 @@ class AbstractDiffractometer(HardwareObject):
                 if isinstance(evar.value, (tuple, list)) and (value in evar.value):
                     return evar
         return which_enum.UNKNOWN
+
+    # -------- abstract methods --------
+
+    @abc.abstractmethod
+    def get_pixels_per_mm(self) -> tuple[float, float]:
+        """Get the pixel/mm values.
+
+        Returns:
+            (x ,y) [pixel/mm]
+        """

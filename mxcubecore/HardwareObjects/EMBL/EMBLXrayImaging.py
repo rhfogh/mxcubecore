@@ -186,7 +186,7 @@ class EMBLXrayImaging(QtGraphicsManager, AbstractCollect):
         )
         self.disconnect(
             HWR.beamline.diffractometer,
-            "minidiffPhaseChanged",
+            "phaseChanged",
             self.diffractometer_phase_changed,
         )
 

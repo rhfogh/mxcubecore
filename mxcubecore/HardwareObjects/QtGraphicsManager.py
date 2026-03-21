@@ -254,7 +254,7 @@ class QtGraphicsManager(AbstractSampleView):
             )
             self.connect(
                 self.diffractometer_hwobj,
-                "minidiffPhaseChanged",
+                "phaseChanged",
                 self.diffractometer_phase_changed,
             )
         else:
@@ -354,41 +354,6 @@ class QtGraphicsManager(AbstractSampleView):
             self.set_cursor_busy(False)
         else:
             self.cursor = qt_import.Qt.ArrowCursor
-
-    @property
-    def zoom(self):
-        """zoom motor object
-
-        NBNB HACK TODO - configure this here instead
-        (instead of calling to diffractometer)
-
-        Returns:
-            AbstractActuator
-        """
-        return self.diffractometer_hwobj.zoom
-
-    @property
-    def focus(self):
-        """focus motor object
-
-        NBNB HACK TODO - configure this here instead
-        (instead of calling to diffractometer)
-
-        Returns:
-            AbstractActuator
-        """
-        return self.diffractometer_hwobj.alignment_x
-
-    @property
-    def camera(self):
-        """camera object
-
-        NBNB TODO clean up and simplify configuration
-
-        Returns:
-            AbstractActuator
-        """
-        return self.camera_hwobj
 
     def add_shape_from_mpos(self, mpos_list, screen_cord, _type):
         """
@@ -715,7 +680,7 @@ class QtGraphicsManager(AbstractSampleView):
         If PHASE_BEAM then displays a grid on the screen
         """
         self.graphics_scale_item.set_display_grid(
-            phase == self.diffractometer_hwobj.PHASE_BEAM
+            phase == self.diffractometer_hwobj.PHASE_ENUM.SEE_BEAM
         )
         self.emit("diffractometerPhaseChanged", phase)
 

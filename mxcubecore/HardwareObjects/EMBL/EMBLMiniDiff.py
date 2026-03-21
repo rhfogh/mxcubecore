@@ -631,7 +631,7 @@ class EMBLMiniDiff(GenericDiffractometer):
         GenericDiffractometer.force_emit_signals(self)
         self.emit("kappaMotorMoved", (self.current_motor_positions["kappa"],))
         self.emit("kappaPhiMotorMoved", (self.current_motor_positions["kappa_phi"],))
-        self.emit("minidiffPhaseChanged", (self.current_phase,))
+        self.emit("phaseChanged", (self.current_phase,))
         self.emit("omegaReferenceChanged", (self.reference_pos,))
         self.emit("minidiffShutterStateChanged", (self.fast_shutter_is_open,))
 

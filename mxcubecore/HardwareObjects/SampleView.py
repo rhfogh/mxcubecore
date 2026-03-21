@@ -374,7 +374,7 @@ class SampleView(AbstractSampleView):
 
         diffr = HWR.beamline.diffractometer
         diffr.wait_status_ready(60)
-        diffr.set_phase(diffr.get_phase_enum.CENTRE)
+        diffr.set_phase(diffr.PHASE_ENUM.CENTRE)
 
         if self.get_property("use_custom_auto_centring"):
             self.run_custom_auto_centring()
@@ -482,7 +482,7 @@ class SampleView(AbstractSampleView):
         """
         if len(image_path_list) > 0:
             diffr = HWR.beamline.diffractometer
-            phase = diffr.get_phase_enum.CENTRE
+            phase = diffr.PHASE_ENUM.CENTRE
             if diffr.get_phase() != phase:
                 use_custom_snapshot_routine = (
                     self.get_property("custom_snapshot_script_dir") or False

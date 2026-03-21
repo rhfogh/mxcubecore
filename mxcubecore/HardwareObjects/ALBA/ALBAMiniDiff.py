@@ -403,7 +403,7 @@ class ALBAMiniDiff(GenericDiffractometer):
         Emit stateChanged signal according to supervisor current phase.
         """
         # self.current_state = phase
-        self.emit("minidiffPhaseChanged", (phase,))
+        self.emit("phaseChanged", (phase,))
 
     def phi_motor_moved(self, pos):
         """
