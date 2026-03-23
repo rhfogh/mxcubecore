@@ -2703,10 +2703,15 @@ class GphlWorkflow(HardwareObject):
         )
         scan = self._key_to_scan.get(key)
         if scan is None:
-            raise RuntimeError(
-                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at start"
-                % key
-            )
+            experiment_type = collect_dict.get("experiment_type")
+            if experiment_type in ("Mesh", "Still", "Helical"):
+                # This must be a centring event. Ignore
+                return
+            else:
+                raise RuntimeError(
+                    "No scan matching prefix: %s, run_number: %s, start_image_number: %s at start"
+                    % key
+                )
 
         translation_settings = dict(
             (role, collect_dict["motors"].get(role)) for role in self.translation_axes
