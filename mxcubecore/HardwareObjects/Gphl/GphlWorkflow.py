@@ -1468,8 +1468,8 @@ class GphlWorkflow(HardwareObject):
                 "repetition_count",
             )
             if data_model.reflecting_range_esd:
-                ui_schema["parameters"]["column2"]["ui:order"].append(
-                    "reflecting_range_esd"
+                ui_schema["parameters"]["column2"]["ui:order"].insert(
+                    2, "reflecting_range_esd"
                 )
 
         ll0 = ui_schema["parameters"]["column2"]["ui:order"]
@@ -2765,7 +2765,7 @@ class GphlWorkflow(HardwareObject):
             # First scan in sweep (not first sweep)
             # We have recentred. Make new translation object
             translation_settings = dict(
-                (role, HWR.beamline.diffractometer.get_motor_positions().get(role))
+                (role, HWR.beamline.sample_view.get_positions().get(role))
                 for role in self.translation_axes
             )
             translation = GphlMessages.GoniostatTranslation(
