@@ -1830,6 +1830,7 @@ class GphlWorkflow(TaskNode):
         self._image_width = 0.0
         self._repetition_count = 1
         self._default_exposure_time = None
+        self._reflecting_range_esd = None
 
         # HACK - to differentiate between characterisation and acquisition
         # TODO remove when workflow gives relevant information
@@ -1941,6 +1942,12 @@ class GphlWorkflow(TaskNode):
 
     def set_default_exposure_time(self, value):
         self._default_exposure_time = value
+
+    def get_reflecting_range_esd(self):
+        return self._reflecting_range_esd
+
+    def set_reflecting_range_esd(self, value):
+        self._reflecting_range_esd = value
 
     def get_characterisation_dose(self):
         return self._characterisation_dose

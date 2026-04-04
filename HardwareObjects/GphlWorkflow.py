@@ -69,6 +69,13 @@ __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
 
+gphl_version_str = "2.2.0+202603110039.0-gf763e76"
+
+# Conversion factor from experimentally determined reflecting_range_esd
+# to default image width
+# Value taken from Acta Cryst D (2012) D68, 42-56, and GPhL colleagues
+MOSAICITY_TO_IMAGE_WIDTH = 0.33
+
 # Additional sample/diffraction plan data for GPhL emulation samples.
 EMULATION_DATA = {"3n0s": {"radiationSensitivity": 0.9}}
 
@@ -136,7 +143,7 @@ for tag in (
 ):
     all_point_group_tags += lattice2point_group_tags[tag]
 
-# Allowed altervative lattices for a given lattice
+# Allowed alternative lattices for a given lattice
 alternative_lattices = {}
 for ll0 in (
     ["aP", "Triclinic"],
@@ -522,6 +529,12 @@ class GphlWorkflow(HardwareObject, object):
         logging.info("%s : FINISHED", name)
 
     def get_configuration_data(self, payload, correlation_id):
+        wf_version_str = payload.workflowVersion
+        abi_version_str = payload.abiVersion
+        logging.getLogger("user_level_log").info(
+            "GPhL Workflow %s, beamline interface: %s. Expecvred version is %s"
+            % (wf_version_str, abi_version_str, gphl_version_str)
+        )
         return GphlMessages.ConfigurationData(self.file_paths["gphl_beamline_config"])
 
     def query_collection_strategy(self, geometric_strategy, initial_energy):
@@ -641,7 +654,7 @@ class GphlWorkflow(HardwareObject, object):
         else:
             allowed_widths = [
                 float(x) for x in self.getProperty("default_image_widths").split()
-            ]
+            ] or [0.1]
             val = allowed_widths[0]
             allowed_widths.sort()
             default_width_index = allowed_widths.index(val)
@@ -649,6 +662,19 @@ class GphlWorkflow(HardwareObject, object):
                 "No allowed image widths returned by strategy - use defaults"
             )
 
+        reflecting_range_esd = gphl_workflow_model.get_reflecting_range_esd()
+        if reflecting_range_esd:
+            # Pick allowed width nearest to target
+            target = MOSAICITY_TO_IMAGE_WIDTH * reflecting_range_esd
+            delta = 999.999
+            for val in allowed_widths:
+                diff = abs(val - target)
+                if diff < delta:
+                    delta = diff
+                    default_image_width = val
+        else:
+            # Take configured default
+            default_image_width = allowed_widths[default_width_index]
         resolution = api.resolution.get_value()
 
         # For calculating dose-budget transmission
@@ -667,7 +693,6 @@ class GphlWorkflow(HardwareObject, object):
             resolution,
             decay_limit=data_model.get_decay_limit(),
         )
-        default_image_width = float(allowed_widths[default_width_index])
         default_exposure = data_model.get_default_exposure_time()
         exposure_limits = api.detector.get_exposure_time_limits()
         total_strategy_length = strategy_length * len(beam_energies)
@@ -958,6 +983,19 @@ class GphlWorkflow(HardwareObject, object):
                 },
             ]
         )
+        reflecting_range_esd = data_model.get_reflecting_range_esd()
+        if reflecting_range_esd:
+            field_list.extend(
+                {
+                    "variableName": "reflecting_range_esd",
+                    "uiLabel": "Mosaicity (°)",
+                    "type": "floatstring",
+                    "defaultValue": reflecting_range_esd,
+                    "decimals": 3,
+                    "readOnly": True,
+                }
+            )
+
 
         if is_interleaved:
             # NB We do not want the wedgeWdth widget for Diffractcal
@@ -1133,6 +1171,9 @@ class GphlWorkflow(HardwareObject, object):
         sweeps = geometric_strategy.get_ordered_sweeps()
         gphl_workflow_model = self._queue_entry.get_data_model()
         angular_tolerance = float(self.getProperty("angular_tolerance", 1.0))
+
+        reflecting_range_esd = geometric_strategy.reflectingRangeEsd
+        gphl_workflow_model.set_reflecting_range_esd(reflecting_range_esd)
 
         # enqueue data collection group
         strategy_type = gphl_workflow_model.get_workflow_parameters()["strategy_type"]
@@ -2490,10 +2531,15 @@ class GphlWorkflow(HardwareObject, object):
         )
         scan = self._key_to_scan.pop(key, None)
         if scan is None:
-            raise RuntimeError(
-                "No scan matching prefix: %s, run_number: %s, start_image_number: %s at end"
-                % key
-            )
+            experiment_type = collect_dict.get("experiment_type")
+            if experiment_type in ("Mesh", "Still", "Helical"):
+                # This must be a centring event. Ignore
+                return
+            else:
+                raise RuntimeError(
+                    "No scan matching prefix: %s, run_number: %s, start_image_number: %s at end"
+                    % key
+                )
 
     def handle_collection_start(
         self, owner, blsampleid, barcode, location, collect_dict, osc_id

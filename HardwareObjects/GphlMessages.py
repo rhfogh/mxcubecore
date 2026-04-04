@@ -276,8 +276,20 @@ class IdentifiedElement(MessageData):
 class RequestConfiguration(Payload):
     """Configuration request message"""
 
+    def __init__(self, workflowVersion, abiVersion):
+        super().__init__()
+        self._workflowVersion = workflowVersion
+        self._abiVersion = abiVersion
+
     INTENT = "COMMAND"
 
+    @property
+    def workflowVersion(self):
+        return self._workflowVersion
+
+    @property
+    def abiVersion(self):
+        return self._abiVersion
 
 class ObtainPriorInformation(Payload):
     """Prior information request"""
@@ -1122,6 +1134,7 @@ class GeometricStrategy(IdentifiedElement, Payload):
         sweepRepeat=None,
         defaultWidthIdx=None,
         sweeps=(),
+        reflectingRangeEsd=None,
         id_=None,
     ):
 
@@ -1132,6 +1145,7 @@ class GeometricStrategy(IdentifiedElement, Payload):
         self._defaultBeamSetting = defaultBeamSetting
         self._defaultWidthIdx = defaultWidthIdx
         self._sweeps = frozenset(sweeps)
+        self._reflectingRangeEsd = reflectingRangeEsd
 
         if len(set(allowedWidths)) != len(allowedWidths):
             raise ValueError(
@@ -1174,6 +1188,10 @@ class GeometricStrategy(IdentifiedElement, Payload):
     @property
     def sweeps(self):
         return self._sweeps
+
+    @property
+    def reflectingRangeEsd(self):
+        return self._reflectingRangeEsd
 
     def get_ordered_sweeps(self):
         """Get sweeps in acquisition order.

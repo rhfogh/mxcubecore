@@ -681,7 +681,32 @@ class GphlWorkflowConnection(HardwareObject, object):
         )
 
     def _RequestConfiguration_to_python(self, py4jRequestConfiguration):
-        return GphlMessages.RequestConfiguration()
+        py4jWorkflowVersion = py4jRequestConfiguration.getWorkflowVersion()
+        workflowVersion = self._SimpleVersion_to_string(py4jWorkflowVersion)
+        metadata = py4jWorkflowVersion.getBuildmetadata()
+        if metadata:
+            # NB buildtime is not used now, but could be in later versions
+            # NB a human-readable buildtime is part of the metadata
+            # buildtime = py4jWorkflowVersion.getBuildTime()
+            if not py4jWorkflowVersion.isClean():
+                metadata += "-dirty"
+            workflowVersion = "+".join((workflowVersion, metadata))
+        abiVersion = self._SimpleVersion_to_string(
+            py4jRequestConfiguration.getAbiVersion()
+        )
+        return GphlMessages.RequestConfiguration(workflowVersion, abiVersion)
+
+    def _SimpleVersion_to_string(self, py4jSimpleVersion):
+        parts = [
+            str(py4jSimpleVersion.getMajor()),
+            str(py4jSimpleVersion.getMinor()),
+            str(py4jSimpleVersion.getPatch()),
+        ]
+        xx0 = py4jSimpleVersion.getPrerelease()
+        result = ".".join(parts)
+        if xx0:
+            result += xx0
+        return result
 
     def _ObtainPriorInformation_to_python(self, py4jObtainPriorInformation):
         return GphlMessages.ObtainPriorInformation()
@@ -704,6 +729,10 @@ class GphlWorkflowConnection(HardwareObject, object):
             detectorSetting = self._DetectorSetting_to_python(detectorSetting)
         else:
             detectorSetting = None
+        if py4jGeometricStrategy.isSetReflectingRangeEsd():
+            reflectingRangeEsd = py4jGeometricStrategy.getReflectingRangeEsd()
+        else:
+            reflectingRangeEsd = None
         return GphlMessages.GeometricStrategy(
             isUserModifiable=py4jGeometricStrategy.isUserModifiable(),
             allowedWidths=py4jGeometricStrategy.getAllowedWidths(),
@@ -713,6 +742,7 @@ class GphlWorkflowConnection(HardwareObject, object):
             defaultBeamSetting=beamSetting,
             defaultDetectorSetting=detectorSetting,
             sweeps=sweeps,
+            reflectingRangeEsd=reflectingRangeEsd,
             id_=uuid.UUID(uuidString),
         )
 
