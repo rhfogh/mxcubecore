@@ -25,13 +25,19 @@ __copyright__ = """2019 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
 
 import abc
+from ast import literal_eval
 import logging
+import math
+from mxcubecore import HardwareRepository as HWR
+import numpy as np
 from typing import (
     Literal,
     Union,
 )
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects import sample_centring
+from mxcubecore.model import queue_model_objects as qmo
 
 ShapeState = Literal["HIDDEN", "SAVED", "TMP"]
 
@@ -48,7 +54,37 @@ class AbstractSampleView(HardwareObject):
         self._frontlight = None
         self._backlight = None
         self._shapes = {}
+        self.centring_motors = {}
         self.current_centring_procedure = None
+
+    def init(self):
+        super().init()
+
+        centring_motor_roles = self.get_property("centring_motors", [])
+        if isinstance(centring_motor_roles, str):
+            centring_motor_roles = literal_eval(centring_motor_roles)
+        # need to set the motor names for the centring points
+        qmo.CentredPosition.DIFFRACTOMETER_MOTOR_NAMES = centring_motor_roles
+
+        centring_ref_position = self.get_property("centring_reference_position", {})
+        if isinstance(centring_ref_position, str):
+            centring_ref_position = literal_eval(centring_ref_position)
+
+        motor_directions = self.get_property("motor_directions", {})
+        if isinstance(motor_directions, str):
+            motor_directions = literal_eval(motor_directions)
+        diffr = HWR.beamline.diffractometer
+
+        for role in centring_motor_roles:
+            if role in diffr.motors_hwobj_dict:
+                motor_obj = diffr.motors_hwobj_dict[role]
+                ref_position = None
+                if role in centring_ref_position:
+                    ref_position = centring_ref_position[role]
+                direction = motor_directions.get(role, 1)
+                self.centring_motors[role] = sample_centring.CentringMotor(
+                    motor_obj, reference_position=ref_position, direction=direction
+                )
 
     @property
     def camera(self):
@@ -126,9 +162,6 @@ class AbstractSampleView(HardwareObject):
     def start_auto_centring(self):
         """Start automatic centring procedure"""
 
-    def move_to_beam(self, x: float, y: float):
-        """Move the sample to the x,y coordinates"""
-
     def cancel_centring(self):
         """Cancels current centring procedure"""
         if self.current_centring_procedure:
@@ -154,7 +187,7 @@ class AbstractSampleView(HardwareObject):
     def add_shape_from_mpos(
         self,
         mpos_list,
-        screen_cord,
+        screen_coord,
         _type,
         state: ShapeState = "SAVED",
         user_state: ShapeState = "SAVED",
@@ -289,7 +322,162 @@ class AbstractSampleView(HardwareObject):
             cpos (CentredPosition): CentredPosition of shape
         """
 
-    def motor_positions_to_screen(self, positions_dict: dict) -> tuple:
-        """Get the motor positions according to the calibration"""
+################  Concrete methods: #########################
 
-        return ()
+    def get_positions(self) -> dict[str, float]:
+        """Get motor positions for the centring motors.
+
+        Returns:
+            Centring motor positions as {role: position}
+        """
+        motors_dict = {}
+        for key, val in self.centring_motors.items():
+            motors_dict.update({key: val.motor.get_value()})
+        return motors_dict
+
+    def get_centred_point_from_coord(self, x, y, return_by_names=None):
+        """Get the motor positions form x,y pixel coordinates"""
+
+        beam_pos_x, beam_pos_y = HWR.beamline.beam.get_beam_position_on_screen()
+        diffr = HWR.beamline.diffractometer
+        pixels_per_mm_x, pixels_per_mm_y = diffr.get_pixels_per_mm()
+        if not all([pixels_per_mm_x, pixels_per_mm_y]):
+            return 0, 0
+
+        # distance from the point to the beam
+        dx = (x - beam_pos_x) / pixels_per_mm_x
+        dy = (y - beam_pos_y) / pixels_per_mm_y
+
+        motors_dict = self.get_positions()
+        for key, val in motors_dict.items():
+            motors_dict.update({key: self.centring_motors[key].direction * val})
+
+        omega_angle = math.radians(motors_dict.get("omega", 0))
+        rot_matrix = np.matrix(
+            [
+                [math.cos(omega_angle), -math.sin(omega_angle)],
+                [math.sin(omega_angle), math.cos(omega_angle)],
+            ]
+        )
+        inv_rot_matrix = np.array(rot_matrix.I)
+        dsampx, dsampy = np.dot(np.array([0, dy]), inv_rot_matrix)
+
+        chi_angle = math.radians(motors_dict.get("chi", 0))
+        chi_rot = np.matrix(
+            [
+                [math.cos(chi_angle), -math.sin(chi_angle)],
+                [math.sin(chi_angle), math.cos(chi_angle)],
+            ]
+        )
+        sx, sy = np.dot(np.array([dsampx, dsampy]), np.array(chi_rot))
+
+        sampx = -motors_dict.get("sampx") + sx
+        sampy = motors_dict.get("sampy") + sy
+        phiy = motors_dict.get("phiy") + dx
+
+        return {
+            "omega": motors_dict.get("omega"),
+            "phiy": float(-phiy),
+            "phiz": motors_dict.get("phiz"),
+            "sampx": float(-sampx),
+            "sampy": float(sampy),
+        }
+
+    def motor_positions_to_screen(
+        self, positions_dict: dict[str, float]
+    ) -> tuple[int, int]:
+        """Get the x,y pixel value according to the calibration.
+
+        Args:
+            positions_dict: Dictionary {role: position}
+        """
+        if not positions_dict:
+            raise RuntimeError("Unknown position")
+        try:
+            diffr = HWR.beamline.diffractometer
+            p_x, p_y = diffr.get_pixels_per_mm()
+            if None in (p_x, p_y):
+                return 0, 0
+            omega_angle = math.radians(-diffr.omega.get_value())
+            sampx = positions_dict.get("sampx") - diffr.sampx.get_value()
+            sampy = positions_dict.get("sampy") - diffr.sampy.get_value()
+            phiy = -(positions_dict.get("phiy") - diffr.phiy.get_value())
+            phiz = positions_dict.get("phiz") - diffr.phiz.get_value()
+
+            rot_matrix = np.matrix(
+                [
+                    [math.cos(omega_angle), -math.sin(omega_angle)],
+                    [math.sin(omega_angle), math.cos(omega_angle)],
+                ]
+            )
+            inv_rot_matrix = np.array(rot_matrix.I)
+            _, dy = np.dot(np.array([sampx, sampy]), inv_rot_matrix) * p_x
+
+            chi_angle = math.radians(positions_dict.get("chi", 0))
+            chi_rot = np.matrix(
+                [
+                    [math.cos(chi_angle), -math.sin(chi_angle)],
+                    [math.sin(chi_angle), math.cos(chi_angle)],
+                ]
+            )
+            sx, sy = np.dot(np.array([0, dy]), np.array(chi_rot))
+
+            beam_position = HWR.beamline.beam.get_beam_position_on_screen()
+
+            x = sx + (phiy * p_x) + beam_position[0]
+            y = sy + (phiz * p_y) + beam_position[1]
+
+        except AttributeError as err:
+            raise NotImplementedError from err
+        return x, y
+
+
+    def move_to_beam(self, x: float, y: float):
+        """Move the sample to the x,y coordinates.
+        Args:
+            x: Pixels on x axis
+            y: Pixels on y axis
+        """
+        beam_pos_x, beam_pos_y = HWR.beamline.beam.get_beam_position_on_screen()
+        diffr = HWR.beamline.diffractometer
+        pixels_per_mm_x, pixels_per_mm_y = diffr.get_pixels_per_mm()
+        if not all([pixels_per_mm_x, pixels_per_mm_y]):
+            logging.getLogger("HWR").exception("Cannot move to beam")
+
+        # here added the calculation for moving to the beam position
+        dx = (x - beam_pos_x) / pixels_per_mm_x
+        dy = (y - beam_pos_y) / pixels_per_mm_y
+
+        diffr.wait_status_ready(5)
+        motors_dict = self.get_positions()
+        for key, val in motors_dict.items():
+            motors_dict.update({key: self.centring_motors[key].direction * val})
+        omega_angle = math.radians(motors_dict.get("omega", 0))
+
+        rot_matrix = np.matrix(
+            [
+                [math.cos(omega_angle), -math.sin(omega_angle)],
+                [math.sin(omega_angle), math.cos(omega_angle)],
+            ]
+        )
+        inv_rot_matrix = np.array(rot_matrix.I)
+        dsampx, dsampy = np.dot(np.array([0, dy]), inv_rot_matrix)
+
+        chi_angle = math.radians(motors_dict.get("chi", 0))
+        chi_rot = np.matrix(
+            [
+                [math.cos(chi_angle), -math.sin(chi_angle)],
+                [math.sin(chi_angle), math.cos(chi_angle)],
+            ]
+        )
+
+        sx, sy = np.dot(np.array([dsampx, dsampy]), np.array(chi_rot))
+
+        sampx = -motors_dict.get("sampx") + sx
+        sampy = motors_dict.get("sampy") + sy
+        phiy = motors_dict.get("phiy") + dx
+
+        self.centring_motors.get("sampx").set_value(-sampx)
+        self.centring_motors.get("sampy").set_value(sampy)
+        self.centring_motors.get("phiy").set_value(-phiy)
+        diffr.save_centring_positions()

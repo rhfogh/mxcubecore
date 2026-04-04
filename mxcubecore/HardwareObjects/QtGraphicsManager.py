@@ -84,7 +84,6 @@ class QtGraphicsManager(AbstractSampleView):
         self.auto_grid = None
         self.auto_grid_size_mm = (0, 0)
 
-        self.omega_axis_info_dict = {}
         self.in_centring_state = None
         self.in_grid_drawing_state = None
         self.in_measure_distance_state = None
@@ -614,7 +613,7 @@ class QtGraphicsManager(AbstractSampleView):
             for shape in self.get_shapes():
                 if isinstance(shape, GraphicsLib.GraphicsItemPoint):
                     cpos = shape.get_centred_position()
-                    new_x, new_y = self.diffractometer_hwobj.motor_positions_to_screen(
+                    new_x, new_y = self.motor_positions_to_screen(
                         cpos.as_dict()
                     )
                     shape.set_start_position(new_x, new_y)
@@ -622,7 +621,7 @@ class QtGraphicsManager(AbstractSampleView):
                     grid_cpos = shape.get_centred_position()
                     if grid_cpos is not None:
                         current_cpos = queue_model_objects.CentredPosition(
-                            self.diffractometer_hwobj.get_positions()
+                            self.get_positions()
                         )
 
                         current_cpos.set_motor_pos_delta(0.1)
@@ -632,7 +631,7 @@ class QtGraphicsManager(AbstractSampleView):
                             current_cpos.zoom = grid_cpos.zoom
 
                         center_coord = (
-                            self.diffractometer_hwobj.motor_positions_to_screen(
+                            self.motor_positions_to_screen(
                                 grid_cpos.as_dict()
                             )
                         )
@@ -643,7 +642,7 @@ class QtGraphicsManager(AbstractSampleView):
                             for motor_pos in shape.get_motor_pos_corner():
                                 corner_coord.append(
                                     (
-                                        self.diffractometer_hwobj.motor_positions_to_screen(
+                                        self.motor_positions_to_screen(
                                             motor_pos
                                         )
                                     )
@@ -717,7 +716,7 @@ class QtGraphicsManager(AbstractSampleView):
 
         if p_dict:
             cpos = queue_model_objects.CentredPosition(p_dict)
-            screen_pos = self.diffractometer_hwobj.motor_positions_to_screen(
+            screen_pos = self.motor_positions_to_screen(
                 cpos.as_dict()
             )
             point = GraphicsLib.GraphicsItemPoint(
@@ -904,7 +903,7 @@ class QtGraphicsManager(AbstractSampleView):
         elif self.in_beam_define_state:
             self.stop_beam_define()
         else:
-            self.diffractometer_hwobj.move_to_beam(pos_x, pos_y)
+            self.move_to_beam(pos_x, pos_y)
         self.emit("imageDoubleClicked", pos_x, pos_y)
 
     def mouse_released(self, pos_x, pos_y):
@@ -1044,18 +1043,6 @@ class QtGraphicsManager(AbstractSampleView):
                 self.set_magnification_mode(False)
             self.in_move_beam_mark_state = False
             self.graphics_move_beam_mark_item.hide()
-            # self.graphics_beam_item.set_detected_beam_position(None, None)
-
-        # elif key_event == "Up":
-        #    self.diffractometer_hwobj.move_to_beam(self.beam_position[0],
-        #                                           self.beam_position[1] - 50)
-        # elif key_event == "Down":
-        #    self.diffractometer_hwobj.move_to_beam(self.beam_position[0],
-        #                                           self.beam_position[1] + 50)
-        elif key_event == "Plus":
-            self.diffractometer_hwobj.zoom_in()
-        elif key_event == "Minus":
-            self.diffractometer_hwobj.zoom_out()
 
     def mouse_wheel_scrolled(self, delta):
         """Method called when mouse wheel is scrolled.
@@ -1095,8 +1082,8 @@ class QtGraphicsManager(AbstractSampleView):
         :type item: QGraphicsLib.GraphicsItem
         """
         if isinstance(item, GraphicsLib.GraphicsItemPoint):
-            self.diffractometer_hwobj.move_to_centred_position(
-                item.get_centred_position()
+            self.diffractometer_hwobj.set_value_motors(
+                item.get_centred_position().as_dict()
             )
 
     def move_item_clicked(self, direction):
@@ -1683,7 +1670,7 @@ class QtGraphicsManager(AbstractSampleView):
             self.graphics_beam_define_item.width_microns,
             self.graphics_beam_define_item.height_microns,
         )
-        self.diffractometer_hwobj.move_to_beam(
+        self.move_to_beam(
             self.graphics_beam_define_item.center_coord[0],
             self.graphics_beam_define_item.center_coord[1],
         )
@@ -1784,7 +1771,7 @@ class QtGraphicsManager(AbstractSampleView):
     def create_auto_line(self, cpos=None):
         """Creates a automatic helical line"""
         if cpos is None:
-            point_one_motor_pos = self.diffractometer_hwobj.get_positions()
+            point_one_motor_pos = self.get_positions()
         else:
             point_one_motor_pos = cpos
 
@@ -1861,7 +1848,7 @@ class QtGraphicsManager(AbstractSampleView):
         )
         self.graphics_view.graphics_scene.addItem(temp_grid)
         temp_grid.index = self.grid_count
-        motor_pos = self.diffractometer_hwobj.get_centred_point_from_coord(
+        motor_pos = self.get_centred_point_from_coord(
             self.beam_position[0], self.beam_position[1], return_by_names=True
         )
         temp_grid.set_centred_position(queue_model_objects.CentredPosition(motor_pos))
@@ -1947,7 +1934,7 @@ class QtGraphicsManager(AbstractSampleView):
     def update_grid_motor_positions(self, grid_object):
         """Updates grid corner positions"""
         grid_center_x, grid_center_y = grid_object.get_center_coord()
-        motor_pos = self.diffractometer_hwobj.get_centred_point_from_coord(
+        motor_pos = self.get_centred_point_from_coord(
             grid_center_x, grid_center_y, return_by_names=True
         )
         grid_object.set_centred_position(queue_model_objects.CentredPosition(motor_pos))
@@ -1955,7 +1942,7 @@ class QtGraphicsManager(AbstractSampleView):
         motor_pos_corner = []
         for index, corner_coord in enumerate(grid_object.get_corner_coord()):
             motor_pos_corner.append(
-                self.diffractometer_hwobj.get_centred_point_from_coord(
+                self.get_centred_point_from_coord(
                     corner_coord.x(), corner_coord.y(), return_by_names=True
                 )
             )
