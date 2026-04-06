@@ -662,7 +662,7 @@ class GphlWorkflow(HardwareObject, object):
                 "No allowed image widths returned by strategy - use defaults"
             )
 
-        reflecting_range_esd = gphl_workflow_model.get_reflecting_range_esd()
+        reflecting_range_esd = data_model.get_reflecting_range_esd()
         if reflecting_range_esd:
             # Pick allowed width nearest to target
             target = MOSAICITY_TO_IMAGE_WIDTH * reflecting_range_esd
@@ -985,7 +985,7 @@ class GphlWorkflow(HardwareObject, object):
         )
         reflecting_range_esd = data_model.get_reflecting_range_esd()
         if reflecting_range_esd:
-            field_list.extend(
+            field_list.append(
                 {
                     "variableName": "reflecting_range_esd",
                     "uiLabel": "Mosaicity (°)",
@@ -995,7 +995,6 @@ class GphlWorkflow(HardwareObject, object):
                     "readOnly": True,
                 }
             )
-
 
         if is_interleaved:
             # NB We do not want the wedgeWdth widget for Diffractcal

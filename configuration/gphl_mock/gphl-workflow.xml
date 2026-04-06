@@ -229,6 +229,11 @@
         <!-- NB needed as of 20201202 to pass stratcal parameters strategy_type and variant -->
         <co.gphl.wf.devMode>true</co.gphl.wf.devMode>
         <!-- For stratcal configuration switches edit run_stratcal_wrap.py script instead-->
+        <!-- Enable mosaicity estimation (default: false). Activates XDS integration of characterisation data. -->
+        <co.gphl.wf.estMosaicity>true</co.gphl.wf.estMosaicity>
+        <!-- Fork XDS in separate process (default: false) -->
+        <!-- only works when XDS is invoked directly, rather than through a wrapper -->
+        <co.gphl.wf.forkxds>true</co.gphl.wf.forkxds>>
 
         <!-- Dummy sample properties. -->
         <!-- Choose values for these to make spot predictions for the characterisation

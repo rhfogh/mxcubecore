@@ -277,7 +277,7 @@ class RequestConfiguration(Payload):
     """Configuration request message"""
 
     def __init__(self, workflowVersion, abiVersion):
-        super().__init__()
+        super(RequestConfiguration, self).__init__()
         self._workflowVersion = workflowVersion
         self._abiVersion = abiVersion
 
