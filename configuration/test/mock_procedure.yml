@@ -1,3 +1,0 @@
-# The class to initialise, and init parameters
-_initialise_class:
-    class: HardwareRepository.HardwareObjects.mockup.ProcedureMockup.ProcedureMockup
