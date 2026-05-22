@@ -61,7 +61,7 @@
 <!--                <GPHL_MINICONDA_PATH >/home/rhfogh/Software/GPhL/nightly_20220810/Files_workflow_BETA_beta-academic/.mc38/</GPHL_MINICONDA_PATH>-->
 
         <!-- OPTIONAL directory containing bin/java. If not set java is called as just 'java' -->
-        <java_home>/opt/jdk11</java_home>
+<!--        <java_home>/usr/bin/java</java_home>-->
 
         <!-- Used ONLY for mock mode spectrum diffraction simulation -->
         <gphl_test_samples>test_samples</gphl_test_samples>
