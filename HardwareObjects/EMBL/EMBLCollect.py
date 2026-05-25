@@ -20,6 +20,7 @@
 """EMBLCollect - defines osc, helical and mesh collections"""
 
 import os
+import dma
 
 from HardwareRepository.TaskUtils import task
 from HardwareRepository.HardwareObjects.abstract.AbstractCollect import AbstractCollect
@@ -183,7 +184,6 @@ class EMBLCollect(AbstractCollect):
           
             if osc_seq["overlap"] == 0.0:
                 self.cmd_collect_nexp_frame(1)
-            #self.print_log("GUI","info","overlap %s"%osc_seq["overlap"])
             #if osc_seq["overlap"] == -89:
             #    osc_seq["overlap"] = -89.9
             self.cmd_collect_overlap(osc_seq["overlap"])
@@ -242,14 +242,24 @@ class EMBLCollect(AbstractCollect):
                 self.cmd_collect_xds_data_range(xds_range)
 
             if osc_seq["num_triggers"] and osc_seq["num_images_per_trigger"]:
-                self.cmd_collect_scan_type("still")
+                #GB: TREXX stills should be explicit! 
+                self.cmd_collect_scan_type("OSC")
+                #GB: this adapts GPhL overlap definition to detetector server interface
+                #phisical period is -GPhL_overlap+num_images_per_trigger*osc_range
+                #phisical period is -(det_server_nexp_frame+1)*range
+                overlap = osc_seq["overlap"] - (osc_seq["num_images_per_trigger"]-1)*osc_seq["range"]
+                self.cmd_collect_overlap(overlap)
+                self.cmd_collect_num_images(osc_seq["num_triggers"])
                 self.cmd_collect_images_per_trigger(osc_seq["num_images_per_trigger"])
+
             else:
                 self.cmd_collect_scan_type(
                     self._exp_type_dict.get(
                         self.current_dc_parameters["experiment_type"], "OSC"
                     )
                 )
+            #dma.register_collection(self.current_dc_parameters)
+
             self.cmd_collect_start()
         else:
             self.collection_failed(

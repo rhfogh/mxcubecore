@@ -93,6 +93,8 @@ class TINEMotor(AbstractMotor):
         except BaseException:
             pass
 
+        self.get_value = self.get_position
+
     def connected(self):
         """
         Sets ready
@@ -172,7 +174,7 @@ class TINEMotor(AbstractMotor):
         if type(state) in (tuple, list):
             state = state[0]
 
-        if state in ("ready", 0):
+        if state in ("ready", 0, 4096):
             self.set_state(self.motor_states.READY)
         else:
             self.set_state(self.motor_states.MOVING)

@@ -362,7 +362,7 @@ class EMBLXrayImaging(QtGraphicsManager, AbstractCollect):
 
     def pre_execute(self, data_model):
         self._failed = False
-        """
+        
         if self.beam_focusing_hwobj.get_focus_mode() != "imaging":
             self._error_msg = "Beamline is not in Imaging mode"
             self.emit("collectFailed", self._error_msg)
@@ -371,7 +371,7 @@ class EMBLXrayImaging(QtGraphicsManager, AbstractCollect):
             self._collecting = False
             self._failed = True
             return
-        """
+               
 
         self.emit("progressInit", ("Image acquisition", 100, False))
         self._collect_frame = 0

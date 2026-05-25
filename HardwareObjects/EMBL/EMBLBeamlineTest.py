@@ -1106,7 +1106,7 @@ class EMBLBeamlineTest(HardwareObject):
         if current_energy < 7:
             new_transmission = 100
         else:
-            energy_transm = interp1d([6.9, 8.0, 12.7, 19.0], [100.0, 60.0, 15.0, 10])
+            energy_transm = interp1d([6.9, 8.0, 12.7, 19.0, 30.0], [100.0, 60.0, 15.0, 10, 60.0])
             new_transmission = round(energy_transm(current_energy), 2)
 
         if self.bl_hwobj.session_hwobj.beamline_name == "P13":
@@ -1364,6 +1364,8 @@ class EMBLBeamlineTest(HardwareObject):
                             / 12.70
                         )
                         delta_ver = beam_pos_displacement[1] * self.scale_ver
+                        if delta_ver > 0.2:
+                            delta_ver = delta_ver * 0.55
                     else:
                         delta_hor = beam_pos_displacement[0] * self.scale_double_hor
                         delta_ver = (
@@ -1387,7 +1389,7 @@ class EMBLBeamlineTest(HardwareObject):
                         if abs(delta_hor) > 0.0001:
                             log.info("Moving horizontal by %.4f" % delta_hor)
                             self.horizontal_motor_hwobj.move_relative(
-                                delta_hor, timeout=5
+                                delta_hor*0.5, timeout=5
                             )
                             sleep(4)
                         if abs(delta_ver) > 0.100:
@@ -1431,7 +1433,7 @@ class EMBLBeamlineTest(HardwareObject):
            und = tine.get("/p14/p14mono.cdi/getUndGap","RECV",5000)
            tine.set("/p14/p14mono.cdi/setUndGap","SEND",und+100)
            crl_value = self.crl_hwobj.get_crl_value()
-           self.crl_hwobj.set_crl_value([1, 1, 1, 1, 1, 1], timeout=30)
+           self.crl_hwobj.set_crl_value([1, 1, 1, 1, 1, 1, 0, 0], timeout=30)
 
         gevent.sleep(5)
         self.cmd_start_pitch_scan(1)
@@ -1453,7 +1455,10 @@ class EMBLBeamlineTest(HardwareObject):
         logging.getLogger("GUI").info("Rocking curve maximum Intensity %s Encoder: %s Voltage: %s"%(flux[imax],enc_target,y))
         self.cmd_set_pitch_position(0)
         self.cmd_set_pitch(1)
-        sleep(1)
+        gevent.sleep(5)
+        self.cmd_set_vmax_pitch(1)
+        gevent.sleep(3)
+        return
         for n in range(9):
            self.cmd_set_pitch_position(y)
            self.cmd_set_pitch(1)

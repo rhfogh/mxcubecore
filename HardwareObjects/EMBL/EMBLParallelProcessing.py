@@ -28,6 +28,7 @@ import logging
 import numpy
 import gevent
 
+
 from HardwareRepository.HardwareObjects.GenericParallelProcessing import (
     GenericParallelProcessing,
 )
@@ -59,17 +60,33 @@ class EMBLParallelProcessing(GenericParallelProcessing):
         GenericParallelProcessing.__init__(self, name)
 
         self.chan_dozor_pass = None
-        self.chan_frame_count = None
+        self.chan_status = None
         self.display_task = None
+     
+        self.status = False
+
+        self.cnt_batch = 0 
+        self.cnt_is = 0
 
     def init(self):
 
         GenericParallelProcessing.init(self)
-
+        
+        self.chan_status = self.getChannelObject("chanStatus")
+        self.chan_status.connectSignal("update", self.status_changed)
         self.chan_dozor_pass = self.getChannelObject("chanDozorPass")
         self.chan_dozor_pass.connectSignal("update", self.batch_processed)
-        self.chan_frame_count = self.getChannelObject("chanFrameCount")
-        self.chan_frame_count.connectSignal("update", self.frame_count_changed)
+
+        self.chan_dozor_is = self.getChannelObject("chanDozorIS")
+        if self.chan_dozor_is is not None:
+            self.results_name_list.append("is")
+            self.chan_dozor_is.connectSignal("update", self.dozor_is_changed)
+   
+    
+    def status_changed(self, status):
+        if self.status is True and status is False:
+            self.finish_processing()    
+        self.status = status    
 
     def create_processing_input_file(self, processing_input_filename):
         """Creates dozor input file base on data collection parameters
@@ -110,6 +127,12 @@ class EMBLParallelProcessing(GenericParallelProcessing):
             os.path.join(self.params_dict["process_directory"], "dozor_input.xml")
         )
 
+        self.all_frames_dozor_is = False
+        self.all_frames_batch_processed = False
+        self.cnt_batch = 0
+        self.cnt_is = 0
+        logging.getLogger("HWR").info("======= run processing ===========")
+
         self.emit(
             "processingStarted",
             (self.params_dict, self.results_raw, self.results_aligned),
@@ -119,50 +142,15 @@ class EMBLParallelProcessing(GenericParallelProcessing):
         self.started = True
         self.display_task = gevent.spawn(self.update_map)
 
-    def frame_count_changed(self, frame_count):
-        """
-        Finishes processing if the last frame is processed
-        :param frame_count:
-        :return:
-        """
-        if self.started:
-            self.emit("processingFrame", frame_count)
-            if frame_count >= self.params_dict["images_num"] - 1:
-                self.set_processing_status("Success")
-
     def smooth(self):
         """
         Smooths the resolution
         :return:
         """
-
-        """
-        good_index = numpy.where(self.results_raw["spots_resolution"] > 1 / 46.0)[0]
-        good = self.results_aligned["spots_resolution"][good_index]
-        if self.results_raw["spots_resolution"].size > 200:
-            points_index = self.results_raw["spots_resolution"].size / 200
-
-            for x in range(0, good_index.size, points_index):
-                self.results_aligned["spots_resolution"][good_index[x]] = numpy.mean(
-                    good[max(x - points_index / 2, 0) : x + points_index / 2]
-                )
-        """
-
         step = 30
         for key in ["score", "spots_num"]:
             for index in range (self.results_raw[key].size):
                 self.results_raw[key][index] = numpy.mean(self.results_raw[key][index - step: index + step])
-
-        """
-	   print good_index, self.results_raw["spots_resolution"][good_index]
-           f = UnivariateSpline(good_index,self.results_raw["spots_resolution"][good_index],s=10)
-           self.results_raw["spots_resolution"][good_index] = f(good_index)
-        n = len(self.results_raw["spots_resolution"])
-        x = []
-        for im in range(0,n):
-            if self.results_raw["spots_resolution"]
-        f = interp1d(self.results_aligned[""], self.results_aligned["spots_resolution"])
-        """
 
     def batch_processed(self, batch):
         """Method called from EDNA via xmlrpc to set results
@@ -171,13 +159,15 @@ class EMBLParallelProcessing(GenericParallelProcessing):
         :type batch: lis
         """
         if self.started and (type(batch) in (tuple, list)):
-            if type(batch[0]) not in (tuple, list):
-                batch = [batch]
 
+            self.cnt_batch = self.cnt_batch + len(batch)
+            logging.getLogger("HWR").info("Dozor scores %s of %s"%(self.cnt_batch, self.params_dict["images_num"]))
+                 
             for image in batch:
                 frame_num = int(image[0])
                 self.results_raw["spots_num"][frame_num] = image[1]
-                self.results_raw["spots_resolution"][frame_num] = 1 / image[3]
+                if image[3] != 0:
+                    self.results_raw["spots_resolution"][frame_num] = 1 / image[3]
                 self.results_raw["score"][frame_num] = image[2]
 
                 for score_key in self.results_raw.keys():
@@ -191,12 +181,22 @@ class EMBLParallelProcessing(GenericParallelProcessing):
                             score_key
                         ][frame_num]
 
-            #if self.params_dict["lines_num"] <= 1:
-            #    self.smooth()
-        #else:
-        #   if len([batch]) == 1:
-        #      logging.getLogger("GUI").info("Resolution: %6.2f, Spots %s, Score: %6.2f"%(batch[0][3],batch[0][1],batch[0][2]))
 
+    def dozor_is_changed(self, is_values):
+        if self.started and isinstance(is_values,(list,tuple)):
+           for is_value in is_values:
+               if isinstance(is_value,(list,tuple)):
+                  self.results_raw["is"][is_value[0]] = is_value[1]
+               else:
+                  self.results_raw["is"][is_values[0]] = is_values[1]
+           self.cnt_is = self.cnt_is + len(is_values)
+           logging.getLogger("HWR").info("IS values %s of %s"%(self.cnt_is ,self.params_dict["images_num"]))
+
+    def finish_processing(self):
+        logging.getLogger("HWR").info("======= finish processing ===========")
+        self.cnt_batch = 0
+        self.cnt_is = 0
+        self.set_processing_status("Success")
 
     def update_map(self):
         """
@@ -210,17 +210,16 @@ class EMBLParallelProcessing(GenericParallelProcessing):
                 self.grid.set_score(self.results_raw["score"])
             gevent.sleep(0.5)
 
-    def set_processing_status(self, status):
+
+    def hide_set_processing_status(self, status):
         """Sets processing status and finalize the processing
            Method called from EDNA via xmlrpc
 
         :param status: processing status (Success, Failed)
         :type status: str
         """
-        # self.batch_processed(self.chan_dozor_pass.getValue())
-        #if self.params_dict["lines_num"] <= 1:
-        #    self.smooth()
         GenericParallelProcessing.set_processing_status(self, status)
+    
 
     def store_processing_results(self, status):
         """

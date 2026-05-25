@@ -185,7 +185,7 @@ class EMBLDoorInterlock(Device):
                     if self.detector_distance_hwobj.getPosition() < 1099:
                         logging.getLogger("GUI").info("Moving detector. Wait...")
                         self.detector_distance_hwobj.move(1100)
-                        self.detector_distance_hwobj.wait_ready(25)
+                        self.detector_distance_hwobj.wait_ready(35)
                         gevent.sleep(1)
                         #with gevent.Timeout(25, Exception("Timeout waiting for device ready")):
                         #     while not self.detector_distance_hwobj.is_ready():

@@ -48,6 +48,7 @@ class EMBLEnergy(Device):
         self.en_lims = [None, None]
         self.undulator_gaps = []
         self.ctrl_bytes = None
+        self.use_break = True
         self.bragg_break_status = None
         self.do_beam_alignment = True
         self.delta = 0
@@ -120,6 +121,8 @@ class EMBLEnergy(Device):
             self.en_lims = [None, None]
         self.ctrl_bytes = eval(self.getProperty("ctrlBytes"))
 
+        self.use_break = self.getProperty("useBreak")
+
         if not self.chan_energy:
             self.energy_position_changed(self.default_en * 1000)
 
@@ -178,6 +181,10 @@ class EMBLEnergy(Device):
         if current_en is not None:
             current_wav = 12.3984 / current_en
         return current_wav
+
+
+    def get_limits(self):
+        return self.get_energy_limits()
 
     def get_energy_limits(self):
         """
@@ -271,15 +278,17 @@ class EMBLEnergy(Device):
         logging.getLogger("user_level_log").info("Energy: Cancel move")
         # self.moveEnergy.abort()
 
+        #GB: Thu Sep  8 16:34:42 CEST 2022. Adding for compatibility with 
+        #GphlWorkflow that seems to like both "move_energy" and "set_value".
+    def set_value(self, energy, timeout=None):
+        self.move_energy(energy, wait=True)
+
     def move_energy(self, energy, wait=True):
         """
         Sets energy in keV
         """
         # gevent.spawn(self.move_energy_task(energy))
         self.move_energy_task(energy)
-
-    def set_value(self, value, timeout=None):
-        self.move_energy(value=value, wait=(timeout is not None))
 
     def move_energy_task(self, energy):
         """
@@ -295,7 +304,8 @@ class EMBLEnergy(Device):
         else:
             # if energy <= 6:
             #    self.cmd_energy_ctrl_byte(self.ctrl_bytes[0])
-            # else:
+            # else:    def getCurrentEnergy(self):
+
             #    self.cmd_energy_ctrl_byte(self.ctrl_bytes[1])
             if self.cmd_energy_ctrl_byte is not None:
                 if pos > 0.1:
@@ -454,6 +464,8 @@ class EMBLEnergy(Device):
         Sets bragg breaks
         :return:
         """
+        if not self.use_break:
+            return
         if self.chan_status_bragg_break.getValue() != 0:
             logging.getLogger("GUI").warning("Energy: Setting bragg brake...")
             self.emit("statusInfoChanged", "Setting Bragg break...")
@@ -492,6 +504,8 @@ class EMBLEnergy(Device):
         Release bragg breaks
         :return:
         """
+        if not self.use_break:
+            return
         if self.chan_status_bragg_break.getValue() != 1:
             logging.getLogger("GUI").warning("Energy: Releasing bragg brake...")
             self.emit("statusInfoChanged", "Releasing Bragg break...")
@@ -517,3 +531,31 @@ class EMBLEnergy(Device):
         else:
             logging.getLogger("GUI").info("Energy: Bragg brake already released")
             self.emit("statusInfoChanged", "Bragg break released")
+
+    def getCurrentEnergy(self):
+        return self.current_energy
+
+    def _calculate_wavelength(self, energy=None):
+        """Calculate wavelength from energy
+        Args:
+            energy(float): Energy [keV]
+        Returns:
+            (float): wavelength [A]
+        """
+        energy = energy or self.get_value()
+
+        # energy in KeV to get wavelength in A
+        energy = energy / 1000.0 if energy > 1000 else energy
+
+        return 12.3984 / energy
+
+    def _calculate_energy(self, wavelength=None):
+        """Calculate energy from wavelength
+        Args:
+            value((float): wavelength [A]
+        Returns:
+            (float): Energy [keV]
+        """
+        wavelength = wavelength or self.get_wavelength()
+        return 12.3984 / wavelength
+

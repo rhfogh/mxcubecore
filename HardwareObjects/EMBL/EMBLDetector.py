@@ -21,6 +21,7 @@
 
 import logging
 import gevent
+import math
 from HardwareRepository.HardwareObjects.abstract.AbstractDetector import (
     AbstractDetector,
 )
@@ -69,6 +70,8 @@ class EMBLDetector(AbstractDetector, HardwareObject):
         self.roi_mode = None
 
         self.distance_motor_hwobj = None
+        self.resolution_hwobj = None
+        self.energy_hwobj = None
 
     def init(self):
 
@@ -88,7 +91,7 @@ class EMBLDetector(AbstractDetector, HardwareObject):
         self.chan_roi_mode.connectSignal("update", self.roi_mode_changed)
         self.chan_frame_rate = self.getChannelObject("chanFrameRate")
         self.chan_frame_rate.connectSignal("update", self.frame_rate_changed)
-        #self.frame_rate_changed(self.chan_frame_rate.getValue())
+        self.frame_rate_changed(self.chan_frame_rate.getValue())
 
         self.chan_actual_frame_rate = self.getChannelObject(
             "chanActualFrameRate", optional=True
@@ -115,6 +118,27 @@ class EMBLDetector(AbstractDetector, HardwareObject):
     def get_distance(self):
         """Returns detector distance in mm"""
         return self.distance_motor_hwobj.getPosition()
+
+    """
+    def distance_to_resolution(self, newd, newe)
+        h = 12.398425
+        d=self.get_distance()
+        r=self.resolution_hwobj.getPosition()
+        e=self.energy_hwobj.get_current_energy()
+        c=h*d*math.sqrt(4.*(r*e)**2-h**2)/(2.*(r*e)**2-h**2) - 0.0036*(newd-d)
+        return h*math.sqrt(newd**2+c**2+newd*math.sqrt(newd**2+c**2))/newe/c/math.sqrt(2.)
+
+    def resolution_to_distance(self, newr, newe)
+        h = 12.398425
+        d=self.get_distance()
+        r=self.resolution_hwobj.getPosition()
+        e=self.energy_hwobj.get_current_energy()
+        c=h*d*math.sqrt(4.*(r*e)**2-h**2)/(2.*(r*e)**2-h**2)
+        r1=math.sqrt(2.)*newr*newe/h
+        r2=r1**2-1.0
+        k=-0.0036
+        return -r2*(k*(c-d*k)*r2+math.sqrt(2.*r1**2-1.)*abs(c-d*k))/(k**2*r2**2+1.-2.*r1**2)
+    """
 
     def set_distance(self, position, timeout=None):
         """Sets detector distance
@@ -198,9 +222,11 @@ class EMBLDetector(AbstractDetector, HardwareObject):
         self.emit("detectorRoiModeChanged", (self.roi_mode,))
 
     def frame_rate_changed(self, frame_rate):
+        #logging.getLogger("HWR").info("Detector: max frame_rate_changed %s"%frame_rate)
         """Updates frame rate"""
         if frame_rate is not None:
-            self.exposure_time_limits[0] = 1 / float(frame_rate)
+            #self.exposure_time_limits[0] = 1. / (float(frame_rate) + 1.) GB: Apr 16 2024 - this +1 confuses GPHL acquisition widget. 
+            self.exposure_time_limits[0] = 1. / ( float(frame_rate) )
             self.exposure_time_limits[1] = 6.0
         self.emit("expTimeLimitsChanged", (self.exposure_time_limits,))
 

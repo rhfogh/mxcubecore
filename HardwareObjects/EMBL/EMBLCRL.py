@@ -60,7 +60,7 @@ class EMBLCRL(HardwareObject):
         """Inits all variables"""
 
         self.focal_length = self.getProperty("focal_length")
-        self.lens_count = 6
+        self.lens_count = 8
 
         self.chan_crl_value = self.getChannelObject("chanCrlValue")
         if self.chan_crl_value:
@@ -94,7 +94,7 @@ class EMBLCRL(HardwareObject):
             for index in range(self.lens_count):
                 lens_combination = lens_combination + value[index] * pow(2, index)
         else:
-            lens_combination = [0, 0, 0, 0, 0, 0]
+            lens_combination = [0, 0, 0, 0, 0, 0, 0, 0]
             for index in range(self.lens_count):
                 lens_combination[index] = (value & pow(2, index)) / pow(2, index)
         return lens_combination
@@ -147,7 +147,7 @@ class EMBLCRL(HardwareObject):
         # crl_value = [0, 0, 0, 0, 0, 0]
 
         self.energy_value = self.energy_hwobj.get_current_energy()
-        for combination_index in range(1, 65):
+        for combination_index in range(1, 257):
             current_abs = abs(
                 self.energy_value
                 - math.sqrt(
@@ -200,7 +200,7 @@ class EMBLCRL(HardwareObject):
             self.cmd_set_trans_value(1)
             logging.getLogger("GUI").info(
                 "Setting CRL image plane "
-                + "distance to %.2f" % self.get_image_plane_distance(value)
+                + "distance to %.2f value %s" %(self.get_image_plane_distance(value),value)
             )
 
             if timeout:

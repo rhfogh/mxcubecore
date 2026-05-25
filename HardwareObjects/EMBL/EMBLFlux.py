@@ -46,6 +46,7 @@ class EMBLFlux(AbstractFlux):
         self.flux_value = 0
         self.intensity_ranges = []
         self.intensity_value = None
+        self.intensity_offset = None
         self.flux_record_status = None
         self.measuring = False
         self.transmission_value = None
@@ -70,7 +71,12 @@ class EMBLFlux(AbstractFlux):
         self.transmission_hwobj = None
         self.session_hwobj = None
         self.safety_shutter_hwobj = None
-     
+        
+        self.focusing_mode = None
+        self.flux_transmission = 10.0
+
+        """
+        #GB Thu Oct  7 17:13:54 CEST 2021  - old P14 diode
         self.diode_calibration_amp_per_watt = interp1d(\
               [4., 6., 8., 10., 12., 12.5, 15., 16., 20., 30.],
               [0.2267, 0.2116, 0.1405, 0.086, 0.0484, 0.0469,
@@ -91,9 +97,15 @@ class EMBLFlux(AbstractFlux):
                 0.00388,
             ],
         )
+        """
+        # New PIPS diode, factory calibration and interpolation by 0.2717*(1 - Exp[-Si_Photoelectric_Crossection_in_cm^2/g * *0.128062] between 21 and 29 keV:
+        self.diode_calibration_amp_per_watt = interp1d(
+            [4.0   ,   6.0,   8.0,  10.0,  12.5,  15.0,  16.0,  20.0,   21.0,   22.0,   23.0,   24.0,   25.0,   26.0,   27.0,   28.0,   29.0,  30.0, 36],
+            [0.2705,0.2717,0.2715,0.2682,0.2393,0.1875,0.1678,0.1057,0.09678,0.08622,0.07995,0.06880,0.06163,0.05538,0.04986,0.04500,0.04072,0.0382, 0.02],
+       )
 
         self.air_absorption_coeff_per_meter = interp1d(
-            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30],
+            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30, 36],
             [
                 9.19440446,
                 2.0317802,
@@ -106,10 +118,11 @@ class EMBLFlux(AbstractFlux):
                 0.04926173,
                 0.04114024,
                 0.0357374,
+                0.02
             ],
         )
         self.carbon_window_transmission = interp1d(
-            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30],
+            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30, 36],
             [
                 0.74141,
                 0.93863,
@@ -122,10 +135,11 @@ class EMBLFlux(AbstractFlux):
                 0.99793,
                 0.99815,
                 0.99828,
+                1.0
             ],
         )
         self.dose_rate_per_10to14_ph_per_mmsq = interp1d(
-            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30.0],
+            [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30.0, 36],
             [
                 459000.0,
                 162000.0,
@@ -138,6 +152,7 @@ class EMBLFlux(AbstractFlux):
                 8610.0,
                 6870.0,
                 5520.0,
+                2500.0
             ],
         )
 
@@ -148,6 +163,7 @@ class EMBLFlux(AbstractFlux):
         self.measured_flux_dict = None
         self.measured_flux_list = []
         self.current_flux_dict = None
+        self.intensity_offset = self.getProperty("intensity_offset", 0)
 
         try:
             for intens_range in self["intensity"]["ranges"]:
@@ -303,6 +319,7 @@ class EMBLFlux(AbstractFlux):
     def focusing_mode_changed(self, mode, size):
         logging.getLogger("GUI").warning("Beamline focus mode changed. Please remeasure flux!")
         self.reset_flux()
+        self.focusing_mode = mode
 
     def reset_flux(self):
         self.current_flux_dict = None
@@ -332,8 +349,8 @@ class EMBLFlux(AbstractFlux):
                               self.measured_flux_dict['size_y']
                 current_area = self.beam_info['size_x'] * \
                                self.beam_info['size_y']
-                if origin_area < current_area and current_area > 0.3*0.3 :
-                    current_area = 0.3*0.3
+                #if origin_area < current_area and current_area > 0.3*0.3 :
+                #    current_area = 0.3*0.3
                 _area_correction = origin_area / current_area
             else:
                 _area_correction = 1.0
@@ -373,12 +390,16 @@ class EMBLFlux(AbstractFlux):
             self.print_log("GUI", "error", "Unable to measure flux!")
             self.print_log("GUI", "error", msg)
             return
-
+               
         if self.session_hwobj.beamline_name == "P14":
-           if self.detector_distance_hwobj.get_position() > 501:
-               self.print_log("GUI", "error", "Detector is too far away for flux measurements. Move to 500 mm or closer.") 
-               return
-
+           if self.beam_focusing_hwobj.active_focus_mode == 'Double':
+              TOOFAR = 450
+           else:
+              TOOFAR = 1200              
+           if self.detector_distance_hwobj.get_position() > TOOFAR+1:
+              self.print_log("GUI", "error", "Detector is too far away for flux measurements. Move to %d mm or closer."%TOOFAR) 
+              return
+        
         self.measuring = True
         intens_value = 0
         max_frame_rate = 1 / self.detector_hwobj.get_exposure_time_limits()[0]
@@ -389,10 +410,10 @@ class EMBLFlux(AbstractFlux):
 
         self.emit("progressInit", "Measuring flux. Please wait...", 10, True)
 
-        # Set transmission to 100%
+        # Set transmission to self.flux_transmission
         # -----------------------------------------------------------------
-        self.emit("progressStep", 1, "Setting transmission to 100%")
-        self.transmission_hwobj.set_value(100, timeout=20)
+        self.emit("progressStep", 1, "Setting transmission to %s"%self.flux_transmission)
+        self.transmission_hwobj.set_value(self.flux_transmission, timeout=20)
 
         # Close the fast shutter
         # -----------------------------------------------------------------
@@ -472,31 +493,37 @@ class EMBLFlux(AbstractFlux):
             self.fast_shutter_hwobj.closeShutter(wait=True)
             logging.getLogger("HWR").debug("Measure flux: Fast shutter closed")
 
-            intensity_value = intens_value[0] - 6.65e-7 #2.780e-6
-            self.measured_flux_list.append(self.get_flux_result(intensity_value))
-            try:
-                self.cmd_slits_record(
-                    [
-                        self.measured_flux_list[0]['size_x'],
-                        self.measured_flux_list[0]['size_y']
-                    ]
+            #intensity_value = intens_value[0] + 1.860e-5
+            #changed on 2021-07-06 14:42
+            intensity_value = -( intens_value[0] + 6.94e-7 )
+            #self.print_log("GUI","info","%s %s",intensity_value, intens_value[0])
+
+            #intensity_value = intens_value[0] - self.intensity_offset
+            self.measured_flux_list.append(
+                self.get_flux_result(intensity_value)
                 )
-                self.cmd_flux_record(self.measured_flux_list[0]['flux'])
-                gevent.sleep(2)
+            try:
+	       self.cmd_slits_record([self.measured_flux_list[0]['size_x'],
+                                      self.measured_flux_list[0]['size_y']])
+               self.cmd_flux_record(self.measured_flux_list[0]['flux'])
+               gevent.sleep(2)
             except:
                pass
             self.print_log(
-                "GUI",
-                "info",
-                "Flux measurement results: \n\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.1f sec \nNumber of frames @ %d Hz= %d\n"
-                %(self.measured_flux_list[0]['size_x']*1000,
-                self.measured_flux_list[0]['size_y']*1000,
-                self.measured_flux_list[0]['flux'],
-                self.measured_flux_list[0]["dose_rate"],
-                self.measured_flux_list[0]["time_to_reach_limit"],
-                max_frame_rate,
-                self.measured_flux_list[0]["frames_to_reach_limit"])
-            )
+            "GUI",
+            "info",
+            "Flux measurement results: \n\nAt 100%% Transmission\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.2f sec \nNumber of frames @ %d Hz= %d\nExposure time for 1MGy/3600 frames = %.6f sec\nCurrent= %1.2e Amp\n"
+	     %(self.measured_flux_list[0]['size_x']*1000,
+	       self.measured_flux_list[0]['size_y']*1000,
+               self.measured_flux_list[0]['flux']*(100.0/self.flux_transmission),
+               self.measured_flux_list[0]["dose_rate"]*(100.0/self.flux_transmission),
+               self.measured_flux_list[0]["time_to_reach_limit"]*(self.flux_transmission/100.),
+               max_frame_rate,
+               self.measured_flux_list[0]["frames_to_reach_limit"],
+               1000./self.measured_flux_list[0]["dose_rate"]/3600. * (self.flux_transmission/100.),
+               intens_value[0] * (100.0/self.flux_transmission))
+        )
+
 
 
         self.emit("progressStep", 10, "Restoring original state")
@@ -552,6 +579,7 @@ class EMBLFlux(AbstractFlux):
         if self.session_hwobj.beamline_name == "P13":
             self.aperture_hwobj.set_diameter_index(current_aperture_index)
         self.emit("progressStop", ())
+        self.print_log("GUI", "info", "Done")
 
     def get_flux_result(self, intensity_value, transmission=None):
         energy = self.energy_hwobj.get_current_energy()
@@ -574,7 +602,11 @@ class EMBLFlux(AbstractFlux):
             / carb_trsm
         )
 
-        flux = flux * 1.8
+        # GB: Thu Oct  7 17:13:54 CEST 2021
+        # this was in use with an old P14 diode
+        # flux = flux * 1.8
+
+
         dose_rate = (
             1e-3
             * 1e-14
@@ -609,6 +641,3 @@ class EMBLFlux(AbstractFlux):
             result = self.get_flux_result(self.measured_flux_list[0]["intensity"], transmission)
             dose_rate = result("dose_rate")
         return dose_rate
-
-
-    # TODO add proper  get_average_flux_density(self, transmission=None) function

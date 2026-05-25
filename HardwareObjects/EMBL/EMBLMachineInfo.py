@@ -130,13 +130,15 @@ class EMBLMachineInfo(HardwareObject):
         self.chan_frontend_status = None
         self.chan_undulator_gap = None
         self.chan_state_text = None
-        self.chan_cryojet_in = None
+        self.chan_cryojet_in = None        
         self.chan_cryojet_temperature = None
+        self.chan_cryojet_backpressure = None
         self.chan_sc_dewar_low_level_alarm = None
         self.chan_sc_dewar_overflow_alarm = None
 
         self.cryojet_in_place = True
         self.cryojet_temperature = "Unknown"
+        self.cryojet_backpressure = 0.0
 
         self.flux_hwobj = None
         self.ppu_control_hwobj = None
@@ -186,6 +188,7 @@ class EMBLMachineInfo(HardwareObject):
         else:
             logging.getLogger("HWR").debug("MachineInfo: Cryojet channel not defined")
 
+
         self.chan_cryojet_temperature = self.getChannelObject("cryojetTemperature")
         if self.chan_cryojet_temperature is not None:
             self.cryojet_temperature_changed(self.chan_cryojet_temperature.getValue())
@@ -193,6 +196,12 @@ class EMBLMachineInfo(HardwareObject):
         else:
             logging.getLogger("HWR").debug("MachineInfo: Cryojet temperature channel not defined")
 
+        self.chan_cryojet_backpressure = self.getChannelObject("cryojetBackpressure")
+        if self.chan_cryojet_backpressure is not None:
+            self.cryojet_backpressure_changed(self.chan_cryojet_backpressure.getValue())
+            self.chan_cryojet_backpressure.connectSignal("update", self.cryojet_backpressure_changed)
+        else:
+            logging.getLogger("HWR").debug("MachineInfo: Cryojet backpressure channel not defined")
 
         self.chan_sc_dewar_low_level_alarm = self.getChannelObject("scLowLevelAlarm")
         if self.chan_sc_dewar_low_level_alarm is not None:
@@ -259,12 +268,28 @@ class EMBLMachineInfo(HardwareObject):
 
     def cryojet_temperature_changed(self, value):
         self.cryojet_temperature = value
-        self.values_list[5]["value"] = "%s Temp: %s K"%(self.values_list[5]["value"].split(" Temp:")[0],value)
+        if self.cryojet_in_place:
+            p = " In place. "
+        else:
+            p = "NOT IN PLACE."
+
+        #self.values_list[5]["value"] = "%s Temp: %s K"%(self.values_list[5]["value"].split(" Temp:")[0],value)
+        self.values_list[5]["value"] = "%s Temp: %s K BackP %s mbar" %(p, self.cryojet_temperature, self.cryojet_backpressure)
         if value < 111. and self.criojet_in_place: #self.values_list[5]["in_range"]:
            self.values_list[5]["in_range"] = True
         else:
            self.values_list[5]["in_range"] = False
 
+        self.update_values()
+
+    def cryojet_backpressure_changed(self, value):
+        self.cryojet_backpressure = value
+        if self.cryojet_in_place:
+            p = " In place. "
+        else:
+            p = "NOT IN PLACE."
+        self.values_list[5]["value"] = "%s Temp: %s K BackP %s mbar" %(p, self.cryojet_temperature, self.cryojet_backpressure)
+        #        %(self.values_list[5]["value"].split(" Temp:")[0],value)
         self.update_values()
 
     def cryojet_in_changed(self, value):
@@ -280,11 +305,11 @@ class EMBLMachineInfo(HardwareObject):
         self.values_list[5]["bold"] = True and ( self.cryojet_temperature < 111. )
 
         if value == 1:
-            self.values_list[5]["value"] = " In place Temp: %s K" %self.cryojet_temperature
+            self.values_list[5]["value"] = " In place. Temp: %s K BackP: %s mbar" %(self.cryojet_temperature, self.cryojet_backpressure)
             self.values_list[5]["in_range"] = True and ( self.cryojet_temperature < 111. )
             self.values_list[5]["bold"] = False
         elif value == 0:
-            self.values_list[5]["value"] = "NOT IN PLACE Temp: %s K"  %self.cryojet_temperature
+            self.values_list[5]["value"] = "NOT IN PLACE. Temp: %s K BackP: %s mbar" %(self.cryojet_temperature, self.cryojet_backpressure)
         else:
             self.values_list[5]["value"] = "Unknown"
         
@@ -531,7 +556,7 @@ class EMBLMachineInfo(HardwareObject):
         :returns : float
         """
         url_prefix = (
-            "http://cssweb.desy.de:8084/ArchiveViewer/archive"
+            "http://epicsweb.desy.de:8084/ArchiveViewer/archive"
             + "reader.jsp?DIRECTORY=%2Fdata7%2FChannelArchiver%"
             + "2FchannelReference2.kryo&PATTERN=&"
         )

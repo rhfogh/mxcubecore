@@ -201,6 +201,11 @@ class EMBLMiniDiff(GenericDiffractometer):
     def status_changed(self, status):
         if 'rror' in status:
             logging.getLogger("GUI").error("%s" %status)
+
+            # an attempt to bring MD3 SampleY out of the open loop:
+            if 'n open loop' in status:
+               self.motor_hwobj_dict["sampy"].move_relative(-0.010)
+               
         self.emit("statusMessage", ("diffractometer", status, "busy"))
 
     def zoom_position_changed(self, value):
@@ -604,6 +609,12 @@ class EMBLMiniDiff(GenericDiffractometer):
                 "Move to centred position disabled in BeamLocation phase."
             )
 
+    def move_kappa_and_phi(self, kappa=None, kappa_phi=None, wait=False):
+        try:
+            return self.move_kappa_and_phi_procedure(kappa, kappa_phi)
+        except BaseException:
+            logging.exception("Could not move kappa and kappa_phi")
+
     @task
     def move_kappa_and_phi_procedure(self, new_kappa=None, new_kappa_phi=None):
         kappa = self.motor_hwobj_dict["kappa"].get_position()
@@ -633,6 +644,7 @@ class EMBLMiniDiff(GenericDiffractometer):
             motor_pos_dict[self.motor_hwobj_dict["sampy"]] = new_sampy
             motor_pos_dict[self.motor_hwobj_dict["phiy"]] = new_phiy
 
+            logging.getLogger("HWR").debug("Move K=%.2f P=%.f X=%.3f Y=%.3f Z=%.3f"%(new_kappa, new_kappa_phi, new_sampx, new_sampy, new_phiy))
             self.move_motors(motor_pos_dict, timeout=30)
 
     def convert_from_obj_to_name(self, motor_pos):
@@ -717,14 +729,15 @@ class EMBLMiniDiff(GenericDiffractometer):
         self.move_kappa_and_phi_procedure(0, 0) # None)
         self.wait_device_ready(180)
         logging.getLogger("HWR").debug("Diffractometer: Done closing Kappa.")
-        """
+        
         try:      
            self.motor_hwobj_dict["kappa"].home()
+           logging.getLogger("HWR").debug("Diffractometer: Homing Kappa after closing")
            self.wait_device_ready(60)
            logging.getLogger("HWR").debug("Diffractometer: Done Closing Kappa")
         except BaseException:
            logging.getLogger("GUI").error("Diffractometer: Kappa homing failed")
-        """
+        
 
     def set_zoom(self, position):
         self.zoom_motor_hwobj.move_to_position(position)
@@ -795,7 +808,7 @@ class EMBLMiniDiff(GenericDiffractometer):
             return None, None
         else:
             delta = a * speed ** 2 + b * speed
-
+            logging.getLogger("HWR").debug("Scan limits: %s %s" %(w0 + delta, w1 - delta  ))
             return (w0 + delta, w1 - delta)
 
         """
@@ -862,7 +875,7 @@ class EMBLMiniDiff(GenericDiffractometer):
     def save_centring_positions(self):
         self.cmd_save_centring_positions()
         # GB zoom in automatically after centring
-        # self.set_zoom("Zoom 4")
+        #self.set_zoom("Zoom 6")
 
     def move_sample_out(self):
         self.motor_hwobj_dict["phiy"].move_relative(-2, wait=True, timeout=5)
