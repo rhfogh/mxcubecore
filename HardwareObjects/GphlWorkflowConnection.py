@@ -729,14 +729,10 @@ class GphlWorkflowConnection(HardwareObject, object):
             detectorSetting = self._DetectorSetting_to_python(detectorSetting)
         else:
             detectorSetting = None
-        reflectingRangeEsd = None
-        try:
             if py4jGeometricStrategy.isSetReflectingRangeEsd():
                 reflectingRangeEsd = py4jGeometricStrategy.getReflectingRangeEsd()
-        except Exception:  # noqa S110
-            # Temporary fix, pending upgrading of the GPhL workflow
-            # NB the error raised is likely Py4JError - but we do not care
-            pass
+            else:
+                reflectingRangeEsd = None
         return GphlMessages.GeometricStrategy(
             isUserModifiable=py4jGeometricStrategy.isUserModifiable(),
             allowedWidths=py4jGeometricStrategy.getAllowedWidths(),

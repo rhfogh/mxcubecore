@@ -870,17 +870,18 @@ class SampleCentringQueueEntry(BaseQueueEntry):
             # Only move if either kappa or phi are changing
             ARBITRARY_TOLERANCE = 0.5
             if d_kappa > ARBITRARY_TOLERANCE or d_kappa_phi > ARBITRARY_TOLERANCE:
-                # The point is that it is very rare to centre at an orientation
-                # different from the current one, and when you do you want
-                # the lights turned on etc.
+                # The ppint is that it is very rare to centre at an orientation
+                # different from the current one, and when you do you you want
+                # thelihgts ruened on etc.
                 self.diffractometer_hwobj.set_phase("Centring", timeout = 20)
+                #pass
             if (
                 not hasattr(self.diffractometer_hwobj, "in_kappa_mode")
                 or self.diffractometer_hwobj.in_kappa_mode()
             ):
                 # NB the timeout parameter is unnecesary; 60s timeout is the default
                 self.diffractometer_hwobj.move_kappa_and_phi(
-                    kappa, kappa_phi, timeout = 60
+                    kappa, kappa_phi, wait=True #timeout = 60  #GB 20230913 this need to be synchronized
                 )
 
         motor_positions = dict(
@@ -888,8 +889,10 @@ class SampleCentringQueueEntry(BaseQueueEntry):
             for tt in data_model.get_other_motor_positions().items()
             if tt[1] is not None
         )
+        #ZZZ
         if motor_positions:
             self.diffractometer_hwobj.move_motors(motor_positions)
+            log.info(motor_positions)
 
         log.warning(
             "Please center a new or select an existing point and press continue."

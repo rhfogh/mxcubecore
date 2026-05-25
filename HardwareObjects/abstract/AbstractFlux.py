@@ -32,7 +32,7 @@ class AbstractFlux(HardwareObject):
     # Dose rate for a standard composition crystal, in Gy/s
     # As a function of energy in keV
     dose_rate_per_photon_per_mmsq = interp1d(
-        [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30.0],
+        [4.0, 6.6, 9.2, 11.8, 14.4, 17.0, 19.6, 22.2, 24.8, 27.4, 30.0, 36.0],
         [
             4590.0e-12,
             1620.0e-12,
@@ -45,6 +45,7 @@ class AbstractFlux(HardwareObject):
             86.1e-12,
             68.7e-12,
             55.2e-12,
+            25e-12
         ],
     )
 
@@ -81,12 +82,9 @@ class AbstractFlux(HardwareObject):
         """
 
         beam_size = api.beam_info.get_beam_size()
-        flux = api.flux.get_flux()
-        result = None
-        if flux and all(beam_size):
-            result = flux / (beam_size[0] * beam_size[1])
-            if transmission  is not None:
-                result = result * transmission / api.transmission.get_value()
+        result = api.flux.get_flux() / (beam_size[0] * beam_size[1])
+        if transmission  is not None:
+            result = result * transmission / api.transmission.get_value()
         #
         return result
 

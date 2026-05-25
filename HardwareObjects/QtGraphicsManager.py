@@ -1003,10 +1003,10 @@ class QtGraphicsManager(HardwareObject):
 
     def set_cursor_busy(self, state):
         return 
-        if state:
-            QtImport.QApplication.setOverrideCursor(QtImport.QCursor(QtImport.Qt.BusyCursor))
-        else:
-            QtImport.QApplication.setOverrideCursor(self.cursor)
+        #if state:
+        #    QtImport.QApplication.setOverrideCursor(QtImport.QCursor(QtImport.Qt.BusyCursor))
+        #else:
+        #    QtImport.QApplication.setOverrideCursor(self.cursor)
 
     def get_graphics_view(self):
         """Rturns current GraphicsView
@@ -1981,6 +1981,12 @@ class QtGraphicsManager(HardwareObject):
         hor_sum = image_array.sum(axis=0)
         ver_sum = image_array.sum(axis=1)
 
+        logging.getLogger("HWR").debug("Beam image intensity: %3.1e"%hor_sum.sum())
+
+        if hor_sum.sum() < 1e6:
+           logging.getLogger("GUI").error("Beam image too weak or empty, centring aborted")
+           return
+
         beam_x = None
         beam_y = None
 
@@ -2156,12 +2162,12 @@ class QtGraphicsManager(HardwareObject):
 
     def set_magnification_mode(self, mode):
         """Display or hide magnification tool"""
-        if mode:
-            QtImport.QApplication.setOverrideCursor(
-               QtImport.QCursor(QtImport.Qt.ClosedHandCursor)
-            )
-        else:
-            self.set_cursor_busy(False)
+        #if mode:
+        #    QtImport.QApplication.setOverrideCursor(
+        #       QtImport.QCursor(QtImport.Qt.ClosedHandCursor)
+        #    )
+        #else:
+        #    self.set_cursor_busy(False)
         self.graphics_magnification_item.setVisible(mode)
         self.in_magnification_mode = mode
 

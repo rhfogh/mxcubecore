@@ -614,7 +614,7 @@ class GenericDiffractometer(HardwareObject):
             self.beam_position[1] - self.zoom_centre["y"]
         ) / self.pixels_per_mm_x
 
-        return self.current_motor_positions.copy()
+        return self.current_motor_positions
     #
     def get_motor_positions(self):
         return self.get_positions()
@@ -939,7 +939,7 @@ class GenericDiffractometer(HardwareObject):
         self.move_to_motors_positions_procedure.link(self.move_motors_done)
         if wait:
             gevent.sleep(0.1)
-            self.wait_device_ready(10)
+            self.wait_device_ready(60)
         #GB
         #os.system('espeak "press continue"')
         self.save_centring_positions()

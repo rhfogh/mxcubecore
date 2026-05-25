@@ -101,7 +101,6 @@ class AbstractCollect(HardwareObject, object):
         self.autoprocessing_hwobj = self.getObjectByRole("auto_processing")
         self.beam_info_hwobj = self.getObjectByRole("beam_info")
         self.detector_hwobj = self.getObjectByRole("detector")
-        print (self.detector_hwobj)
         self.diffractometer_hwobj = self.getObjectByRole("diffractometer")
         self.energy_hwobj = self.getObjectByRole("energy")
         self.lims_client_hwobj = self.getObjectByRole("lims_client")
@@ -124,8 +123,6 @@ class AbstractCollect(HardwareObject, object):
         else:
             synchrotron_name = "UNKNOWN"
  
-        print(1)
-        print(self.detector_hwobj)
         self.set_beamline_configuration(
             synchrotron_name=synchrotron_name,
             directory_prefix=self.getProperty("directory_prefix"),
@@ -336,6 +333,7 @@ class AbstractCollect(HardwareObject, object):
         self.current_dc_parameters["status"] = success_msg
 
         if self.current_dc_parameters["experiment_type"] != "Collect - Multiwedge":
+            self.current_dc_parameters["comments"] = "\n"
             self.update_data_collection_in_lims()
 
             last_frame = self.current_dc_parameters["oscillation_sequence"][0][
