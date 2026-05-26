@@ -532,7 +532,7 @@ class GphlWorkflow(HardwareObject, object):
         wf_version_str = payload.workflowVersion
         abi_version_str = payload.abiVersion
         logging.getLogger("user_level_log").info(
-            "GPhL Workflow %s, beamline interface: %s. Expecvred version is %s"
+            "GPhL Workflow %s, beamline interface: %s. Expected version is %s"
             % (wf_version_str, abi_version_str, gphl_version_str)
         )
         return GphlMessages.ConfigurationData(self.file_paths["gphl_beamline_config"])

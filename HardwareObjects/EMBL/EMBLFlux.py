@@ -503,26 +503,28 @@ class EMBLFlux(AbstractFlux):
                 self.get_flux_result(intensity_value)
                 )
             try:
-	       self.cmd_slits_record([self.measured_flux_list[0]['size_x'],
-                                      self.measured_flux_list[0]['size_y']])
-               self.cmd_flux_record(self.measured_flux_list[0]['flux'])
-               gevent.sleep(2)
+                self.cmd_slits_record([self.measured_flux_list[0]['size_x'],
+                self.measured_flux_list[0]['size_y']])
+                self.cmd_flux_record(self.measured_flux_list[0]['flux'])
+                gevent.sleep(2)
             except:
                pass
             self.print_log(
-            "GUI",
-            "info",
-            "Flux measurement results: \n\nAt 100%% Transmission\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.2f sec \nNumber of frames @ %d Hz= %d\nExposure time for 1MGy/3600 frames = %.6f sec\nCurrent= %1.2e Amp\n"
-	     %(self.measured_flux_list[0]['size_x']*1000,
-	       self.measured_flux_list[0]['size_y']*1000,
-               self.measured_flux_list[0]['flux']*(100.0/self.flux_transmission),
-               self.measured_flux_list[0]["dose_rate"]*(100.0/self.flux_transmission),
-               self.measured_flux_list[0]["time_to_reach_limit"]*(self.flux_transmission/100.),
-               max_frame_rate,
-               self.measured_flux_list[0]["frames_to_reach_limit"],
-               1000./self.measured_flux_list[0]["dose_rate"]/3600. * (self.flux_transmission/100.),
-               intens_value[0] * (100.0/self.flux_transmission))
-        )
+                "GUI",
+                "info",
+                "Flux measurement results: \n\nAt 100%% Transmission\nBeam size= %d x %d um^2\nFlux= %1.1e ph/s \nDose rate= %1.1e KGy/s \nTime to reach 20 MGy= %.2f sec \nNumber of frames @ %d Hz= %d\nExposure time for 1MGy/3600 frames = %.6f sec\nCurrent= %1.2e Amp\n"
+                % (
+                    self.measured_flux_list[0]['size_x']*1000,
+                    self.measured_flux_list[0]['size_y']*1000,
+                    self.measured_flux_list[0]['flux']*(100.0/self.flux_transmission),
+                    self.measured_flux_list[0]["dose_rate"]*(100.0/self.flux_transmission),
+                    self.measured_flux_list[0]["time_to_reach_limit"]*(self.flux_transmission/100.),
+                    max_frame_rate,
+                    self.measured_flux_list[0]["frames_to_reach_limit"],
+                    1000./self.measured_flux_list[0]["dose_rate"]/3600. * (self.flux_transmission/100.),
+                    intens_value[0] * (100.0/self.flux_transmission)
+                )
+            )
 
 
 

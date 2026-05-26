@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import logging
 
+import gevent
+
 from HardwareRepository.dispatcher import dispatcher
 from HardwareRepository.CommandContainer import CommandContainer
 from HardwareRepository.ConvertUtils import string_types
@@ -36,7 +38,7 @@ class PropertySet(dict):
         self.__propertiesChanged = {}  # reset changes at commit
 
 
-class HardwareObjectNode:
+class HardwareObjectNode(object):
     def __init__(self, nodeName):
         """Constructor"""
         self.__dict__["_propertySet"] = PropertySet()
@@ -460,6 +462,16 @@ class Device(HardwareObject):
     def is_ready(self):
         return self.isReady()
 
+    def wait_ready(self, timeout=None):
+        """
+        Whaits till device is ready
+        :param timeout: sec (int)
+        :return:
+        """
+        with gevent.Timeout(timeout, Exception("Timeout waiting for device ready")):
+            while not self.is_ready():
+                gevent.sleep(0.05)
+
     def userName(self):
         uname = self.getProperty("username")
         if uname is None:
@@ -540,6 +552,16 @@ class Equipment(HardwareObject, DeviceContainer):
 
     def is_ready(self):
         return self.isReady()
+
+    def wait_ready(self, timeout=None):
+        """
+        Whaits till device is ready
+        :param timeout: sec (int)
+        :return:
+        """
+        with gevent.Timeout(timeout, Exception("Timeout waiting for device ready")):
+            while not self.is_ready():
+                gevent.sleep(0.05)
 
     def isValid(self):
         return True

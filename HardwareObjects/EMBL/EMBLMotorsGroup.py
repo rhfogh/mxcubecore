@@ -66,7 +66,7 @@ Example Hardware Object XML file :
           <velocity>None</velocity>                 - velocity
           <updateTolerance>0.005</updateTolerance>  - absolute update tolerance
           <evalTolerance>0.005</evalTolerance>      - absolute tolerance of
-					              beam focus mode evaluation
+		  beam focus mode evaluation
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
           <focusingModes>{'Collimated': 0.22, 'Horizontal': 0.22,
           'Vertical': 0.22, 'Double': 0.22}</focusingModes>
