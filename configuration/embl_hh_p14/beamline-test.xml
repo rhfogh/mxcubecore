@@ -9,7 +9,7 @@
 
     <channel type="tine" name="intensMean" tinename="/P14/PinDiode/Device0" timeout="100" >ChannelsMean.get</channel>
     <channel type="tine" name="intensRange" tinename="/P14/PinDiode/Device0">CurrentRange.set</channel>
-    <command type="tine" name="setIntensResolution" tinename="/P14/PindDiode/Device0" timeout="3000">ADCResolution.set</command>
+    <command type="tine" name="setIntensResolution" tinename="/P14/PinDiode/Device0" timeout="3000">ADCResolution.set</command>
     <command type="tine" name="setIntensAcqTime" tinename="/P14/PinDiode/Device0" timeout="3000">AcquisitionTime.set</command>
     <command type="tine" name="setIntensRange" tinename="/P14/PinDiode/Device0" timeout="3000">CurrentRange.set</command>
 
@@ -22,7 +22,7 @@
     <command type="tine" name="cmdStartPitchScan" tinename="/P14/p14mono.cdi/StartPitchScan">SEND</command>
     <command type="tine" name="cmdSetVMaxPitch" tinename="/p14/p14mono.cdi/SetVMaxPitch">SEND</command>
 
-    <scale_hor>0.017</scale_hor>
+    <scale_hor>0.034</scale_hor>
     <scale_ver>-1</scale_ver>
     <scale_double_hor>-0.5</scale_double_hor>
     <scale_double_ver>-0.5</scale_double_ver>

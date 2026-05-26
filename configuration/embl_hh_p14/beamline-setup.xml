@@ -65,7 +65,7 @@
   </acquisition_limit_values>
 
   <default_acquisition_values>
-    <exposure_time>0.010</exposure_time>
+    <exposure_time>0.00751</exposure_time>
     <start_angle>0.0</start_angle>
     <range>0.1</range>
     <number_of_passes>1</number_of_passes>
@@ -77,7 +77,7 @@
     <compression>True</compression>
   </default_acquisition_values>
   <default_helical_values>
-    <exposure_time>0.010</exposure_time>
+    <exposure_time>0.00751</exposure_time>
     <start_angle>0.0</start_angle>
     <range>0.1</range>
     <number_of_passes>1</number_of_passes>

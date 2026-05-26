@@ -2,7 +2,7 @@
     <focusModes>
 	<focusMode>
 	   <modeName>Collimated</modeName>
-           <lensCombination>[1,1,1,1,1,0]</lensCombination>
+	   <lensCombination>[0,1,1,1,1,0,0,0]</lensCombination>
            <lensModes>['Automatic','Manual']</lensModes>
 	   <size>(9999, 9999) </size>
            <divergence>(20, 10)</divergence>
@@ -11,7 +11,7 @@
 	</focusMode>
         <focusMode>
            <modeName>Double</modeName>
-           <lensCombination>[0,0,0,0,0,0]</lensCombination>
+           <lensCombination>[0,1,1,0,0,0,0,0]</lensCombination>
            <lensModes>['Manual']</lensModes>
            <size>(0.007, 0.003)</size>
            <divergence>(999, 500)</divergence>
@@ -20,16 +20,16 @@
         </focusMode>
         <focusMode>
            <modeName>Imaging</modeName>
-           <lensCombination>[0,0,0,0,0,0]</lensCombination>
+           <lensCombination>[0,0,0,0,0,0,0,0]</lensCombination>
            <lensModes>['Manual']</lensModes>
            <size>(9999, 9999) </size>
            <divergence>(20, 10)</divergence>
-           <message>'Imaging mode. \n Will set the imaging camera on the beam'</message>
+	   <message>'Imaging mode. \n Will set the imaging camera on the beam \n REMOVING CEDRAT SHUTTER !!! TURN COLIBRI ON !!!\n'</message>
            <aperture>1400</aperture>
         </focusMode>
         <focusMode>
            <modeName>TREXX</modeName>
-           <lensCombination>[0,0,0,0,1,0]</lensCombination>
+           <lensCombination>[0,0,0,0,1,0,0,0]</lensCombination>
            <lensModes>['Manual']</lensModes>
            <size>(9999, 9999) </size>
            <divergence>(20, 10)</divergence>

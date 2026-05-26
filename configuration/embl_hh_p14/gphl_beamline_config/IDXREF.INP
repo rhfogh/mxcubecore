@@ -3,12 +3,11 @@
 
 ! DETECTOR and OVERLOAD are mandatory
 ! http://xds.mpimf-heidelberg.mpg.de/html_doc/INPUT_templates/XDS-PILATUS.INP
-! But are handled through the workflow
 ! DETECTOR=PILATUS
 ! OVERLOAD=1048500
 
 ! Recommended by clemens, http://confluence.globalphasing.com/display/autoPROC/Shadows+for+Thaumatin2+data?focusedCommentId=10588412#comment-10588412
- MINIMUM_NUMBER_OF_PIXELS_IN_A_SPOT= 4
+! MINIMUM_NUMBER_OF_PIXELS_IN_A_SPOT= 4
  SEPMIN=	4
  CLUSTER_RADIUS= 2
  MAXIMUM_ERROR_OF_SPOT_POSITION= 2

@@ -22,7 +22,8 @@
 
    <command type="tine" name="fluxRecord" tinename="/P14/flux-history/flux-record">intensity</command>
    <command type="tine" name="slitsRecord" tinename="/P14/flux-history/flux-record">beam-size</command>  
- 
+
+   <!--intensity_offset>6.65-e7</intensity_offset--> 
    <intensity>
         <shutterOpenValue>opened</shutterOpenValue>
         <valueOnClose>1e-9</valueOnClose>

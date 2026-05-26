@@ -7,11 +7,11 @@
     <default_exposure_time>0.01</default_exposure_time>
 
     <!-- Use multitrigger collection when set -->
-    <!--    <use_multitrigger>True</use_multitrigger>-->
+    <use_multitrigger>True</use_multitrigger>
 
     <!-- Use advanced_mode for adidtional UI options. Uncoment to set -->
     <advanced_mode>True</advanced_mode>
-
+     
     <!-- Maximum allowed value of Chi, for strategy calculation -->
     <maximum_chi>48.0</maximum_chi>
 
@@ -19,11 +19,8 @@
 
     <!-- default values for image width popup; may be overridden by the workflow -->
     <!-- The first value is the default; values are sorted before use -->
-    <default_image_widths> 0.1 0.01 0.025 0.05 0.2</default_image_widths>
-
-    <!--  Supported wedge widths for interleaving - set to match DELPHI block setting -->
-    <!-- The first value is the default; values are sorted before use -->
-    <wedge_widths>48 24 72 360</wedge_widths>
+    <!--default_image_widths> 0.1 0.01 0.025 0.05 0.2</default_image_widths-->
+    <default_image_widths> 0.1 0.05 0.2</default_image_widths>
 
     <!-- tolerance for deciding whether angles match, in degrees;
     used to compare kappa and phi to decide if orientation needs separate centring -->
@@ -41,21 +38,18 @@
           2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity -->
     <default_decay_limit>25</default_decay_limit>
 
-    <!-- Default force use input unit cell and space group for processing -->
-    <use_cell_for_processing>True</use_cell_for_processing>
-    <!--disable_recen>True</disable_recen-->
-
     <!-- Maximum dose budget to propose when converting from resolution, in MGy-->
-    <maximum_dose_budget>20</maximum_dose_budget>
+    <maximum_dose_budget>5</maximum_dose_budget>
 
     <!-- Percentage of dose budget to propose for use in characterisation.  -->
-    <characterisation_budget_fraction>0.05</characterisation_budget_fraction>
+    <!--characterisation_budget_percent>0.5</characterisation_budget_percent-->
 
+    <!--disable_recen>True</disable_recen-->
 
     <!-- Characterisation strategies popup. -->
     <!-- names refer to stategies in  strategylib.nml -->
     <characterisation_strategies>
-        Char_72_6_multitrigger
+	Char_72_6_multitrigger
         Char_6_5_multitrigger
         Char_24deg
 <!--        Characterisation_6_5-->
@@ -74,11 +68,12 @@
     <!-- Number of decimals for rounding energyu values - in keV -->
     <display_energy_decimals>4</display_energy_decimals>
 
+    <!-- Default wedge width in degrees, for interleaved data collection -->
+    <default_wedge_width>30</default_wedge_width>
+
     <!-- Default number of snapshots to take when centring: 0, 1, 2, or 4 -->
     <default_snapshot_count>2</default_snapshot_count>
 
-    <delphi_block>4.8</delphi_block>
-    <stratcal_step>0.6</stratcal_step>
 
     <!-- Sample centring options -->
     <!-- (Re)centre sample when workflow starts? By default assumes sample is already centred -->
@@ -93,6 +88,7 @@
         )
      mode "none" is not allowed as default -->
     <default_recentring_mode>sweep</default_recentring_mode>
+
 
     <!-- Popup of test crystal parameters for Diffreaction calibration -->
     <!-- The cell dimensions will be used for aP_wf_rotcal calculation -->
@@ -115,6 +111,16 @@
             <a>51.2487</a>
             <b>51.2487</b>
             <c>51.2487</c>
+            <alpha>90</alpha>
+            <beta>90</beta>
+            <gamma>90</gamma>
+        </test_crystal>
+                <test_crystal>
+            <name>Rubredoxin</name>
+            <space_group>P212121</space_group>
+            <a>24.7</a>
+            <b>39.2</b>
+            <c>45.1</c>
             <alpha>90</alpha>
             <beta>90</beta>
             <gamma>90</gamma>
@@ -216,6 +222,7 @@
     <!-- Properties applied after the java command - syntax as above-->
     <!-- Note that irtrelevant properties are simply ignored.-->
     <workflow_properties>
+	<co.gphl.wf.fetchReflFile>false</co.gphl.wf.fetchReflFile>
 
         <!-- Set to false to switch off pre-start checks for directory existence -->
         <!-- in cases where the directories are created after the workflow starts -->
@@ -228,7 +235,13 @@
         <!-- Switch devMod to True to activate development parameters -->
         <!-- NB needed as of 20201202 to pass stratcal parameters strategy_type and variant -->
         <co.gphl.wf.devMode>true</co.gphl.wf.devMode>
-        <!-- For stratcal configuration switches edit run_stratcal_wrap.py script instead-->
+	<!-- For stratcal configuration switches edit run_stratcal_wrap.py script instead-->
+
+	<!-- Enable mosaicity estimation (default: false). Activates XDS integration of characterisation data. -->
+	<co.gphl.wf.estMosaicity>true</co.gphl.wf.estMosaicity>
+        <!-- Fork XDS in separate process (default: false) -->
+	<!-- only works when XDS is invoked directly, rather than through a wrapper -->
+	<co.gphl.wf.forkxds>false</co.gphl.wf.forkxds>
 
         <!-- Dummy sample properties. -->
         <!-- Choose values for these to make spot predictions for the characterisation
@@ -247,32 +260,31 @@
     <!-- This defines the workflow pulldown. -->
     <!-- NB strategy_type and variant control the stratcal strategy calculation -->
     <!-- Other parameters are passed to the workflow, see workflow documentation for details -->
-    <workflows>
-
-        <Native>
+   <workflows>
+	           <Native>
             <wf_selection>mxexpt</wf_selection>
             <strategy_type>native</strategy_type>
-            <variants>advanced basic minimal ultralong twotransmission</variants>
+            <variants>full quick minimal long ultralong</variants>
             <documentation>
                 Single wavelength data acquisition for native data collection
                 Includes initial characterisation and complete collection.
-                - advanced: Optimised for high-quality balanced data,
+                - full: Optimised for high-quality balanced data,
                 2-4 sweeps, ca. 600-1000 degrees.
-                - basic: 1-2 orientations, 360-400 degrees
+                - quick: 1-2 orientations, 360-400 degrees
                 Quick, cusp-free acquisition,
                 - 1 sweep of 180+ degrees, 1-2 centrings.
                 Absolute minimum for cusp-free acquisition. Not recommended.
-                - ultralong: Ca. 10*180deg for low-transmission high-redundancy.
-                - twotransmission. Advanced strategy with added final sweep at 0.1*transmission
+                - long: Optimised for high-quality balanced data, with additional sweep.
+                For some symmetries, otherwise defaults to full. Not recommended.
             </documentation>
         </Native>
 
         <SingleAnomalousDispersion>
             <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
-            <variants>advanced basic ultralong detector_moved</variants>
+            <variants>full quick ultralong detector_moved</variants>
             <documentation>
-                Single wavelength SAD data acquisition, advanced strategy.
+                Single wavelength SAD data acquisition, full strategy.
                 Includes initial characterisation and complete collection
             </documentation>
             <!-- Workflow interleave order (string);  Slowest changing first-->
@@ -289,7 +301,7 @@
             <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_2wvl</variant>-->
-            <variants>basic advanced ultralong detector_moved</variants>
+            <variants>quick full ultralong detector_moved</variants>
             <documentation>
                 Two-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
@@ -309,7 +321,7 @@
             <wf_selection>mxexpt</wf_selection>
             <strategy_type>phasing</strategy_type>
 <!--            <variant>MAD_3wvl</variant>-->
-            <variants>basic advanced ultralong detector_moved</variants>
+            <variants>quick full ultralong detector_moved</variants>
             <documentation>
                 Three-wavelength MAD data acquisition, quick strategy.
                 Includes initial characterisation and complete collection
@@ -324,7 +336,6 @@
             <!--                <wfprefix>MAD3_</wfprefix>-->
             <!--            </options>-->
         </ThreeWavelengthMAD>
-
         <TranslationalCalibration>
             <wf_selection>transcal</wf_selection>
             <strategy_type>transcal</strategy_type>
@@ -401,6 +412,7 @@
                 <!--<instcfgout>gphl_diffractcal_out.nml</instcfgout>-->
             </options>
         </DiffractometerCalibration-short>
+
     </workflows>
 
 </object>

@@ -13,9 +13,9 @@
           <index>0</index>
           <velocity>15</velocity>
           <updateTolerance>0.01</updateTolerance>
-	  <evalTolerance>20.02</evalTolerance>
+	  <evalTolerance>5.02</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated':-77.700, 'Double': -63.615, 'Imaging': 178.66, 'TREXX': 439.965}</focusingModes>
+          <focusingModes>{'Collimated':-84.500, 'Double': -71.275, 'Imaging': 185.34, 'TREXX': 439.965}</focusingModes>
         </motor>
         <motor>
           <motorName>P14DetHor2</motorName>
@@ -25,9 +25,9 @@
           <index>1</index>
           <velocity>15</velocity>
           <updateTolerance>0.01</updateTolerance>
-	  <evalTolerance>20.00</evalTolerance>
+	  <evalTolerance>5.00</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': -73.665, 'Double': -62.670, 'Imaging': 182.66, 'TREXX': 444.0}</focusingModes>
+          <focusingModes>{'Collimated': -80.00, 'Double': -69.670, 'Imaging': 186.46, 'TREXX': 444.0}</focusingModes>
         </motor>
         <motor>
           <motorName>P14DetVer</motorName>
@@ -37,9 +37,9 @@
           <index>2</index>
           <velocity>0.9</velocity>
           <updateTolerance>0.05</updateTolerance>
-	  <evalTolerance>0.05</evalTolerance>
+	  <evalTolerance>50.0</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': -11.700, 'Double': -0.860, 'Imaging': -11.00, 'TREXX': -24.0 }</focusingModes>
+	  <focusingModes>{'Collimated': -41.0, 'Double': -30.00, 'Imaging': -41.446, 'TREXX': -39.2 }</focusingModes>
         </motor>
         <motor>
           <motorName>P14DetTilt</motorName>
@@ -49,9 +49,9 @@
           <index>3</index>
           <velocity>0.1</velocity>
           <updateTolerance>0.05</updateTolerance>
-	  <evalTolerance>0.05</evalTolerance>
+	  <evalTolerance>10.05</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.4500, 'Double': 1.7990, 'Imaging': 0.4500, 'TREXX':  0.4500}</focusingModes>
+          <focusingModes>{'Collimated': 0.3140, 'Double': 1.75000, 'Imaging': 0.400, 'TREXX':  0.4500}</focusingModes>
         </motor>
     </motors>
 </device>

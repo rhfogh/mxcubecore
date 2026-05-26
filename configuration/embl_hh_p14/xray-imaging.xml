@@ -53,6 +53,7 @@
 
   <interval>40</interval>
   <reference_distance>136.00</reference_distance>
-  <reference_angle>-0.003482</reference_angle>
+  <reference_angle>-0.003530541</reference_angle>
+  <!--reference_angle>-0.0031490</reference_angle at 0.5  to 1.0 m -->
   <!--reference_angle>0.003482</reference_angle through the mirrors-->
 </object>     

@@ -15,7 +15,7 @@
           <updateTolerance>99.</updateTolerance>
 	  <evalTolerance>9999999.</evalTolerance>
 	  <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': -700006, 'Double': -3069280, 'Imaging': -3369280, 'TREXX': -3369280 }</focusingModes>
+	  <focusingModes>{'Collimated': 118720.0, 'Double': -3000000, 'Imaging': -3000000, 'TREXX': -3000000 }</focusingModes>
 	</motor>
 	<motor>
           <motorName>In</motorName>
@@ -27,7 +27,7 @@
           <updateTolerance>99.</updateTolerance>
           <evalTolerance>9999999.</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 934990, 'Double': -3078790, 'Imaging': -3378790, 'TREXX': -3378790}</focusingModes>
+          <focusingModes>{'Collimated': 953830.0, 'Double': -3000000, 'Imaging': -3000000, 'TREXX': -3000000}</focusingModes>
         </motor>
 	<motor>
           <motorName>Top</motorName>
@@ -39,7 +39,7 @@
 	  <updateTolerance>99.</updateTolerance>
           <evalTolerance>9999999.</evalTolerance>
 	  <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 586714, 'Double': -3078790, 'Imaging': -3045199, 'TREXX': -3000000}</focusingModes>
+	  <focusingModes>{'Collimated': -433143.0, 'Double': -3000000, 'Imaging': -3000000, 'TREXX': -3000000}</focusingModes>
         </motor>
 	<motor>
           <motorName>But</motorName>
@@ -51,7 +51,7 @@
 	  <updateTolerance>99.</updateTolerance>
           <evalTolerance>9999999.</evalTolerance>
 	  <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-	  <focusingModes>{'Collimated': -101129, 'Double': -3078790, 'Imaging': -3020058, 'TREXX': -3000000}</focusingModes>
+	  <focusingModes>{'Collimated': 301144.0, 'Double': -3000000, 'Imaging': -3000000, 'TREXX': -3000000}</focusingModes>
         </motor>
     </motors>
 </device>

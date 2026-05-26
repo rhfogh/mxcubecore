@@ -13,9 +13,9 @@
           <index>0</index>
           <velocity>None</velocity>
           <updateTolerance>0.005</updateTolerance>
-  	  <evalTolerance>0.225</evalTolerance>
+  	  <evalTolerance>0.5</evalTolerance>
           <statusModes>{'Move': 1, 'Ready': 0}</statusModes>
-          <focusingModes>{'Collimated': 0.440, 'Double': 0.440, 'Imaging': 0.440,'TREXX': 0.440}</focusingModes>
+          <focusingModes>{'Collimated': 0.490, 'Double': 0.49, 'Imaging': 24,'TREXX': 0.49}</focusingModes>
         </motor>
     </motors>
 </device>

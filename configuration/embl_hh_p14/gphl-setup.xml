@@ -1,95 +1,29 @@
 <object class="GphlWorkflowConnection">
 
-    <!-- Directory locations. Can also be used with ${} syntax in this file -->
     <directory_locations>
-        <!-- MANDATORY Location of GPhL release, directory containing the GPhL setup.sh sctipt) -->
-       <GPHL_INSTALLATION>/data/users/p3l-gleb1/gphl/gphl_release</GPHL_INSTALLATION>
-        <!-- OPTIONAL. Directory for custom wrapper scrkpts. Used in this file only  -->
-        <!--	    <GPHL_WRAPPERS>/data/users/p3l-gleb1/gphl/</GPHL_WRAPPERS>-->
+	    <GPHL_INSTALLATION>/mx-beta/GPhL/20260410/</GPHL_INSTALLATION>
     </directory_locations>
 
-    <!-- If set, run workflow through ssh with selected options -->
-    <!-- and quote parameters as appropriate -->
-    <!-- NB The  Host option is mandatory -->
-    <!-- ConfigFile is the ssh configuratino file, passed to ssh with the -F option -->
-    <ssh_options>
-        <Host>p14dd01</Host>
-        <IdentityFile>/home/p3l-gleb1/.ssh/id_rsa</IdentityFile>
-        <User>p3l-gleb1</User>
-        <StrictHostKeyChecking>no</StrictHostKeyChecking>
-        <!--<ConfigFile>/path/to/ssh/config/file</ConfigFile>-->
-    </ssh_options>
-
-    <!-- Directory used for GPhL workflow persistence data and workflow logs: -->
-    <!-- Used to set the wdir workflow option -->
-    <!-- If relative designates a subdirectory under Session.get_process_directory() -->
-    <!-- If absolute taken as it stands -->
-    <gphl_subdir>GPHL</gphl_subdir>
-    <!-- root name of persistence layer file; suffix'.xml. is added -->
-    <gphl_persistname>persistence</gphl_persistname>
-
-    <!-- Hosts and ports for py4j java-python gateway, all OPTIONAL-->
-    <!-- If not set will use py4j default values, which are as given below-->
-    <!-- NB python_host is set automatically to localhost or socket.gethostname()-->
-    <!-- NB java_host is not needed as all communication is effectively one-way -->
-    <!--<connection_parameters>-->
-    <!--<python_port>25334</python_port>-->
-    <!--<java_port>25333</java_port>-->
-    <!--</connection_parameters>-->
-
-    <!-- NB Non-absolute file names are interpreted relative to one of the  -->
-    <!-- HardwareRepository directories on the lookup path -->
-
     <software_paths>
-
-
-        <!-- Mandatory: Directory with workflow config input, e.g. instrumentation.nml -->
-        <gphl_beamline_config>/data/users/p3l-gleb1/gphl/beamline_config_embl_hh_p14_202002</gphl_beamline_config>
-
-        <!-- MANDATORY for CCP4 => $GPHL_CCP4_PATH/bin/ccp4.setup-sh
-             unless already sourced in environment-->
-<!--        <GPHL_CCP4_PATH >/NBNB/fill/me/in/CCP4/latest/bin/</GPHL_CCP4_PATH>-->
-        <!-- MANDATORY for XDS => $GPHL_XDS_PATH/xds_par
-             unless already sourced in environment-->
-        <GPHL_XDS_PATH>/mx-beta/bin/</GPHL_XDS_PATH>
-
-        <!-- OPTIONAL parameters for non-standard software locations -->
-        <!-- Passed to workflow as environment variabhles -->
-        <!-- OPTIONAL for autoPROC => $GPHL_AUTOPROC_PATH/autoPROC/bin/linux64 -->
-        <!--        <GPHL_AUTOPROC_PATH >/write/me/here</GPHL_AUTOPROC_PATH>-->
-        <!-- OPTIONAL for miniconda Pythyon installation => $GPHL_MINICONDA_PATH/bin/activate -->
-        <!--        <GPHL_MINICONDA_PATH >/write/me/here</GPHL_MINICONDA_PATH>-->
-
-
-        <!-- Used ONLY for mock mode spectrum diffraction simulation -->
-        <gphl_test_samples>/data/users/p3l-gleb1/gphl/test_samples</gphl_test_samples>
+	<java_binary>/usr/bin/java</java_binary>
+	<gphl_beamline_config>/opt/embl-hh/etc/p14/app/mxcube_gphl/configuration/gphl_beamline_config/</gphl_beamline_config>
     </software_paths>
 
     <software_properties>
 
-        <!-- Software properties that are passed to global phasing workflow as java properties -->
-        <!-- Used to specify locations of alternative executables (wrappers) -->
-        <!-- More (unused) properties are described in the ASTRA workflow documentation -->
+        <co.gphl.wf.bdg_licence_dir>{GPHL_INSTALLATION}</co.gphl.wf.bdg_licence_dir>
 
-        <!-- MANDATORY pending change in workflow -->
-        <co.gphl.wf.stratcal.bin>{GPHL_INSTALLATION}/exe/run_stratcal_wrap.py</co.gphl.wf.stratcal.bin>
-        <!--        <co.gphl.wf.stratcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.stratcal.bdg_licence_dir>-->
+	<co.gphl.wf.stratcal.bin>/mx-beta/edna-cluster-scripts/gphl_wf_stratcal.sh</co.gphl.wf.stratcal.bin>
+        <co.gphl.wf.xds.bin>/mx-beta/edna-cluster-scripts/gphl_wf_xds_par.csh</co.gphl.wf.xds.bin>
+        <co.gphl.wf.process.bin>/mx-beta/edna-cluster-scripts/gphl_aP_wf_process.csh</co.gphl.wf.process.bin>
+        <co.gphl.wf.simcal_predict.bin>/mx-beta/edna-cluster-scripts/gphl_wf_simcal_predict.sh</co.gphl.wf.simcal_predict.bin>
+        <co.gphl.wf.diffractcal.bin>/mx-beta/edna-cluster-scripts/gphl_wf_rotcal.sh</co.gphl.wf.diffractcal.bin>
 
-        <!-- OPTIONAL location of alternative executables (wrappers) supported by the workflow -->
-        <!-- Each has an option (rarely used)  to specify a specific license directory -->
-        <!--        <co.gphl.wf.process.bin>{GPHL_WRAPPERS}/scripts/aP_wf_process</co.gphl.wf.process.bin>-->
-        <!--        <co.gphl.wf.process.bdg_licence_dir>/fill/me/in</co.gphl.wf.process.bdg_licence_dir>-->
-        <!--        <co.gphl.wf.diffractcal.bin>{GPHL_WRAPPERS}/scripts/aP_wf_rotcal</co.gphl.wf.diffractcal.bin>-->
-        <!--        <co.gphl.wf.diffractcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.diffractcal.bdg_licence_dir>-->
-        <!--        <co.gphl.wf.simcal_predict.bin>{GPHL_WRAPPERS}/scripts/simcal_predict</co.gphl.wf.simcal.bin>-->
-        <!--        <co.gphl.wf.simcal_predict.bdg_licence_dir>/fill/me/in</co.gphl.wf.simcal_predict.bdg_licence_dir>-->
-        <!--        <co.gphl.wf.transcal.bin>{GPHL_WRAPPERS}/scripts/transcal</co.gphl.wf.transcal.bin>-->
-        <!--        <co.gphl.wf.transcal.bdg_licence_dir>/fill/me/in</co.gphl.wf.transcal.bdg_licence_dir>-->
-        <!--        <co.gphl.wf.recen.bin>{GPHL_WRAPPERS}/scripts/recen</co.gphl.wf.recen.bin>-->
-        <!--        <co.gphl.wf.recen.bdg_licence_dir>/fill/me/in</co.gphl.wf.recen.bdg_licence_dir>-->
+	<!--co.gphl.wf.process.detach>true</co.gphl.wf.process.detach-->
 
-        <!--        &lt;!&ndash; OPTIONAL. For Mock collection emulation only. Not used by ASTRA workflow &ndash;&gt;-->
-        <!--        <co.gphl.wf.simcal.bin>{GPHL_WRAPPERS}/simcal</co.gphl.wf.simcal.bin>-->
     </software_properties>
+
+    <gphl_subdir>GPHL</gphl_subdir>
+    <gphl_persistname>persistence</gphl_persistname>
 
 </object>
