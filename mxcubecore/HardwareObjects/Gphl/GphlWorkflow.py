@@ -131,7 +131,7 @@ RECENTRING_MODES = OrderedDict(
 # The list of keys, plus "", defines the GPhL lattices pulldown.
 lattice2point_group_tags = OrderedDict(
     aP=("1",),
-    Triclinic=("2",),
+    Triclinic=("1",),
     mP=("2",),
     mC=("2",),
     mI=("2",),
