@@ -39,7 +39,10 @@ from mxcubecore.queue_entry.base_queue_entry import (
     QueueExecutionException,
     center_before_collect,
 )
-from mxcubecore.utils import mxutils
+try:
+    from mxcubecore.utils import mxutils
+except ImportError:
+    logging.getLogger("queue_exec").error("MXLIMS import failed. Continuing...")
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
@@ -152,11 +155,18 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             tracking_data.characterisation_id = workflow_parameters.get(
                 "characterisation_id"
             )
-            self._mxlims_job, mxlims_sample = mxutils.make_mx_experiment(
-                sample=data_model.get_sample_node(),
-                tracking_data=tracking_data,
-                measured_flux=HWR.beamline.flux.get_value(),
-            )
+            try:
+                self._mxlims_job, mxlims_sample = mxutils.make_mx_experiment(
+                    sample=data_model.get_sample_node(),
+                    tracking_data=tracking_data,
+                    measured_flux=HWR.beamline.flux.get_value(),
+                )
+            except Exception:
+                # We want this result WHATEVER the error
+                # MXLIMS should not block normal acquisition
+                logging.getLogger("queue_exec").error(
+                    "MXLIMS export failed. Continuing..."
+                )
 
         if data_model.get_parent():
             gid = data_model.get_parent().lims_group_id
@@ -174,14 +184,19 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             beam_position = None
         beam = HWR.beamline.beam
         data_model = self.get_data_model()
-        mxutils.add_data_collection(
-            self.get_mxlims_job(),
-            data_model,
-            beam_position=beam_position,
-            beam_size=beam.get_beam_size(),
-            beam_shape=beam.get_beam_shape().value,
-            detector_distance=detector.distance.get_value(),
-        )
+        try:
+            mxutils.add_data_collection(
+                self.get_mxlims_job(),
+                data_model,
+                beam_position=beam_position,
+                beam_size=beam.get_beam_size(),
+                beam_shape=beam.get_beam_shape().value,
+                detector_distance=detector.distance.get_value(),
+            )
+        except Exception:
+            # We want this result WHATEVER the error
+            # MXLIMS should not block normal acquisition
+            logging.getLogger("queue_exec").error("MXLIMS export failed. Continuing...")
 
         BaseQueueEntry.post_execute(self)
         qc = self.get_queue_controller()
