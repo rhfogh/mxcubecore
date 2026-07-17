@@ -43,7 +43,10 @@ from mxcubecore.model.queue_model_enumerables import (
     CENTRING_METHOD,
     EXPERIMENT_TYPE,
 )
-from mxcubecore.utils import mxutils
+try:
+    from mxcubecore.utils import mxutils
+except ImportError:
+    logging.getLogger("queue_exec").error("MXLIMS import failed. Continuing...")
 
 if TYPE_CHECKING:
     from mxlims.mxpydantic.objects.MxExperiment import MxExperiment
@@ -392,7 +395,13 @@ class BaseQueueEntry(QueueEntryContainer):
         if mxlims_job is not None:
             self._mxlims_job = None
             mxlims_job.end_time = datetime.now(timezone.utc)
-            mxutils.export_mxjob(mxlims_job, None)
+            try:
+                mxutils.export_mxjob(mxlims_job, None)
+            except Exception:
+                # We want this result WHATEVER error may arise
+                # MXLISM should n ot block normal operation
+                logging.getLogger("queue_exec").error(
+                    "MXLIMS export failed. Continuing...")
 
         # self._set_background_color()
 

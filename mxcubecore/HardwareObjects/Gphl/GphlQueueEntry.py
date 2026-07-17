@@ -25,7 +25,10 @@ import logging
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.queue_entry.base_queue_entry import BaseQueueEntry
-from mxcubecore.utils import mxutils
+try:
+    from mxcubecore.utils import mxutils
+except ImportError:
+    logging.getLogger("queue_exec").error("MXLIMS import failed. Continuing...")
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
@@ -53,7 +56,15 @@ class GphlWorkflowQueueEntry(BaseQueueEntry):
         logging.getLogger("HWR").debug("Done GphlWorkflowQueueEntry.pre_execute")
 
     def post_execute(self):
-        self.finalize_mxlims()
+        try:
+            self.finalize_mxlims()
+        except Exception:
+            # We want this result WHATEVER the error
+            # MXLIMS should not block normal acquisition
+            logging.getLogger("queue_exec").error(
+                "MXLIMS finalization failed. Continuing..."
+            )
+
         BaseQueueEntry.post_execute(self)
         msg = "Finishing GPhL workflow (%s)" % (self.get_data_model().strategy_name)
         logging.getLogger("user_level_log").info(msg)
