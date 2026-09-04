@@ -399,7 +399,7 @@ class BaseQueueEntry(QueueEntryContainer):
                 mxutils.export_mxjob(mxlims_job, None)
             except Exception:
                 # We want this result WHATEVER error may arise
-                # MXLISM should n ot block normal operation
+                # MXLIMS should not block normal operation
                 logging.getLogger("queue_exec").error(
                     "MXLIMS export failed. Continuing...")
 
