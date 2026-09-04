@@ -244,7 +244,7 @@ def add_data_collection(
             "resolution": acqparams.resolution,
             "detector_binning_mode": acqparams.detector_binning_mode,
             "detector_roi_mode": acqparams.detector_roi_mode,
-            "overlap": acqparams.overlap,
+            "offset": acqparams.offset,
             "number_triggers": acqparams.num_triggers,
             "number_images_per_trigger": acqparams.num_images_per_trigger,
             "prefix": path_template.get_prefix(),
