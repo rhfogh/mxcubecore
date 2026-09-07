@@ -46,7 +46,9 @@ from mxcubecore.model.queue_model_enumerables import (
 try:
     from mxcubecore.utils import mxutils
 except ImportError:
-    logging.getLogger("queue_exec").error("MXLIMS import failed. Continuing...")
+    logging.getLogger("queue_exec").error(
+        "MXLIMS is not installed. Continuing without it..."
+    )
 
 if TYPE_CHECKING:
     from mxlims.mxpydantic.objects.MxExperiment import MxExperiment

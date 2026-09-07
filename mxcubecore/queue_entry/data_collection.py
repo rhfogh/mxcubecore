@@ -42,7 +42,7 @@ from mxcubecore.queue_entry.base_queue_entry import (
 try:
     from mxcubecore.utils import mxutils
 except ImportError:
-    logging.getLogger("queue_exec").error("MXLIMS import failed. Continuing...")
+    logging.getLogger("queue_exec").error("MXLIMS is not installed. Continuing without it...")
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
