@@ -188,6 +188,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
             mxutils.add_data_collection(
                 self.get_mxlims_job(),
                 data_model,
+                current_motor_positions=HWR.beamline.diffractometer.get_value_motors(),
                 beam_position=beam_position,
                 beam_size=beam.get_beam_size(),
                 beam_shape=beam.get_beam_shape().value,

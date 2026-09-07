@@ -173,6 +173,7 @@ def make_unit_cell(a, b, c, alpha, beta, gamma):
 def add_data_collection(
     mx_experiment: MxExperiment,
     data_collection: qmo.DataCollection,
+    current_motor_positions: dict | None = None,
     **parameters: dict,
 ) -> Optional[CollectionSweep]:
     """Make CollectionSweep record from DataCollection
@@ -180,6 +181,7 @@ def add_data_collection(
     Args:
         mx_experiment: container MxExperimentMessage
         data_collection: DataCollection queue_model_object to add
+        current_motor_positions: Current motor positions, overridden by CentredPosition
         **parameters: dict of parameters overriding/supplementing MxlimsData
 
     Returns:
@@ -191,11 +193,23 @@ def add_data_collection(
     path_template = acquisition.path_template
     acqparams = acquisition.acquisition_parameters
     tracking_data = data_collection.tracking_data
-    startpos = dict(
-        tpl
-        for tpl in acqparams.centred_position.as_dict().items()
-        if tpl[1] is not None
-    )
+    if current_motor_positions:
+        # Take current motor positions for motors not explicitly specified in
+        # CentredPosition.
+        # NB relevant where motors are not set in order to use current values
+        # E.g. for GPhL workflow multiple sweeps
+        startpos = dict(
+            tpl
+            for tpl in current_motor_positions.items()
+            if tpl[1] is not None
+        )
+    else:
+        startpos = {}
+    # Motors that are set in CentredPosition take precedence
+    # Motors that move during acquisition should be in (initial) CentredPosition
+    for tag, val in acqparams.centred_position.as_dict().items():
+        if val is not None:
+            startpos[tag] = val
     axis_pos_start = acqparams.osc_start
     axis_pos_end = axis_pos_start + acqparams.num_images * acqparams.osc_range
     startpos[scan_axis] = axis_pos_start
