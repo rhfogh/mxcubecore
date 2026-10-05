@@ -188,11 +188,7 @@ class AbstractResolution(AbstractMotor):
             distance = self._hwr_detector.get_radius() / (
                 tan(2 * asin(wavelength / (2 * resolution)))
             )
-            return round(
-                self._hwr_detector.get_radius(distance)
-                / (tan(2 * asin(wavelength / (2 * resolution)))),
-                2,
-            )
+            return round(distance, 2)
         except (KeyError, ZeroDivisionError):
             return None
 
