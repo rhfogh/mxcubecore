@@ -306,6 +306,11 @@ def centre_plate(
 
     omega_angle = omega_range / (n_points - 1)
 
+    omega_direction = omega.direction if hasattr(omega, "direction") else 1
+    sampx_direction = sampx.direction if hasattr(sampx, "direction") else 1
+    sampy_direction = sampy.direction if hasattr(sampy, "direction") else 1
+    phiy_direction = phiy.direction if hasattr(phiy, "direction") else 1
+    phiz_direction = phiz.direction if hasattr(phiz, "direction") else 1
     try:
         i = 0
         while i < n_points:
@@ -316,9 +321,9 @@ def centre_plate(
             USER_CLICKED_EVENT = gevent.event.AsyncResult()
             X.append(x / float(pixelsPerMm_Hor))
             Y.append(y / float(pixelsPerMm_Ver))
-            omega_positions.append(omega.direction * math.radians(omega.get_value()))
+            omega_positions.append(omega_direction * math.radians(omega.get_value()))
             if i != n_points - 1:
-                omega.set_value_relative(omega.direction * omega_angle, timeout=None)
+                omega.set_value_relative(omega_direction * omega_angle, timeout=None)
             READY_FOR_NEXT_POINT.set()
             i += 1
     except Exception:
@@ -350,15 +355,15 @@ def centre_plate(
     centred_pos = SAVED_INITIAL_POSITIONS.copy()
     centred_pos.update(
         {
-            sampx: float(sampx.get_value() + sampx.direction * dx),
-            sampy: float(sampy.get_value() + sampy.direction * dy),
+            sampx: float(sampx.get_value() + sampx_direction * dx),
+            sampy: float(sampy.get_value() + sampy_direction * dy),
             phiz: (
-                float(phiz.get_value() + phiz.direction * d_vertical[0, 0])
+                float(phiz.get_value() + phiz_direction * d_vertical[0, 0])
                 if phiz.__dict__.get("reference_position") is None
                 else phiz.reference_position
             ),
             phiy: (
-                float(phiy.get_value() + phiy.direction * d_horizontal[0, 0])
+                float(phiy.get_value() + phiy_direction * d_horizontal[0, 0])
                 if phiy.__dict__.get("reference_position") is None
                 else phiy.reference_position
             ),
@@ -450,6 +455,11 @@ def center(
     X, Y, omega_positions = [], [], []
 
     omega_angle = omega_range / (n_points - 1)
+    omega_direction = omega.direction if hasattr(omega, "direction") else 1
+    sampx_direction = sampx.direction if hasattr(sampx, "direction") else 1
+    sampy_direction = sampy.direction if hasattr(sampy, "direction") else 1
+    phiy_direction = phiy.direction if hasattr(phiy, "direction") else 1
+    phiz_direction = phiz.direction if hasattr(phiz, "direction") else 1
     try:
         i = 0
         while i < n_points:
@@ -464,9 +474,9 @@ def center(
             USER_CLICKED_EVENT = gevent.event.AsyncResult()
             X.append(x / float(pixelsPerMm_Hor))
             Y.append(y / float(pixelsPerMm_Ver))
-            omega_positions.append(omega.direction * math.radians(omega.get_value()))
+            omega_positions.append(omega_direction * math.radians(omega.get_value()))
             if i != n_points - 1:
-                omega.set_value_relative(omega.direction * omega_angle, timeout=10)
+                omega.set_value_relative(omega_direction * omega_angle, timeout=10)
             READY_FOR_NEXT_POINT.set()
             i += 1
         logging.getLogger("HWR").debug(f"Click at {x}, {y}")
@@ -497,20 +507,20 @@ def center(
     d_horizontal = d[0] - (beam_xc / float(pixelsPerMm_Hor))
     d_vertical = d[1] - (beam_yc / float(pixelsPerMm_Ver))
 
-    omega_pos = math.radians(omega.direction * omega.get_value())
+    omega_pos = math.radians(omega_direction * omega.get_value())
 
     centred_pos = SAVED_INITIAL_POSITIONS.copy()
     centred_pos.update(
         {
-            sampx: float(sampx.get_value() + sampx.direction * dx),
-            sampy: float(sampy.get_value() + sampy.direction * dy),
+            sampx: float(sampx.get_value() + sampx_direction * dx),
+            sampy: float(sampy.get_value() + sampy_direction * dy),
             phiz: (
-                float(phiz.get_value() + phiz.direction * d_vertical[0, 0])
+                float(phiz.get_value() + phiz_direction * d_vertical[0, 0])
                 if phiz.__dict__.get("reference_position") is None
                 else phiz.reference_position
             ),
             phiy: (
-                float(phiy.get_value() + phiy.direction * d_horizontal[0, 0])
+                float(phiy.get_value() + phiy_direction * d_horizontal[0, 0])
                 if phiy.__dict__.get("reference_position") is None
                 else phiy.reference_position
             ),

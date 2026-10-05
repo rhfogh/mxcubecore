@@ -34,7 +34,7 @@ differ from the default ones.
   Use the global application state instead of the motor state.
   <use_global_state>False</use_global_state>
 """
-
+import logging
 import math
 import sys
 
@@ -105,6 +105,8 @@ class ExporterMotor(AbstractMotor):
             self.motor_state_chan.connect_signal("update", self._update_state)
 
         self.update_state()
+        self.direction = self.get_property("direction", 1)
+        logging.getLogger("HWR").debug(f"{self.name} set direction {self.direction}")
 
     def get_state(self):
         """Get the motor state.
