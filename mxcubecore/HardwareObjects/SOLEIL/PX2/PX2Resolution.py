@@ -1,13 +1,22 @@
-from beam_center import beam_center
-from resolution import resolution
-
+import logging
 from mxcubecore.HardwareObjects.abstract.AbstractResolution import AbstractResolution
+from mxcubecore import HardwareRepository as HWR
 
+try:
+    from resolution import resolution, resolution_mockup
+    from speaking_beam_center import speaking_beam_center as beam_center
+except ModuleNotFoundError:
+    from experimental_methods import (
+        resolution,
+        resolution_mockup,
+        speaking_beam_center as beam_center,
+    )
 
 class PX2Resolution(AbstractResolution):
     def __init__(self, name):
         super(PX2Resolution, self).__init__(name)
         self.resolution_motor = resolution()
+        #self.resolution_motor = resolution_mockup()
         self.beam_center = beam_center()
 
     def connect_notify(self, signal):
@@ -16,6 +25,7 @@ class PX2Resolution(AbstractResolution):
 
     def get_value(self):
         self._nominal_value = self.resolution_motor.get_resolution()
+        #logging.info(f"resolution returning {self._nominal_value:.4f}")
         return self._nominal_value
 
     def _set_value(self, value):
@@ -40,3 +50,10 @@ class PX2Resolution(AbstractResolution):
         """
         self._nominal_value = self.resolution_motor.get_resolution()
         self.emit("valueChanged", (self._nominal_value,))
+
+    def resolution_to_distance(self, resolution=None, wavelength=None):
+        if resolution is None:
+            resolution = self.get_value()
+        #logging.info(f"self._hwr_detector.get_radius() {self._hwr_detector.get_radius()}")
+        distance = self.resolution_motor.get_distance_from_resolution(resolution, wavelength=wavelength)
+        return distance

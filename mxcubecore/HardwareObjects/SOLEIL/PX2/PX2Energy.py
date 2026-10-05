@@ -1,20 +1,20 @@
 import logging
-
-from energy import energy
-from scipy.constants import (
-    angstrom,
-    c,
-    eV,
-    h,
-    kilo,
-)
-
 from mxcubecore.HardwareObjects.mockup.EnergyMockup import EnergyMockup
+from scipy.constants import kilo, h, c, eV, angstrom
 
+try:
+    from energy import energy, energy_mockup
+    from motor import monochromator_rx_motor, motor
+except:
+    from experimental_methods import energy, monochromator_rx_motor
 
 class PX2Energy(EnergyMockup):
     def init(self):
+        super(EnergyMockup, self).init()
         self.energy = energy()
+        #self.energy = energy_mockup()
+        #self.monochromator_rx_motor = motor()
+        self.monochromator_rx_motor = monochromator_rx_motor()
 
         self.energy_channel = self.get_channel_object("energy")
         self.energy_channel.connect_signal("update", self.energy_changed)
@@ -22,17 +22,20 @@ class PX2Energy(EnergyMockup):
         self.state_channel = self.get_channel_object("state")
         self.state_channel.connect_signal("update", self.energy_state_changed)
 
-        self.tunable = self.get_property("tunable")
-        self.default_en = self.get_property("default_energy")
+        self.tunable = self.get_property("tunable", True)
+        self.default_en = self.get_property("default_energy", 13)
 
-        self.minimum_energy = self.get_property("min_energy")
-        self.maximum_energy = self.get_property("max_energy")
+        self.minimum_energy = self.get_property("min_energy", 5.5)
+        self.maximum_energy = self.get_property("max_energy", 18.5)
 
-        self.current_energy = self.energy.get_value() / kilo
+        self.current_energy = self.energy.get_energy() / kilo
         self.current_wavelength = self.get_wavelegth_from_energy(self.current_energy)
 
         self.checkLimits = self.check_limits
         self.cancelMoveEnergy = self.cancel_move_energy
+        self.last_state = None
+        self.update_value(self.current_energy)
+        self.update_state(self.STATES.READY)
 
     def re_emit_values(self):
         self.emit("energyChanged", (self.current_energy, self.current_wavelength))
@@ -61,7 +64,7 @@ class PX2Energy(EnergyMockup):
         maximum_wavelength = self.get_wavelegth_from_energy(self.minimum_energy)
         return minimum_wavelength, maximum_wavelength
 
-    def set_value(self, energy):
+    def set_value(self, energy, timeout=None):
         logging.getLogger("user_level_log").info("Move energy to %6.3f keV" % energy)
         self.emit("moveEnergyStarted", ())
         self.energy.set_energy(energy)
@@ -69,26 +72,27 @@ class PX2Energy(EnergyMockup):
         self.current_wavelength = self.get_wavelegth_from_energy(self.current_energy)
         self.re_emit_values()
         self.emit("moveEnergyFinished", ())
-
+        logging.getLogger("user_level_log").info("Energy moved to %6.3f keV" % energy)
+        
     def set_wavelength(self, wavelength):
         energy = self.get_energy_from_wavelength(wavelength)
         self.set_value(energy)
 
     def check_limits(self, value):
-        self.log.debug("Checking the move limits")
+        logging.getLogger("HWR").debug("Checking the move limits")
         en_lims = self.get_limits()
         if value >= self.en_lims[0] and value <= self.en_lims[1]:
-            self.log.info("Limits ok")
+            logging.getLogger("HWR").debug("Limits ok")
             return True
-        logging.getLogger("user_level_log").info("Requested value is out of limits")
+        logging.getLogger("user_level_log").debug("Requested value is out of limits")
         return False
 
     def cancel_move_energy(self):
-        logging.getLogger("user_level_log").info("Cancel energy move")
+        logging.getLogger("user_level_log").debug("Cancel energy move")
         self.abort()
 
     def energy_changed(self, pos):
-        # logging.getLogger('HWR').info("energy_changed %s" % str(pos))
+        # logging.getLogger('HWR').debug("energy_changed %s" % str(pos))
         energy = pos
         try:
             if abs(energy - self.current_energy) > 1e-3:
@@ -97,18 +101,28 @@ class PX2Energy(EnergyMockup):
                 if self.current_wavelength is not None:
                     self.re_emit_values()
         except Exception:
-            self.log.info("energy_changed: error occured during an energy update")
+            logging.getLogger("HWR").warning(
+                "energy_changed: error occured during an energy update"
+            )
 
     def energy_state_changed(self, state):
-        self.log.info("energy_state_changed %s" % str(state))
-        # self.energy_server_check_for_errors(state)
+        state = str(state)
+        logging.getLogger("HWR").debug("energy_state_changed %s" % state)
+
+        if self.last_state != state:
+            logging.getLogger("HWR").debug("energy_state_changed %s" % str(state))
+
         if state == "STANDBY":
-            if self.moving:
-                self.moving = False
-                self.set_break_bragg()
-            self.move_energy_finished(0)
-            self.emit("stateChanged", "ready")
-            self.emit("statusInfoChanged", "")
-        elif state in ["MOVING", "ALARM"]:
-            self.move_energy_started()
-            self.emit("stateChanged", "busy")
+            translated_state = self.STATES.READY
+        elif state in ["MOVING"]:
+            translated_state = self.STATES.BUSY
+        elif state in ["ALARM"]:
+            translated_state = self.STATES.READY
+        else:
+            logging.getLogger("HWR").info("energy_state_changed %s, ok?" % state)
+            translated_state = self.STATES.READY
+        self.update_state(translated_state)
+        logging.getLogger("HWR").debug(
+            "energy_state_changed translated_state %s" % str(translated_state)
+        )
+        self.last_state = state

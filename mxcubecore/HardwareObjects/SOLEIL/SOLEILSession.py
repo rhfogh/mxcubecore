@@ -1,19 +1,19 @@
-import logging
 import os
 import time
-
+import logging
+import re
 import Session
 
-from mxcubecore import HardwareRepository as HWR
-
-
 class SOLEILSession(Session.Session):
+
     def __init__(self, *args, **kwargs):
         Session.Session.__init__(self, *args, **kwargs)
         self.username = ""
         self.gid = ""
         self.uid = ""
         self.projuser = ""
+        self.bag_ldaplogin = ""
+        self.log = logging.getLogger("HWR")
 
     def path_to_ispyb(self, path):
         ispyb_base = self["file_info"].get_property("ispyb_base_directory") % {
@@ -22,17 +22,46 @@ class SOLEILSession(Session.Session):
         path = path.replace(
             self["file_info"].get_property("base_directory"), ispyb_base
         )
+        try:
+            project_number = re.findall('.*/published-data/(\d*)/.*', path)[0]
+            print("project_number %s" % project_number)
+            path = path.replace('published-data/%s' % project_number, 'published-data')
+        except:
+            pass
         return path
 
-    def set_user_info(self, username, user_id, group_id, projuser=None):
-        logging.debug(
-            "SESSION - User %s logged in. gid=%s / uid=%s "
-            % (username, group_id, user_id)
-        )
+    def is_master_user(self, username=None, password=None, check_password=False):
+        return True
+
+    def set_user_info(self, username, user_id=None, group_id=None, projuser=None):
+        self.log.info('set_user_info: %s, %s, %s, %s' % (username, user_id, group_id, projuser))
+        if username == '':
+            self.log.info("User %s logged out. " % (self.username,))
+        else:
+            self.log.info("User %s logged in. gid=%s / uid=%s / projuser %s" % (username, group_id, user_id, projuser))
+
         self.username = username
         self.group_id = group_id
         self.user_id = user_id
-        self.projuser = projuser
+        if projuser != None:
+           self.projuser = projuser
+        else:
+           self.projuser = username
+
+    def set_proposal(self, code="", number="", proposal_id="", session_id=1, bag_ldaplogin=""):
+        self.proposal_code = code
+        self.proposal_number = number #'20191314'
+        self.proposal_id = proposal_id
+        self.session_id = session_id
+        self.bag_ldaplogin = bag_ldaplogin
+
+        self.log.info("setting proposal to %s, %s, %s" % \
+                   (self.proposal_code, self.proposal_number, self.bag_ldaplogin))
+
+        # username should be ldap username. ldap can give more info
+        username = "%s" % (self.proposal_number,) #(os.path.join(self.proposal_number, bag_ldaplogin),)
+
+        self.set_user_info(username)
 
     def get_proposal_number(self):
         """
@@ -44,7 +73,12 @@ class SOLEILSession(Session.Session):
         if self.proposal_number:
             return "%s" % (self.proposal_number)
         else:
-            return "local-user"
+            try:
+                login = os.getlogin()
+            except OSError:
+                import pwd
+                login = pwd.getpwuid(os.getuid()).pw_name
+            return login
 
     def get_base_data_directory(self):
         """
@@ -59,7 +93,7 @@ class SOLEILSession(Session.Session):
         directory = ""
 
         if self.session_start_date:
-            start_time = self.session_start_date.split(" ")[0]  # .replace('-', '')
+            start_time = self.session_start_date.split(" ")[0]
         else:
             # PL. To avoid mixing users directory if they restart the application
             # after midnight but before 8 AM, the directory date doesn't change:
@@ -67,47 +101,19 @@ class SOLEILSession(Session.Session):
             if _local_time[3] > 7:
                 start_time = time.strftime("%Y-%m-%d")
             else:
-                # subtract 8 hours to current date to get yesterday's date.
-                _local_time = time.gmtime((time.time() - 8 * 60 * 60))
+                # substract 8 hours to current date to get yesterday's date.
+                _local_time = time.localtime((time.time() - 8 * 60 * 60))
                 start_time = time.strftime("%Y-%m-%d", _local_time)
 
         if self.is_inhouse():
-            # directory = os.path.join(self.base_directory, self.endstation_name,
-            #                         self.get_user_category(), self.get_proposal(),
-            #                         start_time)
-            directory = os.path.join(
-                self.base_directory,
-                start_time,
-                self.proposal_number,
-                self.get_proposal_number(),
-            )
+            directory = os.path.join(self.base_directory, self.get_proposal_number(), start_time)
         else:
-            # directory = os.path.join(self.base_directory, self.get_user_category(),
-            #                         self.get_proposal(), self.endstation_name,
-            #                         start_time)
-            logging.debug("SoleilSession self.base_directory %s" % self.base_directory)
-            logging.debug("SoleilSession start_time %s" % start_time)
-            logging.debug(
-                "SoleilSession self.proposal_number %s" % self.proposal_number
-            )
-            logging.debug(
-                "SoleilSession self.get_proposal_number() %s"
-                % self.get_proposal_number()
-            )
-            directory = os.path.join(
-                self.base_directory, start_time, self.get_proposal_number()
-            )
+            if self.get_proposal_number().isdigit() and self.bag_ldaplogin != "" and len(self.get_proposal_number()) > 8:
+                directory = os.path.join(self.base_directory, self.get_proposal_number()[:8], self.bag_ldaplogin, start_time)
+            else:
+                directory = os.path.join(self.base_directory, self.get_proposal_number(), start_time)
 
         return directory
-
-    # def get_rawdata_directory(self, directory=None):
-    #    if directory is None:
-    #        thedir = self.get_base_data_directory()
-    #    else:
-    #        thedir = directory
-    #    if 'RAW_DATA' not in thedir:
-    #        thedir = os.path.join(thedir, 'ARCHIVE')
-    #    return thedir
 
     def get_archive_directory(self, directory=None):
         if directory is None:
@@ -123,10 +129,11 @@ class SOLEILSession(Session.Session):
         return thedir
 
     def get_ruche_info(self, path):
+
         if self.is_inhouse(self.username):
-            usertype = "soleil"
+           usertype = "soleil"
         else:
-            usertype = "users"
+           usertype = "users"
 
         basedir = os.path.dirname(path)
         ruchepath = basedir.replace(
@@ -147,22 +154,22 @@ class SOLEILSession(Session.Session):
 
 
 def test():
+    from mxcubecore import HardwareRepository as HWR
+    #hwr_directory = '/usr/local/bin/mxcube_local/ExampleFiles/HardwareObjects.xml/soleil_px2/singleton_objects'
     hwr = HWR.get_hardware_repository()
     hwr.connect()
 
     sess = HWR.beamline.session
 
     sess.set_user_info("mx2014", "143301", "14330", "20100023")
-
-    path = "/927bis/ccd/2015_Run2/visitor/mx2014/px2/20150120/ARCHIVE/mx2014/mx2014_2_4.snapshot.jpeg"
+    #path = "/927bis/ccd/2015_Run2/visitor/mx2014/px2/20150120/ARCHIVE/mx2014/mx2014_2_4.snapshot.jpeg"
+    path = "/nfs/data3/2020_Run1/20200018/2020-02-06/ARCHIVE/MUS81/MUS81-CD027556_A05-3_AD026A-03/MUS81-CD027556_A05-3_AD026A-03_1_1.snapshot.jpeg"
     ispyb_path = sess.path_to_ispyb(path)
-
     print(path)
     print("  will become ")
     print(ispyb_path)
 
-    # print sess.get_ruche_info(path)
-
+    print(sess.get_ruche_info(path))
 
 if __name__ == "__main__":
     test()

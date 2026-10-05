@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-
-from PyTango import DeviceProxy
-
+import logging
+import time
 from mxcubecore.BaseHardwareObjects import HardwareObject
-
-"""Complex means we are not using SimpleDevice"""
-
+from PyTango import DeviceProxy
 
 class SOLEILPss(HardwareObject):
     states = {0: "not ready", 1: "ready"}
@@ -24,12 +21,12 @@ class SOLEILPss(HardwareObject):
         try:
             self.device = DeviceProxy(self.get_property("tangoname"))
         except Exception:
-            self.log.error(
+            logging.getLogger("HWR").error(
                 "%s: unknown pss device name", self.get_property("tangoname")
             )
 
         if self.get_property("hutch") not in ("optical", "experimental"):
-            self.log.error(
+            logging.getLogger("HWR").error(
                 "SOLEILPss.init Hutch property %s is not correct",
                 self.get_property("hutch"),
             )
@@ -47,6 +44,8 @@ class SOLEILPss(HardwareObject):
         return self.get_state(self.stateChan.get_value())
 
     def value_changed(self, value):
-        self.log.info("%s: SOLEILPss.valueChanged, %s", self.id, value)
+        logging.getLogger("HWR").info(
+            "%s: SOLEILPss.valueChanged, %s", self.name, value
+        )
         state = self.get_state(value)
         self.emit("wagoStateChanged", (state,))
