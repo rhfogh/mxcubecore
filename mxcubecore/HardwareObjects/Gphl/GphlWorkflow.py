@@ -450,41 +450,41 @@ class GphlWorkflow(HardwareObject):
         fields["cell_a"] = {
             "title": "a",
             "type": "number",
-            "minimum": 0.1,
-            "readOnly": True,
+            "minimum": 0.,
+            "readOnly": False,
         }
         fields["cell_b"] = {
             "title": "b",
             "type": "number",
-            "minimum": 0.1,
-            "readOnly": True,
+            "minimum": 0.,
+            "readOnly": False,
         }
         fields["cell_c"] = {
             "title": "c",
             "type": "number",
-            "minimum": 0.1,
-            "readOnly": True,
+            "minimum": 0.,
+            "readOnly": False,
         }
         fields["cell_alpha"] = {
             "title": "α",
             "type": "number",
-            "minimum": 0.1,
+            "minimum": 0.,
             "maximum": 180,
-            "readOnly": True,
+            "readOnly": False,
         }
         fields["cell_beta"] = {
             "title": "β",
             "type": "number",
-            "minimum": 0.1,
+            "minimum": 0.,
             "maximum": 180,
-            "readOnly": True,
+            "readOnly": False,
         }
         fields["cell_gamma"] = {
             "title": "γ",
             "type": "number",
-            "minimum": 0.1,
+            "minimum": 0.,
             "maximum": 180,
-            "readOnly": True,
+            "readOnly": False,
         }
         fields["lattice"] = {
             "title": "Crystal lattice",
@@ -514,7 +514,7 @@ class GphlWorkflow(HardwareObject):
                 or ""
             ),
             "type": "string",
-            "readOnly": True,
+            "readOnly": False,
         }
         fields["relative_rad_sensitivity"] = {
             "title": "Radiation sensitivity",
@@ -527,7 +527,7 @@ class GphlWorkflow(HardwareObject):
             "type": "number",
             "default": data_model.crystal_thickness or 0,
             "minimum": 0,
-            "readOnly": True,
+            "readOnly": False,
         }
         fields["use_cell_for_processing"] = {
             "title": "Use for indexing",
@@ -1318,14 +1318,14 @@ class GphlWorkflow(HardwareObject):
             "title": "Dose budget (MGy)",
             "type": "number",
             "default": dose_budget - data_model.characterisation_dose,
-            "minimum": 0.000001,
-            "readOnly": True,
+            "minimum": 0.0,
+            "readOnly": False,
         }
         fields["use_dose"] = {
             "title": dose_label,
             "type": "number",
             "default": use_dose_start,
-            "minimum": 0.000001,
+            "minimum": 0.0,
             "readOnly": use_dose_frozen,
         }
         # NB Transmission is in % in UI, but in 0-1 in workflow
@@ -2429,7 +2429,7 @@ class GphlWorkflow(HardwareObject):
 
         data_model.set_pre_strategy_params(**params)
         distance = data_model.detector_setting.axisSettings["Distance"]
-        HWR.beamline.detector.distance.set_value(distance, timeout=30)
+        HWR.beamline.detector.distance.set_value(distance, timeout=50)
         return GphlMessages.SelectedLattice(data_model, solution=indexing_solution)
 
     def parse_indexing_solution(self, choose_lattice):
@@ -2933,12 +2933,10 @@ class GphlWorkflow(HardwareObject):
                     cell_lengths = indata.get("cell_dim")
                     cell_angles = indata.get("cell_ang_deg")
                     resolution = indata.get("res_limit_def")
-
                     location = (serial // 10 + 1, serial % 10 + 1)
                     serial += 1
                     data["containerSampleChangerLocation"] = str(location[0])
                     data["sampleLocation"] = str(location[1])
-
                     data["sampleName"] = sample_name
                     if cell_lengths:
                         for idx, tag in enumerate(("cellA", "cellB", "cellC")):
