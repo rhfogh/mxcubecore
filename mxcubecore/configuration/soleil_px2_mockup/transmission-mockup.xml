@@ -1,0 +1,5 @@
+<object class = "TransmissionMockup">
+    <username>Transmission</username>
+    <actuator_name>Transmission</actuator_name>
+    <default_value>99.9</default_value>
+</object>

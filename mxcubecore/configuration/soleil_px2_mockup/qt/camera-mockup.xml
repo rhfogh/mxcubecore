@@ -1,0 +1,10 @@
+<object class="RedisCamera">
+   <host>172.19.10.181</host>
+   <port>6379</port>
+   <protocol>2</protocol>
+   <last_image_id_key>last_image_id</last_image_id_key>
+   <last_image_data_key>bzoom:RAW</last_image_data_key>
+   <gain_key>camera_gain</gain_key>
+   <exposure_time_key>camera_exposure_time</exposure_time_key>
+   <poll_interval>20</poll_interval>
+</object>

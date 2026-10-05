@@ -1,0 +1,10 @@
+<object class="PX2Energy">
+    <tangoname>i11-ma-c03/op/mono1</tangoname>
+    <!--tangoname>i11-ma-c03/op/mono1-mt_rx</tangoname-->
+    <channel type="tango" polling="500" name="energy">energy</channel>
+    <channel type="tango" polling="500" name="state">State</channel>
+    <tunable>True</tunable>
+    <default_energy>13.000</default_energy>
+    <min_energy>5.8</min_energy>
+    <max_energy>18.5</max_energy>
+</object>

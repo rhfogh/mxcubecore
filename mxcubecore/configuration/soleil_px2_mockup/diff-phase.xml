@@ -1,0 +1,5 @@
+<object class="PX2Phase">
+    <exporter_address>172.19.10.181:9001</exporter_address>
+    <value_channel_name>CurrentPhase</value_channel_name>
+    <values>{"TRANSFER": "Transfer", "COLLECT": "DataCollection", "SEE_BEAM": "BeamLocation", "CENTRE": "Centring"}</values>
+</object>

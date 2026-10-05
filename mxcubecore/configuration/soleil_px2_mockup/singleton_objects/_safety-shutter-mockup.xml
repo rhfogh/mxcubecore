@@ -1,0 +1,8 @@
+<object class="SOLEILSafetyShutter">
+    <username>Safety Shutter</username>
+    <object href="/singleton_objects/obx" role="shutter"></object>
+    <object href="/singleton_objects/pss_exp" role="pss"></object>
+    <actuator_name>safety_shutter</actuator_name>
+    <user_name>Safety shutter</user_name>
+    <values>{"OPEN": "OPEN", "CLOSED": "CLOSED"}</values>
+</object>

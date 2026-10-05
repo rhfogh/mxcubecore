@@ -1,0 +1,4 @@
+<object class="ExporterMotor">
+    <exporter_address>172.19.10.181:9001</exporter_address>
+    <actuator_name>Omega</actuator_name>
+</object>

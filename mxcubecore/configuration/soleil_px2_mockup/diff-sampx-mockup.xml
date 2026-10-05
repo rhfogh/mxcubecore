@@ -1,0 +1,4 @@
+<object class="MotorMockup">
+  <actuator_name>SampX</actuator_name>
+  <default_value>0.</default_value>
+</object>
