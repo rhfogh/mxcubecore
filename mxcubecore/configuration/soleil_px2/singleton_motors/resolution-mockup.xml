@@ -1,0 +1,8 @@
+<object class = "PX2Resolution">
+    <username>Resolution</username>
+    <actuator_name>resolution</actuator_name>
+    <tolerance>1e-3</tolerance>
+    <detector_radius>116.25</detector_radius>
+    <detector_width>3110</detector_width>
+    <detector_height>3269</detector_height>
+</object>

@@ -1,0 +1,6 @@
+<object class="ExporterMotor">
+    <exporter_address>172.19.10.181:9001</exporter_address>
+    <actuator_name>CentringX</actuator_name>
+    <direction>1</direction>
+</object>
+

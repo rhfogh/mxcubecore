@@ -1,0 +1,19 @@
+<object class = "SOLEILCats">
+    <username>Cats</username>
+    <cats_model>cats</cats_model>
+    <tangoname>i11-ma-cx1/ex/cats</tangoname>
+    <polling>500</polling>
+    <no_of_lids>3</no_of_lids>
+    <no_of_baskets_in_lid>3</no_of_baskets_in_lid>
+    <no_of_baskets>12</no_of_baskets>
+    <samples_per_basket>16</samples_per_basket>
+    <read_datamatrix>False</read_datamatrix>
+    <update_timer>False</update_timer>
+    <no_soak_lid>2</no_soak_lid>
+    <tool>CRYOTONG</tool>
+    <pucktype>UNIPUCK</pucktype>
+    <detect_pucks>False</detect_pucks>
+    <read_datamatrix>False</read_datamatrix>
+    <unipuck_tool>Unipuck</unipuck_tool>
+    <channel type="exporter" exporter_address="172.19.10.181:9001" name="_chnSampleIsDetected">SampleIsLoaded</channel>
+</object>

@@ -1,0 +1,9 @@
+<object class = "SOLEILTransmission">
+    <username>Transmission</username>
+    <actuator_name>Transmission</actuator_name>
+    <default_value>99.9</default_value>
+    <channel type="tango" polling="250" name="h_gap" tangoname="i11-ma-c04/ex/fent_h.2">gap</channel>
+    <channel type="tango" polling="250" name="h_state" tangoname="i11-ma-c04/ex/fent_h.2">state</channel>
+    <channel type="tango" polling="250" name="v_gap" tangoname="i11-ma-c04/ex/fent_v.2">gap</channel>
+    <channel type="tango" polling="250" name="v_state" tangoname="i11-ma-c04/ex/fent_v.2">state</channel>
+</object>

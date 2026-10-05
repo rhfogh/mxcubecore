@@ -1,0 +1,9 @@
+<object class="MicrodiffLight">
+    <exporter_address>172.19.10.181:9001</exporter_address>
+    <actuator_name>BackLight</actuator_name>
+    <position_suffix>Level</position_suffix>
+    <use_global_state>True</use_global_state>
+    <channel type="exporter" name="chanLightValue">BackLightLevel</channel>
+    <channel type="exporter" name="chanLightIsOn">BackLightIsOn</channel>
+    <limits>[0, 100]</limits>
+</object>

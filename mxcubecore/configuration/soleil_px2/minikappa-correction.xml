@@ -1,0 +1,10 @@
+<object class="MiniKappaCorrection">
+   <kappa>
+      <direction>[ 0.,      0.40673664, -0.91354546]</direction>
+      <position>[ -0.0533,  0.0424,      0.8945]</position>
+   </kappa>
+   <phi>
+      <direction>[ 0.,       0.,       1.]</direction>
+      <position>[  -0.1389,  0.1720,   0.]</position>
+   </phi>
+</object>

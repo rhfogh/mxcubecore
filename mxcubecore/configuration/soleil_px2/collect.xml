@@ -1,0 +1,10 @@
+<object class="PX2CollectFromEmulator">
+    <monochromator>Si(111)</monochromator>
+    <focusing_optic>KB mirrors</focusing_optic>
+    <polarisation>0.99</polarisation>
+    <undulators>
+        <undulator>
+            <type>U24</type>
+        </undulator>
+    </undulators>
+</object>
