@@ -20,7 +20,9 @@
 TangoMotor class defines motor in the Tango control system (used and tested in DESY/P11
 """
 
+import logging
 import gevent
+import traceback
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
@@ -28,10 +30,10 @@ __credits__ = ["DESY P11"]
 __license__ = "LGPLv3+"
 __category__ = "Motor"
 
-
 class TangoMotor(AbstractMotor):
     """TangoMotor class defines motor in the Tango control system"""
 
+    latest_value = None
     default_polling = 500
 
     def __init__(self, name):
@@ -43,7 +45,7 @@ class TangoMotor(AbstractMotor):
         self.cmd_set_position = None
         self.cmd_stop_axis = None
         self.cmd_set_online = None
-        self.latest_position = None
+        self.latest_value = None
         self.auto_on = False
         self.cmd_on = None
         self.cmd_calibrate = None
@@ -53,9 +55,9 @@ class TangoMotor(AbstractMotor):
     def init(self):
         """Connects to all Tango channels and commands"""
         self.polling = self.get_property("polling", TangoMotor.default_polling)
-        self.actuator_name = self.get_property("actuator_name", self.name())
+        self.actuator_name = self.get_property("actuator_name", self.name)
         self._tolerance = self.get_property("tolerance", 1e-3)
-
+        self.tangoname = self.get_property("tangoname")
         self.is_simulation = self.get_property("simulation", False)
         self.auto_on = self.get_property("auto_on", False)
         if self.auto_on:
@@ -138,7 +140,7 @@ class TangoMotor(AbstractMotor):
         self.motor_state_changed()
         self.update_value()
 
-    def connectNotify(self, signal):
+    def connect_notify(self, signal):
         """
         :param signal: signal
         :type signal: signal
@@ -153,7 +155,15 @@ class TangoMotor(AbstractMotor):
     def get_value(self):
         if self.is_simulation:
             return self.simulated_pos
-        value = self.chan_position.get_value()
+
+        try:
+            value = self.chan_position.get_value()
+            self.latest_value = value
+        except:
+            print("could not read value, you might want to check, moving on...")
+            logging.getLogger("HWR").info(traceback.format_exc())
+            value = self.latest_value
+            print(f"assumed value is {value}")
         return value
 
     def get_velocity(self):
@@ -165,6 +175,7 @@ class TangoMotor(AbstractMotor):
             self.chan_velocity.set_value(value)
 
     def motstate_to_state(self, motstate):
+
         motstate = str(motstate)
 
         if motstate == "ON":
@@ -175,6 +186,8 @@ class TangoMotor(AbstractMotor):
             state = self.STATES.FAULT
         elif motstate == "OFF":
             state = self.STATES.OFF
+        elif motstate == 'STANDBY':
+            state = self.STATES.READY
         else:
             state = self.STATES.UNKNOWN
 
@@ -183,7 +196,6 @@ class TangoMotor(AbstractMotor):
     def motor_state_changed(self, state=None):
         if state is None:
             state = self.chan_state.get_value()
-
         self.update_state(self.motstate_to_state(state))
 
     def set_ready(self):
@@ -212,7 +224,11 @@ class TangoMotor(AbstractMotor):
             self.simulated_pos = value
         else:
             self.start_moving()
-            self.chan_position.set_value(value)
+            try:
+                self.chan_position.set_value(value)
+            except:
+                print("Could not move %s to %s" % (self.id, value))
+                traceback.print_exc()
 
     def start_moving(self):
         self.motor_state_changed("MOVING")
@@ -246,3 +262,4 @@ class TangoMotor(AbstractMotor):
         :return:
         """
         return "TangoMotor"
+
