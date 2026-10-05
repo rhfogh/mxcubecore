@@ -316,7 +316,13 @@ class ISPyBClientMockup(ProposalTypeISPyBLims):
         """
         pass
 
-    def get_samples(self, lims_name):
+    def disable(self):
+        self._disabled = True
+
+    def enable(self):
+        self._disabled = False
+
+    def get_samples(self, lims_name, *args, **kwargs):
         # Try GPhL emulation samples, if available
         gphl_workflow = HWR.beamline.gphl_workflow
         if gphl_workflow is not None:
@@ -332,7 +338,7 @@ class ISPyBClientMockup(ProposalTypeISPyBLims):
                 "cellBeta": 0.0,
                 "cellC": 0.0,
                 "cellGamma": 0.0,
-                "containerSampleChangerLocation": "1",
+                "containerSampleChangerLocation": "8",
                 "crystalSpaceGroup": "P212121",
                 "diffractionPlan": {
                     "diffractionPlanId": 457980,
@@ -348,7 +354,7 @@ class ISPyBClientMockup(ProposalTypeISPyBLims):
                 "experimentType": "Default",
                 "proteinAcronym": "A-TIM",
                 "sampleId": 515485,
-                "sampleLocation": "1",
+                "sampleLocation": "15",
                 "sampleName": "fghfg",
                 "smiles": None,
             },
