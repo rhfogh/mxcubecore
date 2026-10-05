@@ -41,7 +41,7 @@ class SampleChangerMockup(AbstractSampleChanger.SampleChanger):
     def get_log_filename(self):
         return self.log_filename
 
-    def load(self, sample, wait=False):
+    def load(self, sample, wait=False, separator="_"):
         self.emit("fsmConditionChanged", "sample_mounting_sample_changer", True)
         previous_sample = self.get_loaded_sample()
         self._set_state(AbstractSampleChanger.SampleChangerState.Loading)
@@ -50,8 +50,11 @@ class SampleChangerMockup(AbstractSampleChanger.SampleChanger):
         if isinstance(sample, tuple):
             basket, sample = sample
         else:
-            basket, sample = sample.split(":")
-
+            try:
+                basket, sample = sample.split(separator)
+            except:
+                print(f"sample {sample}")
+                basket, sample = 1, 1
         self._selected_basket = basket = int(basket)
         self._selected_sample = sample = int(sample)
 
