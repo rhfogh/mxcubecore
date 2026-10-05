@@ -42,7 +42,7 @@ __license__ = "LGPLv3+"
 
 DEFAULT_VELOCITY = 100
 DEFAULT_LIMITS = (-10000, 10000)
-DEFAULT_VALUE = 10.124
+DEFAULT_VALUE = 0.
 DEFAULT_WRAP_RANGE = None
 
 
@@ -71,6 +71,8 @@ class MotorMockup(ActuatorMockup, AbstractMotor):
             self._wrap_range = float(self.get_property("wrap_range"))
         except (TypeError, ValueError):
             self._wrap_range = DEFAULT_WRAP_RANGE
+
+        self.default_value = self.get_property("default_value", DEFAULT_VALUE)
 
         if self.default_value is None:
             self.default_value = DEFAULT_VALUE
