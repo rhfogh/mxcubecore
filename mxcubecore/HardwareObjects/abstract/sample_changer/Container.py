@@ -217,5 +217,5 @@ class Pin(Sample):
         return self.get_index() + 1
 
     @staticmethod
-    def get_sample_address(basket_number, sample_number):
-        return "%s:%02d" % (basket_number, sample_number)
+    def get_sample_address(basket_number, sample_number, separator="_"):
+        return str(basket_number) + separator + "%02d" % (sample_number)

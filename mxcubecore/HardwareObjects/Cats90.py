@@ -25,15 +25,12 @@ import time
 import PyTango
 
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
-    Container,
-    Sample,
     SampleChanger,
     SampleChangerState,
-    argin,
-    gevent,
-    has_been_loaded,
-    new_loaded,
 )
+
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import Container
+from mxcubecore.HardwareObjects.abstract.sample_changer.Sample import Sample
 
 __author__ = "Michael Hellmig, Jie Nan, Bixente Rey"
 __credits__ = ["The MXCuBE collaboration"]
@@ -132,9 +129,9 @@ class Pin(Sample):
         return self.get_index() + 1
 
     @staticmethod
-    def get_sample_address(basket_number, sample_number):
+    def get_sample_address(basket_number, sample_number, separator="_"):
         if basket_number is not None and sample_number is not None:
-            return str(basket_number) + ":" + "%02d" % (sample_number)
+            return str(basket_number) + separator + "%02d" % (sample_number)
         else:
             return ""
 
