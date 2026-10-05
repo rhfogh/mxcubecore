@@ -175,7 +175,7 @@ class CollectMockup(AbstractCollect):
     def move_motors(self, motor_position_dict):
         # TODO We copy, as dictionary is reset in move_motors. CLEAR UP!!
         # TODO clear up this confusion between move_motors and moveMotors
-        HWR.beamline.diffractometer.move_motors(motor_position_dict.copy())
+        HWR.beamline.diffractometer.set_value_motors(motor_position_dict.copy())
 
     def prepare_input_files(self):
         """
