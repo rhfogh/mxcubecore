@@ -205,8 +205,8 @@ class QtGraphicsManager(SampleView):
         self.graphics_view.resizeEvent = self.resizeEvent
 
         if self.diffractometer_hwobj is not None:
-            pixels_per_mm = self.diffractometer_hwobj.get_pixels_per_mm()
-            self.diffractometer_pixels_per_mm_changed(pixels_per_mm)
+            #pixels_per_mm = self.diffractometer_hwobj.get_pixels_per_mm()
+            #self.diffractometer_pixels_per_mm_changed(pixels_per_mm)
             # TODO NBNB BROKEN since 20260217 - rhfogh
             # Must be replaced. Meanwhile commented out temporarily
             # GraphicsLib.GraphicsItemGrid.set_grid_direction(
@@ -218,26 +218,26 @@ class QtGraphicsManager(SampleView):
                 "minidiffStateChanged",
                 self.diffractometer_state_changed,
             )
-            # self.connect(
-            #     self.diffractometer_hwobj,
-            #     "centringStarted",
-            #     self.diffractometer_centring_started,
-            # )
-            # self.connect(
-            #     self.diffractometer_hwobj,
-            #     "centringAccepted",
-            #     self.create_centring_point,
-            # )
-            # self.connect(
-            #     self.diffractometer_hwobj,
-            #     "centringSuccessful",
-            #     self.diffractometer_centring_successful,
-            # )
-            # self.connect(
-            #     self.diffractometer_hwobj,
-            #     "centringFailed",
-            #     self.diffractometer_centring_failed,
-            # )
+            self.connect(
+                self.diffractometer_hwobj,
+                "centringStarted",
+                self.diffractometer_centring_started,
+            )
+            self.connect(
+                self.diffractometer_hwobj,
+                "centringAccepted",
+                self.create_centring_point,
+            )
+            #self.connect(
+                #self.diffractometer_hwobj,
+                #"centringSuccessful",
+                #self.diffractometer_centring_successful,
+            #)
+            self.connect(
+                self.diffractometer_hwobj,
+                "centringFailed",
+                self.centring_failed,
+            )
             self.connect(
                 self.diffractometer_hwobj,
                 "pixelsPerMmChanged",
@@ -254,8 +254,8 @@ class QtGraphicsManager(SampleView):
                 self.diffractometer_phi_motor_moved,
             )
             self.connect(
-                self.diffractometer_hwobj,
-                "minidiffPhaseChanged",
+                self.diffractometer_hwobj.nstate_equipment_hwobj_dict["phase"],
+                "diffractometerPhaseChanged",
                 self.diffractometer_phase_changed,
             )
         else:
@@ -345,7 +345,7 @@ class QtGraphicsManager(SampleView):
 
         # self.temp_animation_dir = os.path.join(self.user_file_directory, "animation")
 
-        self.omega_move_delta = self.get_property("omega_move_delta", 10)
+        self.omega_move_delta = self.get_property("omega_move_delta", 30)
 
         custom_cursor_filename = self.get_property("custom_cursor", "")
         if os.path.exists(custom_cursor_filename):
@@ -696,9 +696,8 @@ class QtGraphicsManager(SampleView):
         If PHASE_BEAM then displays a grid on the screen
         """
         self.graphics_scale_item.set_display_grid(
-            phase == self.diffractometer_hwobj.PHASE_BEAM
+            phase.name == "SEE_BEAM"
         )
-        self.emit("diffractometerPhaseChanged", phase)
 
     def diffractometer_centring_started(self, centring_method, flexible):
         """Method called when centring started as a reply from diffractometer
@@ -794,12 +793,13 @@ class QtGraphicsManager(SampleView):
         self.emit("centringFailed", method, centring_status)
         self.emit("infoMsg", "")
 
-    def diffractometer_pixels_per_mm_changed(self, pixels_per_mm):
+    def diffractometer_pixels_per_mm_changed(self, pixels_per_mm, optional=None):
         """Updates graphics scale when zoom changed
 
         :param pixels_per_mm: two floats for scaling
         :type pixels_per_mm: list with two floats
         """
+        print(f"diffractometer_pixels_per_mm_changed {pixels_per_mm} {optional}")
 
         if type(pixels_per_mm) in (list, tuple):
             if pixels_per_mm != self.pixels_per_mm:
@@ -898,6 +898,12 @@ class QtGraphicsManager(SampleView):
                     # if isinstance(graphics_item, GraphicsLib.GraphicsItemPoint):
                     #    self.emit("pointSelected", graphics_item)
 
+    def image_clicked(self, x, y):
+        logging.getLogger("user_level_log").info(
+            f"Centring click at x:{x}, y:{y}"
+        )
+        self.diffractometer_hwobj.set_user_click(x, y)
+
     def mouse_double_clicked(self, pos_x, pos_y):
         """If in one of the measuring states, then stops measuring.
            Otherwise moves to screen coordinate
@@ -918,6 +924,9 @@ class QtGraphicsManager(SampleView):
         else:
             self.move_to_beam(pos_x, pos_y)
         self.emit("imageDoubleClicked", pos_x, pos_y)
+
+    def move_to_beam(self, x: float, y: float):
+        self.diffractometer_hwobj.move_to_beam(x, y)
 
     def mouse_released(self, pos_x, pos_y):
         """Mouse release method. Used to finish grid drawing and item
@@ -1073,10 +1082,11 @@ class QtGraphicsManager(SampleView):
         """Method called when mouse wheel is scrolled.
         Rotates omega axis up or down
         """
+        move_by = 3 * self.omega_move_delta
         if delta > 0:
-            self.diffractometer_hwobj.omega.set_value_relative(self.omega_move_delta)
-        else:
-            self.diffractometer_hwobj.omega.set_value_relative(-self.omega_move_delta)
+            move_by /= 3
+        self.log.info(f"mouse_wheel_scrolled: {delta} move_by {move_by}")
+        self.diffractometer_hwobj.omega.set_value_relative(move_by)
 
     def item_clicked(self, item, state):
         """Item clicked event
@@ -1150,7 +1160,7 @@ class QtGraphicsManager(SampleView):
         """
         if not self.graphics_scene_size or fixed:
             self.graphics_scene_size = size
-            self.graphics_scale_item.set_start_position(size[0], size[1])
+            self.graphics_scale_item.set_start_position(size[0], size[0])
             self.graphics_view.scene().setSceneRect(0, 0, size[0], size[1])
             # self.graphics_view.setFixedSize(size[0] + 2, size[1] + 2)
 
@@ -1161,6 +1171,7 @@ class QtGraphicsManager(SampleView):
         :type state: bool
         """
         self.in_centring_state = state
+        self.graphics_beam_item.setVisible(not state)
         self.graphics_centring_lines_item.setVisible(state)
         self.graphics_centring_lines_item.centring_points = []
         if not state:
@@ -1716,6 +1727,23 @@ class QtGraphicsManager(SampleView):
         else:
             # self.accept_centring()
             self.move_to_beam(self.beam_position[0], self.beam_position[1])
+
+    def start_manual_centring(self):
+        self.in_centring_state = True
+        self.current_centring_procedure = gevent.spawn(self.diffractometer_hwobj.manual_centring)
+        self.current_centring_procedure.link(self.manual_centring_done)
+
+    def manual_centring_done(self, centring_procedure):
+        try:
+            motor_pos = centring_procedure.get()
+            if isinstance(motor_pos, gevent.GreenletExit):
+                raise motor_pos
+        except Exception:
+            logging.exception("Could not complete manual centring")
+            self.centring_failed()
+        else:
+            print("centring done !")
+            self.centring_done()
 
     def accept_centring(self):
         """Accepts centring"""

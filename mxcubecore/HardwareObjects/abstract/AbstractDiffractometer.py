@@ -499,6 +499,7 @@ class AbstractDiffractometer(HardwareObject):
         Args:
             value: requested phase.
         """
+        pass
 
     def get_phase(self) -> DiffractometerPhase:
         """Get the current phase."""
