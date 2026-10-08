@@ -74,7 +74,7 @@ configuration:
     default:
       # Default values, also used for standard acquisition.
       # Values not given in other dictionaries are taken from here
-      exp_time: 0.005              # (s) exposure time
+      exp_time: 0.0144              # (s) exposure time
       osc_start: 0.0            # (degrees) Only used if no current angle found
       osc_range: 0.1              # (degrees)
       num_passes: 1               # (int)
@@ -86,13 +86,15 @@ configuration:
       take_dark_current: true     # (bool)
       skip_existing_images: true  # (bool)
       take_snapshots: true        # (bool)
-      transmission: 25
+      transmission: 100
+    
     helical:
       # Defaults for helical scan. Missing values are taken from default
-      transmission: 50
+      transmission: 100
 
     characterisation:
       # Defaults for chareacterisation. Missing values are taken from default
+      exp_time: 0.02
       osc_range: 1
       opt_sad: false
       account_rad_damage: true
