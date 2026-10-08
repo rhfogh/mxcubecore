@@ -88,7 +88,7 @@ __license__ = "LGPLv3+"
 __author__ = "Martin Savko based on CollectEmulator by Rasmus H Fogh"
 
 
-class PX2CollectFromEmulator(CollectMockup, speech):
+class PX2Collect(CollectMockup, speech):
 
     def __init__(self, name):
         CollectMockup.__init__(self, name)
