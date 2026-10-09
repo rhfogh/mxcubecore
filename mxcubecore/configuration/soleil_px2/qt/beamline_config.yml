@@ -30,7 +30,7 @@ objects:
   - transmission: transmission-mockup.xml
   - energy: photon_energy.xml #energy-mockup.xml
   - beam: beam-mockup.xml
-  - flux: flux-mockup.xml
+  - flux: flux.xml
   - detector: detector-mockup.xml
   - resolution: resolution-mockup.xml
   - hutch_interlock: door-interlock-mockup.xml
