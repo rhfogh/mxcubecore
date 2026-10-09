@@ -34,7 +34,7 @@ det_org_dist= 200.
 d_sensor= 0.45
 
 ! Detector file name. E.g. '.cbf' also covers compressed files with suffix '.cbf.gz'
-det_filename_suffix= '.cbf'
+det_filename_suffix= '.cbf.gz'
 
 ! Taken from http://xds.mpimf-heidelberg.mpg.de/html_doc/INPUT_templates/XDS-PILATUS.INP
 xds_DETECTOR= EIGER
