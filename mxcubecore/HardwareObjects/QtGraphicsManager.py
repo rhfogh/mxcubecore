@@ -1084,7 +1084,7 @@ class QtGraphicsManager(SampleView):
         """
         move_by = 3 * self.omega_move_delta
         if delta > 0:
-            move_by /= 3
+            move_by /= -3
         self.log.info(f"mouse_wheel_scrolled: {delta} move_by {move_by}")
         self.diffractometer_hwobj.omega.set_value_relative(move_by)
 
