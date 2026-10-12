@@ -38,6 +38,13 @@ class SOLEILQtGraphicsManager(QtGraphicsManager):
         self.omega_reference_par = {"motor_name": "phiz", "position": 0.0, "camera_axis": "x", "direction": 1}
         self.beam_position = [680., 512.]
 
+    def init(self):
+        super().init()
+        if self.diffractometer_hwobj is not None:
+            GraphicsLib.GraphicsItemGrid.set_grid_direction(
+                self.diffractometer_hwobj.get_grid_direction()
+            )
+
     def realign_beam(self):
         self.diffractometer_hwobj.beam_position_check()
 
