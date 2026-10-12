@@ -357,7 +357,7 @@ class PX2Diffractometer(AbstractDiffractometer):
 
         return name_pattern, directory
 
-    def get_nclicks_and_angles(self, n_click):
+    def get_nclicks_and_angles(self, n_clicks):
 
         if isinstance(self.nclicks, int) and self.nclicks >= 3:
             n_clicks = self.nclicks
@@ -366,10 +366,16 @@ class PX2Diffractometer(AbstractDiffractometer):
             "expected number of clicks %d" % (n_clicks)
         )
 
+        if self.step is None:
+            self.step = 360. / n_clicks
+
+        current_omega = self.goniometer.get_omega_position()
         if self.click_angles is not None and len(self.click_angles) == n_clicks:
-            click_angles = self.goniometer.get_omega_position() + self.click_angles
+            click_angles = current_omega + self.click_angles
         else:
-            click_angles = self.goniometer.get_omega_position() + np.linspace(0, 360, n_clicks)
+            click_angles = []
+            for click in range(n_clicks):
+                click_angles.append(current_omega + click*self.step)
 
         return n_clicks, click_angles
 
