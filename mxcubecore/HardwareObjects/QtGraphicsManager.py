@@ -209,9 +209,9 @@ class QtGraphicsManager(SampleView):
             #self.diffractometer_pixels_per_mm_changed(pixels_per_mm)
             # TODO NBNB BROKEN since 20260217 - rhfogh
             # Must be replaced. Meanwhile commented out temporarily
-            # GraphicsLib.GraphicsItemGrid.set_grid_direction(
-            #     self.diffractometer_hwobj.get_grid_direction()
-            # )
+            GraphicsLib.GraphicsItemGrid.set_grid_direction(
+                self.diffractometer_hwobj.get_grid_direction()
+            )
 
             self.connect(
                 self.diffractometer_hwobj,

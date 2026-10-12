@@ -71,6 +71,7 @@ fluo_detector - if present, actuator to move a fluorescence detector close to th
 """
 
 import abc
+import ast
 import json
 from enum import Enum, unique
 from typing import Dict, List, Optional, Tuple, Union
@@ -227,6 +228,7 @@ class AbstractDiffractometer(HardwareObject):
         self.timeout = 3  # default timeout 3 s
         self.chip_definition_file = ""
         self.head_orientation = ""
+        self.grid_direction = None
 
     def init(self):
         """Initialise username property.
@@ -264,6 +266,23 @@ class AbstractDiffractometer(HardwareObject):
         self.chip_definition_file = HWR.get_hardware_repository().find_in_repository(
             _fp
         )
+
+        # grid direction
+        self.grid_direction = self.get_property("grid_direction")
+        if self.grid_direction is None:
+            self.grid_direction = {"fast": (0, 1), "slow": (1, 0), "omega_ref": 0}
+            self.log.warning(
+                "Diffractometer: Grid direction not configured. Using default."
+            )
+        elif isinstance(self.grid_direction, str):
+            self.grid_direction = ast.literal_eval(self.grid_direction)
+        elif not isinstance(self.grid_direction, dict):
+            _m = "Diffractometer: grid direction misconfigured. not a dict"
+            raise ValueError(_m)
+
+        if not all(key in self.grid_direction for key in ["fast", "slow", "omega_ref"]):
+            _m = "Diffractometer: grid direction misconfigured. missing fast, slow, or omega_ref"
+            raise ValueError(_m)
 
     def get_motors(self) -> dict:
         """Get the dictionary of all configured motors or the ones to use.
@@ -628,3 +647,9 @@ class AbstractDiffractometer(HardwareObject):
                 if isinstance(evar.value, (tuple, list)) and (value in evar.value):
                     return evar
         return which_enum.UNKNOWN
+
+    def get_grid_direction(self):
+        """
+        Descript. : get configured grid direction
+        """
+        return self.grid_direction
