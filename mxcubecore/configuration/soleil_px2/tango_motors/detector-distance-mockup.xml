@@ -11,6 +11,6 @@
     <channel type="tango" polling="500" name="axisPosition">position</channel>
     <channel type="tango" polling="500" name="axisState">State</channel>
     <command type="tango" name="stopAxis">Stop</command>
-    <default_limits>[99., 800.]</default_limits>
+    <default_limits>[100., 650.]</default_limits>
     <interval>1000</interval>
 </object>
