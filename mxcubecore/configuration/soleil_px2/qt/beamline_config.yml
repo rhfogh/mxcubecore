@@ -29,7 +29,7 @@ objects:
   - machine_info: mach-info-mockup.xml
   - transmission: transmission-mockup.xml
   - energy: photon_energy.xml #energy-mockup.xml
-  - beam: beam-mockup.xml
+  - beam: beam.xml
   - flux: flux.xml
   - detector: detector-mockup.xml
   - resolution: resolution-mockup.xml
@@ -74,7 +74,7 @@ configuration:
     default:
       # Default values, also used for standard acquisition.
       # Values not given in other dictionaries are taken from here
-      exp_time: 0.0144              # (s) exposure time
+      exp_time: 0.005              # (s) exposure time
       osc_start: 0.0            # (degrees) Only used if no current angle found
       osc_range: 0.1              # (degrees)
       num_passes: 1               # (int)
@@ -87,14 +87,14 @@ configuration:
       skip_existing_images: true  # (bool)
       take_snapshots: true        # (bool)
       transmission: 100
-    
+
     helical:
       # Defaults for helical scan. Missing values are taken from default
       transmission: 100
 
     characterisation:
       # Defaults for chareacterisation. Missing values are taken from default
-      exp_time: 0.02
+      exp_time: 0.01
       osc_range: 1
       opt_sad: false
       account_rad_damage: true
@@ -111,7 +111,7 @@ configuration:
 
   acquisition_limit_values:
     exposure_time:     # (s)
-      - 0.005
+      - 0.004201681
       - 6000.0
     osc_range:         # (degrees)
       - -1000.0

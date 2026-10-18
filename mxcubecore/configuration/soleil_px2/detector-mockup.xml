@@ -2,7 +2,7 @@
     <tempThreshold>33.5</tempThreshold>
     <humidityThreshold>20.0</humidityThreshold>
     <tolerance>0.2</tolerance>
-    <type>Eiger1</type>
+    <type>EigerX 1</type>
     <model>9M</model>
     <manufacturer>DECTRIS</manufacturer>
     <px>0.075</px>
@@ -13,7 +13,7 @@
     <fileSuffix>cbf</fileSuffix>
     <object hwrid="/tango_motors/detector-distance-mockup" role="detector_distance"/>
     <exposure_time_limits>[1./238, 60000]</exposure_time_limits>
-    <roiModes>("0", "C18", "C12", "C2")</roiModes>
+    <roiModes>("9M", "4M")</roiModes>
 
     <beam>
         <!-- Values are in pixels/mm and pixels resp. -->
