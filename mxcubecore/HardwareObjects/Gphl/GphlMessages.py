@@ -482,6 +482,22 @@ class IndexingSolution(MessageData):
         self._latticeCharacter = latticeCharacter
         self._qualityOfFit = qualityOfFit
 
+    def as_dict(self):
+        """Return a dictionary representation of the indexing solution"""
+        cell = self._cell
+        return {
+            "is_consistent": self._isConsistent,
+            "lattice_character": self._latticeCharacter,
+            "bravais_lattice": self._bravaisLattice,
+            "quality_of_fit": self._qualityOfFit,
+            "a": cell.a,
+            "b": cell.b,
+            "c": cell.c,
+            "alpha": cell.alpha,
+            "beta": cell.beta,
+            "gamma": cell.gamma,
+        }
+
     @property
     def bravaisLattice(self):
         """One of the 14 Bravais lattices ('aP' etc.)"""
@@ -489,7 +505,7 @@ class IndexingSolution(MessageData):
 
     @property
     def cell(self):
-        """Unit ce;;"""
+        """Unit cell"""
         return self._cell
 
     @property

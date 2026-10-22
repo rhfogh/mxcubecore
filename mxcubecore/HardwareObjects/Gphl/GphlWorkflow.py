@@ -30,6 +30,7 @@ from __future__ import (
 import copy
 import datetime
 import enum
+import json
 import logging
 import math
 import os
@@ -239,6 +240,8 @@ class GphlWorkflow(HardwareObject):
         self._latest_translation_id = None
         # GoniostatTranslations generated in recentring
         self._recentrings = []
+        # Data for exporting experiment report
+        self.report_dict = {}
 
         # instrumentation configuration data
         self.instrument_data = {}
@@ -395,6 +398,9 @@ class GphlWorkflow(HardwareObject):
         space_group = data_model.space_group or ""
         header = soldict = select_row = None
         if choose_lattice:
+            self.report_dict["indexing_solutions"] = list(
+                obj.as_dict() for obj in choose_lattice.indexingSolutions
+            )
             header, soldict, select_row = self.parse_indexing_solution(choose_lattice)
             lattice = list(soldict.values())[select_row].bravaisLattice
             point_groups = lattice2point_group_tags[lattice]
@@ -829,6 +835,9 @@ class GphlWorkflow(HardwareObject):
             solline = params.get("indexing_solution")
             if solline:
                 params["indexing_solution"] = soldict[solline]
+                self.report_dict["selected_solution"] = list(soldict.values()).index(
+                    params["indexing_solution"]
+                )
         finally:
             dispatcher.disconnect(
                 self.receive_pre_strategy_data,
@@ -1147,7 +1156,8 @@ class GphlWorkflow(HardwareObject):
                     continue
 
             axis_settings = sweep.goniostatSweepSetting.axisSettings.copy()
-            axis_settings.pop(sweep.goniostatSweepSetting.scanAxis, None)
+            scan_axis = sweep.goniostatSweepSetting.scanAxis
+            axis_settings.pop(scan_axis, None)
             grouped_sweeps.append(
                 {
                     "sweeps": [sweep],
@@ -1216,6 +1226,7 @@ class GphlWorkflow(HardwareObject):
                     pos = current_pos_dict.get(tag)
                     if pos is not None:
                         dd0[tag] = pos
+        self.report_dict["sweeps"] = report_sweeps = []
 
         for dd0 in grouped_sweeps:
             axis_settings = dd0["axis_settings"]
@@ -1225,15 +1236,22 @@ class GphlWorkflow(HardwareObject):
                 if x in axis_settings
             )
             ll1 = []
+            total_width = 0
+            total_start = 999.999
             for sweep in dd0["sweeps"]:
                 start = sweep.start
                 width = sweep.width
+                total_width += width
+                total_start = min(total_start, start)
                 ss1 = "%s= %6.1f°,  sweep width= %6.1f°" % (
                     sweep.goniostatSweepSetting.scanAxis,
                     start,
                     width,
                 )
                 ll1.append(ss1)
+            report_sweeps.append(axis_settings)
+            axis_settings["width"] = total_width
+            axis_settings[scan_axis] = total_start
             lines.append(ss0 + ",  " + ll1[0])
             spacer = " " * (len(ss0) + 2)
             for ss1 in ll1[1:]:
@@ -2079,6 +2097,7 @@ class GphlWorkflow(HardwareObject):
         queue_manager = self._queue_entry.get_queue_controller()
 
         gphl_workflow_model = self._queue_entry.get_data_model()
+        self.report_dict["gphl_workflow"] = gphl_workflow_model.parameter_summary()
 
         if gphl_workflow_model.init_spot_dir:
             # Characterisation, where collection and XDS have already been run
@@ -2097,7 +2116,6 @@ class GphlWorkflow(HardwareObject):
         crystal = sample.crystals[0]
         snapshot_count = gphl_workflow_model.snapshot_count
         recentring_mode = gphl_workflow_model.recentring_mode
-        data_collections = []
         scans = collection_proposal.scans
 
         geometric_strategy = collection_proposal.strategy
@@ -2330,7 +2348,6 @@ class GphlWorkflow(HardwareObject):
             # The 'if' statement is to allow this to work in multiple versions
             if hasattr(data_collection, "workflow_parameters"):
                 data_collection.workflow_parameters.update(model_workflow_parameters)
-            data_collections.append(data_collection)
             data_collection.set_enabled(True)
             data_collection.ispyb_group_data_collections = True
             data_collection.set_name(path_template.get_prefix())
@@ -2350,6 +2367,18 @@ class GphlWorkflow(HardwareObject):
         data_collection_entry = queue_manager.get_entry_with_model(
             self._data_collection_group
         )
+        if gphl_workflow_model.characterisation_done:
+            usedir = path_template.process_directory.split("/main")[0]
+            try:
+                json.dump(
+                    self.report_dict,
+                    open(os.path.join(usedir, "gphl_report_data.json"), "w"),
+                    indent=4,
+                )
+            except FileNotFoundError:
+                logging.getLogger("HWR").warning(
+                    f"Report output skipped; no such directory {usedir}"
+                )
 
         try:
             queue_manager.execute_entry(data_collection_entry)
