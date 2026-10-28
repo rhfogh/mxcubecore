@@ -1226,7 +1226,6 @@ class GphlWorkflow(HardwareObject):
                     pos = current_pos_dict.get(tag)
                     if pos is not None:
                         dd0[tag] = pos
-        self.report_dict["sweeps"] = report_sweeps = []
 
         for dd0 in grouped_sweeps:
             axis_settings = dd0["axis_settings"]
@@ -1249,7 +1248,6 @@ class GphlWorkflow(HardwareObject):
                     width,
                 )
                 ll1.append(ss1)
-            report_sweeps.append(axis_settings)
             axis_settings["width"] = total_width
             axis_settings[scan_axis] = total_start
             lines.append(ss0 + ",  " + ll1[0])
@@ -2147,6 +2145,11 @@ class GphlWorkflow(HardwareObject):
         maxdev = -1
         snapshotted_rotation_ids = set()
         # scan_numbers = {}
+        self.report_dict["sweeps"] = report_sweeps = []
+        self.report_dict["data_directory"] = (
+            HWR.beamline.session.get_base_image_directory()
+        )
+        done_sweeps = set()
         for scan in scans:
             sweep = scan.sweep
             acq = queue_model_objects.Acquisition()
@@ -2243,6 +2246,16 @@ class GphlWorkflow(HardwareObject):
             logging.getLogger("HWR").debug(
                 "Path template contents: %s", (path_template.as_dict())
             )
+            if not sweep.id_ in done_sweeps:
+                # Add sweep info to report_dict
+                done_sweeps.add(sweep.id_)
+                sweepdata = sweep.goniostatSweepSetting.axisSettings.copy()
+                sweepdata[sweep.goniostatSweepSetting.scanAxis] = sweep.start
+                sweepdata["width"] = sweep.width
+                sweepdata["wavelength"] = sweep.beamSetting.wavelength
+                sweepdata["image_start_num"] = scan.imageStartNum
+                sweepdata["file_name"] = path_template.get_image_file_name()
+                report_sweeps.append(sweepdata)
 
             key = (
                 path_template.base_prefix,
