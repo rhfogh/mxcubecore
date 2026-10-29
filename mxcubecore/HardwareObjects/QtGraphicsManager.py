@@ -254,7 +254,7 @@ class QtGraphicsManager(SampleView):
                 self.diffractometer_phi_motor_moved,
             )
             self.connect(
-                self.diffractometer_hwobj.nstate_equipment_hwobj_dict["phase"],
+                self.diffractometer_hwobj.nstate_equipment_hwobj_dict.get("phase"),
                 "diffractometerPhaseChanged",
                 self.diffractometer_phase_changed,
             )
