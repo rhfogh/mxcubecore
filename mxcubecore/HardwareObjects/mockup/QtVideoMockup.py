@@ -20,7 +20,7 @@
 import time
 
 import numpy as np
-from pkg_resources import resource_filename
+from importlib import resources
 
 from mxcubecore.HardwareObjects.abstract.AbstractVideoDevice import AbstractVideoDevice
 from mxcubecore.utils.qt_import import (
@@ -41,8 +41,12 @@ class QtVideoMockup(AbstractVideoDevice):
         self.image = None
 
     def init(self):
-        default_image_path = resource_filename(
-            "mxcubecore", "configuration/mockup/qt/fakeimg.jpg"
+        default_image_path = str(
+            resources.files("mxcubecore")
+            / "configuration"
+            / "mockup"
+            / "qt"
+            / "fakeimg.jpg"
         )
         image_path = self.get_property("file_name", default_image_path)
         self.image = QPixmap(image_path)

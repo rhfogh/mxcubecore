@@ -139,7 +139,7 @@ class PX2Diffractometer(AbstractDiffractometer):
         self.current_phase = DiffractometerPhase(self.goniometer.get_current_phase())
         self.current_constraint = DiffractometerConstraint.RELEASE
         self.update_state(HardwareObjectState.READY)
-        self.connect(self.nstate_equipment_hwobj_dict["zoom"], "valueChanged", self.zoom_changed)
+        self.connect(self.zoom, "valueChanged", self.zoom_changed)
 
     def get_camera_list(self):
         camera_list = [
