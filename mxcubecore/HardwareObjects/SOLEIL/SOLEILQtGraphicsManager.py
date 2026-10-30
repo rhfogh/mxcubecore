@@ -38,6 +38,16 @@ class SOLEILQtGraphicsManager(QtGraphicsManager):
         self.omega_reference_par = {"motor_name": "phiz", "position": 0.0, "camera_axis": "x", "direction": 1}
         self.beam_position = [680., 512.]
 
+    def init(self):
+        super().init()
+
+        if self.diffractometer_hwobj is not None:
+            self.connect(
+                self.diffractometer_hwobj.nstate_equipment_hwobj_dict["phase"],
+                "diffractometerPhaseChanged",
+                self.diffractometer_phase_changed,
+            )
+
     def accept_centring(self):
         self.centring_done()
         super().accept_centring()

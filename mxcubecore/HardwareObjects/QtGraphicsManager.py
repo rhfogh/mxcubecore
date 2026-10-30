@@ -254,11 +254,6 @@ class QtGraphicsManager(SampleView):
                 "phiMotorMoved",
                 self.diffractometer_phi_motor_moved,
             )
-            self.connect(
-                self.diffractometer_hwobj.nstate_equipment_hwobj_dict["phase"],
-                "diffractometerPhaseChanged",
-                self.diffractometer_phase_changed,
-            )
         else:
             self.log.error("GraphicsManager: Diffractometer hwobj not defined")
 
