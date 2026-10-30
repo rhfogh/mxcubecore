@@ -86,13 +86,15 @@ configuration:
       take_dark_current: true     # (bool)
       skip_existing_images: true  # (bool)
       take_snapshots: true        # (bool)
-      transmission: 25
+      transmission: 100
+
     helical:
       # Defaults for helical scan. Missing values are taken from default
-      transmission: 50
+      transmission: 100
 
     characterisation:
       # Defaults for chareacterisation. Missing values are taken from default
+      exp_time: 0.01
       osc_range: 1
       opt_sad: false
       account_rad_damage: true
@@ -109,7 +111,7 @@ configuration:
 
   acquisition_limit_values:
     exposure_time:     # (s)
-      - 0.005
+      - 0.004201681
       - 6000.0
     osc_range:         # (degrees)
       - -1000.0

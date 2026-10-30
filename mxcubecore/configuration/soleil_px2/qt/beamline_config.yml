@@ -31,8 +31,8 @@ objects:
   - energy: photon_energy.xml #energy-mockup.xml
   - beam: beam.xml
   - flux: flux.xml
-  - detector: detector-mockup.xml
-  - resolution: resolution-mockup.xml
+  - detector: detector.xml
+  - resolution: resolution.xml
   - hutch_interlock: door-interlock-mockup.xml
   - safety_shutter: safety-shutter-mockup.xml
   - fast_shutter: fast-shutter-mockup.xml
