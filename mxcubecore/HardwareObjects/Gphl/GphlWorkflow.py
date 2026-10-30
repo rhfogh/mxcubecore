@@ -404,6 +404,7 @@ class GphlWorkflow(HardwareObject):
         space_group = data_model.space_group or ""
         header = soldict = select_row = None
         if choose_lattice:
+            read_only_cell = True
             header, soldict, select_row = self.parse_indexing_solution(choose_lattice)
             lattice = list(soldict.values())[select_row].bravaisLattice
             point_groups = lattice2point_group_tags[lattice]
@@ -426,6 +427,7 @@ class GphlWorkflow(HardwareObject):
                 else:
                     space_group = ""
         else:
+            read_only_cell = False
             flux = HWR.beamline.flux
             if not (flux and flux.get_average_flux_density()):
                 logging.getLogger("user_level_log").warning(
@@ -459,41 +461,41 @@ class GphlWorkflow(HardwareObject):
         fields["cell_a"] = {
             "title": "a",
             "type": "number",
-            "minimum": 0.,
-            "readOnly": False,
+            "minimum": 0.0,
+            "readOnly": read_only_cell,
         }
         fields["cell_b"] = {
             "title": "b",
             "type": "number",
-            "minimum": 0.,
-            "readOnly": False,
+            "minimum": 0.0,
+            "readOnly": read_only_cell,
         }
         fields["cell_c"] = {
             "title": "c",
             "type": "number",
-            "minimum": 0.,
-            "readOnly": False,
+            "minimum": 0.0,
+            "readOnly": read_only_cell,
         }
         fields["cell_alpha"] = {
             "title": "α",
             "type": "number",
-            "minimum": 0.,
+            "minimum": 0.0,
             "maximum": 180,
-            "readOnly": False,
+            "readOnly": read_only_cell,
         }
         fields["cell_beta"] = {
             "title": "β",
             "type": "number",
-            "minimum": 0.,
+            "minimum": 0.0,
             "maximum": 180,
-            "readOnly": False,
+            "readOnly": read_only_cell,
         }
         fields["cell_gamma"] = {
             "title": "γ",
             "type": "number",
-            "minimum": 0.,
+            "minimum": 0.0,
             "maximum": 180,
-            "readOnly": False,
+            "readOnly": read_only_cell,
         }
         fields["lattice"] = {
             "title": "Crystal lattice",
@@ -517,13 +519,13 @@ class GphlWorkflow(HardwareObject):
             "enum": sglist,
         }
         fields["input_space_group"] = {
-            "title": "Space Group",
+            "title": "Expected Space Group",
             "default": (
                 crystal_symmetry.regularise_space_group(data_model.input_space_group)
                 or ""
             ),
             "type": "string",
-            "readOnly": False,
+            "readOnly": read_only_cell,
         }
         fields["relative_rad_sensitivity"] = {
             "title": "Radiation sensitivity",
@@ -749,12 +751,10 @@ class GphlWorkflow(HardwareObject):
             ):
                 fields[tag]["readOnly"] = False
             ui_schema["parameters"]["column1"]["ui:order"].remove("point_groups")
-            fields["crystal_thickness"]["readOnly"] = False
 
         elif not choose_lattice:
             # Characterisation
             ui_schema["parameters"]["column1"]["ui:order"].remove("point_groups")
-            fields["crystal_thickness"]["readOnly"] = False
 
         else:
             # Acquisition
@@ -763,6 +763,7 @@ class GphlWorkflow(HardwareObject):
                 "title": "Select indexing solution :",
                 "type": "string",
             }
+            fields["crystal_thickness"]["readOnly"] = True
             ui_schema["crystal_data"]["sgroup"]["ui:order"].remove("crystal_thickness")
 
             # Color green (figuratively) if matches lattices
@@ -1327,8 +1328,8 @@ class GphlWorkflow(HardwareObject):
             "title": "Dose budget (MGy)",
             "type": "number",
             "default": dose_budget - data_model.characterisation_dose,
-            "minimum": 0.0,
-            "readOnly": False,
+            "minimum": 0.000001,
+            "readOnly": True,
         }
         fields["use_dose"] = {
             "title": dose_label,
