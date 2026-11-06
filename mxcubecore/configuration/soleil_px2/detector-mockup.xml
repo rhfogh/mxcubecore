@@ -12,6 +12,7 @@
     <hasShutterless>True</hasShutterless>
     <fileSuffix>cbf</fileSuffix>
     <object hwrid="/tango_motors/detector-distance-mockup" role="detector_distance"/>
+    
     <exposure_time_limits>[1./238, 60000]</exposure_time_limits>
     <roiModes>("9M", "4M")</roiModes>
 

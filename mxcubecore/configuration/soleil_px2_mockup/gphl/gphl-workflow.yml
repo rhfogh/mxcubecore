@@ -99,7 +99,7 @@ configuration:
       #     2 * resolution**2 * log(100. / decay_limit) / relative_sensitivity
       decay_limit: 25
       # exposure time (s). NB automatically reset to be within limits for detector
-      exposure_time: 0.01
+      exposure_time: 0.005
       # Default use known cell parameters as forced starting point for processing
       # It is recommended to keep setting to false, as it should only eb used with reliable cells
       use_cell_for_processing: false
@@ -125,7 +125,7 @@ configuration:
       # and list[-1] for the main one
     auto_acq_parameters:
       # For characterisation acquisition
-      - exposure_time: 0.02
+      - exposure_time: 0.01
         image_width: 0.1
         # resolution: 1.928
         strategy: Char_6_5_multitrigger
@@ -139,7 +139,7 @@ configuration:
         #   - 222C
         #   - 222I
         # space_group: I222
-      - exposure_time: 0.02
+      - exposure_time: 0.005
         image_width: 1.0
         resolution: 1.5
         snapshot_count: 2

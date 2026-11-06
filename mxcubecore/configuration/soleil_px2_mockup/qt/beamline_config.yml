@@ -121,7 +121,7 @@ configuration:
       - 99999
     kappa:             # (degrees)
       - -2.0
-      - 240.0
+      - 247.0
     kappa_phi:         # (degrees)
       - -360.0
       - 360.0

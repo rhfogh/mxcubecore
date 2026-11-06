@@ -7,7 +7,8 @@ configuration:
   directory_locations:
     # Directory locations. Can also be used with ${} syntax in this file
     #GPHL_INSTALLATION: /home/rhfogh/Software/GPhL/gphl_release
-    GPHL_INSTALLATION: /nfs/data2/Martin/Research/GPhL/2026-05-19
+    #GPHL_INSTALLATION: /nfs/data2/Martin/Research/GPhL/2026-05-19
+    GPHL_INSTALLATION: /nfs/data2/Martin/Research/GPhL/2.2.3-20260720
     # GPHL_INSTALLATION:
     #   /home/rhfogh/Software/GPhL/nightly_20230823/Files_workflow_TRUNK_alpha-bdg
     # GPHL_INSTALLATION:
