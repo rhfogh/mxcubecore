@@ -471,27 +471,13 @@ class Sample(TaskNode):
             self.diffraction_plan = lims_sample.diffractionPlan
         else:
             self.diffraction_plan = lims_sample.get("diffractionPlan")
-        #
-        # name = ""
-        #
-        # if self.crystals[0].protein_acronym:
-        #     name += self.crystals[0].protein_acronym
-        #     print ('@~@~ name 1', name, self.name)
-        #
-        # if self.name:
-        #     name += "-" + self.name
-        #
-        # print ('@~@~ name 2', name)
-        # self.set_name(name)
 
-
-        new_name =  self.crystals[0].protein_acronym
-        print ('@~@~ names', new_name, self.name)
-        if new_name:
-            name = self.name
-            if name:
-                new_name = "-".join([new_name, name])
-            self.set_name(new_name)
+        acronym =  self.crystals[0].protein_acronym
+        name = self.name
+        if name and acronym:
+            self.set_name("-".join([acronym, name]))
+        else:
+            self.set_name(name or acronym or "")
 
 
     def set_from_dict(self, p):
