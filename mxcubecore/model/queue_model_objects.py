@@ -2079,6 +2079,7 @@ class GphlWorkflow(TaskNode):
         summary["wavelengths"] = tuple(x.wavelength for x in self.wavelengths)
         summary["resolution"] = self.detector_setting.resolution
         summary["orgxy"] = self.detector_setting.orgxy
+        summary["detector_distance"] = self.detector_setting.axisSettings.get("Distance")
         summary["strategy_variant"] = self.strategy_options.get("variant", "not set")
         summary["orientation_count"] = len(self.goniostat_translations)
         summary["characterisation_dose"] = self.characterisation_dose
